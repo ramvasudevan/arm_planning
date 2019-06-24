@@ -4,10 +4,10 @@ function [u1,u2] = map_FC_3D(theta1,theta2, theta3, theta4, L1, L2)
 %   4DOF arm. 
 %   
 %   In home position, link one and two are parallel and
-%   coincide with the global y - axis. We also assume a frame fixed to the
-%   base joint, with the y - axis coiniciding with link 1, and a a frame
-%   fixed to the second joint (theta4), with the y - axis coinciding with
-%   the y - axis and a rotation about the x - axis. 
+%   coincide with the global y - axis. We attach a frame to the
+%   base joint, with the y - axis coiniciding with link 1, and a a frame to 
+%   the second joint, with the y - axis coinciding with the link 2  and a 
+%   rotation about the x - axis. 
 
 %   This function takes in four joint angle variables and returns two unit
 %   vectors that represent the arm links in shape space.
@@ -15,7 +15,7 @@ function [u1,u2] = map_FC_3D(theta1,theta2, theta3, theta4, L1, L2)
 %   Let theta1 = rotation about the current z - axis
 %       theta2 = rotation about the current y - axis
 %       theta3 = rotation about the current x - axis
-%       theta4 = rotation about the current x(?) axis
+%       theta4 = rotation about the current x axis
 
 %   For the end position of link one, a roll-pitch-yaw rotation order about 
 %   the current axis is assumed, followed by a translation along the 
