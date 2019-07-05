@@ -2,6 +2,8 @@ classdef generic_arm_agent < agent
     properties
         % default arm is 2-D, 2-link, 2-DOF
         dimension = 2 ;
+        
+        % specify links
         n_links = 2 ;
         link_sizes = [0.55, 0.30 ;  % length
                       0.05, 0.05] ; % width
@@ -29,6 +31,10 @@ classdef generic_arm_agent < agent
                            -0.250 -0.125 ;   % successor x
                             0.000 +0.000 ] ; % successor y
         
+        % state index data
+        joint_state_indices
+        joint_speed_indices
+                        
         % collision checking
         collision_check_data
         
@@ -47,14 +53,24 @@ classdef generic_arm_agent < agent
             % by default, the arm's states are (position,speed) of each
             % joint, in order from the first joint onwards
             n_states = 2*A.n_joints ;
+            joint_state_indices = 1:2:n_states ;
+            joint_speed_indices = 2:2:n_states ;
             
             n_inputs = A.n_joints ; % inputs are joint torques by default
             
+            % default low-level controller
+            LLC = generic_arm_PID_LLC() ;
+            
             % create agent
             A = parse_args(A,'n_states',n_states,'n_inputs',n_inputs,...
+                'joint_state_indices',joint_state_indices,...
+                'joint_speed_indices',joint_speed_indices,...
+                'LLC',LLC,...
                 'set_axes_when_animating',true,...
                 'position_indices',[],varargin{:}) ;
+            
             A.reset() ;
+            A.LLC.setup(A)
             
             % set up plotting and collision check data
             A.create_plot_patch_data() ;
@@ -99,6 +115,8 @@ classdef generic_arm_agent < agent
         
         %% reset
         function reset(A,state)
+            
+            A.vdisp('Resetting states to 0',3) ;
             if nargin < 2
                 A.state = zeros(A.n_states,1) ;
             else
@@ -109,9 +127,16 @@ classdef generic_arm_agent < agent
                 end
             end
             
+            A.vdisp('Resetting time and inputs to 0',3)
             A.time = 0 ;
             A.input = zeros(A.n_inputs,1) ;
             A.input_time = 0 ;
+            
+            % reset LLC
+            if isa(A.LLC,'generic_arm_PID_LLC')
+                A.vdisp('Resetting low-level controller integrator error.',3)
+                A.LLC.position_error_state = zeros(length(A.joint_state_indices),1) ;
+            end
         end
         
         %% get agent info
@@ -193,6 +218,15 @@ classdef generic_arm_agent < agent
         end
         
         %% dynamics
+        function zd = dynamics(A,t,z,T,U,Z)
+            % get control inputs
+            u = A.LLC.get_control_inputs(A,t,z,T,U,Z) ;
+            
+            % compute dynamics
+            zd = zeros(A.n_states,1) ;
+            zd(A.joint_state_indices) = z(A.joint_speed_indices) ;
+            zd(A.joint_speed_indices) = u ;
+        end
         
         %% plotting
         function plot(A,~)
@@ -230,8 +264,6 @@ classdef generic_arm_agent < agent
                 link_verts{idx} = R{idx}*A.plot_link_data.link_vertices{idx} + ...
                                   t{idx} ;
             end
-            
-            
             
             if check_if_plot_is_available(A,'links')
                 for idx = 1:A.n_links
