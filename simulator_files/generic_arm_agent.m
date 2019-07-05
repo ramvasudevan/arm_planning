@@ -3,7 +3,7 @@ classdef generic_arm_agent < agent
         % default arm is 2-D, 2-link, 2-DOF
         dimension = 2 ;
         n_links = 2 ;
-        link_sizes = [0.55, 0.3 ; % length
+        link_sizes = [0.55, 0.30 ;  % length
                       0.05, 0.05] ; % width
         
         % specify the kinematic chain of predecessor and successor links;
@@ -24,13 +24,14 @@ classdef generic_arm_agent < agent
         % specify the location of each joint as an (x,y) coordinate in the
         % local frame of the pred/succ links; this array must have as many
         % columns as there are joints
-        joint_locations = [+0.000 +0.245 ;   % predecessor x
+        joint_locations = [+0.000 +0.250 ;   % predecessor x
                            +0.050 +0.000 ;   % predecessor y
-                           -0.245 -0.120 ;   % successor x
+                           -0.250 -0.125 ;   % successor x
                             0.000 +0.000 ] ; % successor y
         
         % collision checking
         collision_check_data
+        
         % plotting
         plot_link_data
         plot_link_face_color = [0 0 1] ;
@@ -234,11 +235,11 @@ classdef generic_arm_agent < agent
             
             if check_if_plot_is_available(A,'links')
                 for idx = 1:A.n_links
-                    A.plot_data.links(idx).data.Faces = A.plot_link_data.link_faces{idx} ;
-                    A.plot_data.links(idx).data.Vertices = link_verts{idx}' ;
+                    A.plot_data.links(idx).Faces = A.plot_link_data.link_faces{idx} ;
+                    A.plot_data.links(idx).Vertices = link_verts{idx}' ;
                 end
             else
-                link_struct = struct([]) ;
+                link_array = [] ;
                 for idx = 1:A.n_links
                     link_data = patch('Faces',A.plot_link_data.link_faces{idx},...
                         'Vertices',link_verts{idx}',...
@@ -247,9 +248,9 @@ classdef generic_arm_agent < agent
                         'EdgeColor',A.plot_link_edge_color,...
                         'LineWidth',A.plot_link_edge_width,...
                         'EdgeAlpha',A.plot_link_edge_opacity) ;
-                    link_struct(idx).data = link_data ;
+                    link_array = [link_array, link_data] ;
                 end
-                A.plot_data.links = link_struct ;
+                A.plot_data.links = link_array ;
             end
         end
         
