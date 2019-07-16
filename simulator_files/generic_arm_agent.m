@@ -1,6 +1,6 @@
 classdef generic_arm_agent < agent
     properties
-    %% LINKS
+    %% links
         % default arm is 2-D, 2-link, 2-DOF
         dimension = 2 ;
         n_links = 2 ;
@@ -11,7 +11,7 @@ classdef generic_arm_agent < agent
                   
         link_masses = (1e-03)*[0.15, 0.09] ; % ~ 2cm wide aluminum links
 
-    %% JOINTS
+    %% joints
         n_joints = 2 ;
         joint_types = ['R','R'] ; % R for revolute, P for prismatic
         
@@ -50,7 +50,7 @@ classdef generic_arm_agent < agent
         kinematic_chain = [0, 1 ;   % predecessor index
                            1, 2 ] ; % successor index
                        
-    %% PHYSICS
+    %% physics
         % whether or not to simulate gravity
         gravity_flag = false ; % not implemented yet
         gravity_direction = [0 ; -1 ; 0] ;
@@ -58,10 +58,11 @@ classdef generic_arm_agent < agent
         % torque limits; each column corresponds to one joint, the first
         % row is the minimum, and the second row is the maximum in N*m
         link_mass_torque_flag = false ; % not implemented yet
-        joint_input_limits = [-10, -10 ;
-                              +10, +10] ;
-                       
-    %% MISCELLANEOUS
+        
+        joint_input_limits = 10.*[-1, -1 ;   % minimum
+                                  +1, +1 ] ; % maximum
+                               
+    %% miscellaneous
         % integration
         integrator_time_discretization = 0.01 ; % s
     
@@ -78,7 +79,7 @@ classdef generic_arm_agent < agent
     end
     
     methods
-        %% constructor
+    %% constructor
         function A = generic_arm_agent(varargin)
             % A = generic_arm_agent('property1',value1,'property2',value2,...)
             %
@@ -148,7 +149,7 @@ classdef generic_arm_agent < agent
             A.collision_check_data.vertices = A.plot_link_data.link_vertices ;
         end
         
-        %% reset
+    %% reset
         function reset(A,state)
             
             A.vdisp('Resetting states to 0',3) ;
@@ -174,13 +175,11 @@ classdef generic_arm_agent < agent
             end
         end
         
-        %% get agent info
-        
-        %% move
-        
-        %% stop
-        
-        %% forward kinematics
+    %% get agent info
+
+    %% stop
+
+    %% forward kinematics
         function [R,t] = forward_kinematics(A,t_in)
             % [R,t] = A.forward_kinematics(time)
             %
@@ -232,12 +231,17 @@ classdef generic_arm_agent < agent
                 switch A.joint_types(idx)
                     case 'R'
                         if d == 3
-                            error('3D joints not yet supported')
+                            % rotation matrix of current joint
+                            axis_pred = A.joint_axes(:,idx) ;
+                            R_succ = axang2rotm([axis_pred', j_idx]) ;
+                            
+                            % location of current joint in global coords
+                            t_succ = t_pred + R_pred*j_loc(1:3) - R_succ*j_loc(4:6) ;
                         else
-                            % get the rotation of the current joint
+                            % rotation matrix of current joint
                             R_succ = rotation_matrix_2D(j_idx)*R_pred ;
                             
-                            % get the current joint's location
+                            % location of current joint in global coords
                             t_succ = t_pred + R_pred*j_loc(1:2) - R_succ*j_loc(3:4) ;
                         end
                     case 'P'
@@ -252,7 +256,7 @@ classdef generic_arm_agent < agent
             end
         end
         
-        %% dynamics
+    %% dynamics
         function zd = dynamics(A,t,z,T,U,Z)
             % get desired torques and bound them
             u = A.LLC.get_control_inputs(A,t,z,T,U,Z) ;
@@ -271,7 +275,7 @@ classdef generic_arm_agent < agent
             zd(A.joint_speed_indices) = u(:) ;
         end
         
-        %% integrator
+    %% integrator
         function [tout,zout] = integrator(A,arm_dyn,tspan,z0)
             % [tout,zout] = A.integrator(arm_dynamics,tspan,z0)
             %
@@ -323,7 +327,7 @@ classdef generic_arm_agent < agent
             end
         end
         
-        %% plotting
+    %% plotting
         function plot(A,~)
             A.plot_at_time(A.time(end)) ;
         end
