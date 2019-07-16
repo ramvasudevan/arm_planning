@@ -1,24 +1,23 @@
 classdef generic_arm_agent < agent
     properties
+    %% LINKS
         % default arm is 2-D, 2-link, 2-DOF
         dimension = 2 ;
-        
-        % specify links
         n_links = 2 ;
+        
+        % dimensions
         link_sizes = [0.55, 0.30 ;  % length
                       0.05, 0.05] ; % width
-        
-        % specify the kinematic chain of predecessor and successor links;
-        % each column corresponds to a joint, the first row is the joint
-        % predecessor link, and the second row is the successor link; 0
-        % indicates the baselink
+                  
+        link_masses = (1e-03)*[0.15, 0.09] ; % ~ 2cm wide aluminum links
+
+    %% JOINTS
         n_joints = 2 ;
-        kinematic_chain = [0, 1 ;   % predecessor index
-                           1, 2 ] ; % successor index
-        
         joint_types = ['R','R'] ; % R for revolute, P for prismatic
         
-        % the joint axes are in the predecessor's coordinate frame
+        % the joint axes are in the predecessor's coordinate frame; for a
+        % 2-D arm, revolute joints should use the z-axis, which is the
+        % default here
         joint_axes = [0 0 ;
                       0 0 ;
                       1 1 ] ;
@@ -31,10 +30,41 @@ classdef generic_arm_agent < agent
                            -0.250 -0.125 ;   % successor x
                             0.000 +0.000 ] ; % successor y
         
+        % joint limits and speed limits, where each column corresponds to
+        % one joint; the top row is the minimum and the bottom is the
+        % maximum, in rad or rad/s respectively
+        joint_limits = [ +0, -Inf ;
+                        +pi, +Inf] ;
+                    
+        joint_speed_limits = [-pi, -pi ;
+                              +pi, +pi] ;
+                        
         % state index data
         joint_state_indices
         joint_speed_indices
-                        
+
+        % specify the kinematic chain of predecessor and successor links;
+        % each column corresponds to a joint, the first row is the joint
+        % predecessor link, and the second row is the successor link; 0
+        % indicates the baselink
+        kinematic_chain = [0, 1 ;   % predecessor index
+                           1, 2 ] ; % successor index
+                       
+    %% PHYSICS
+        % whether or not to simulate gravity
+        gravity_flag = false ; % not implemented yet
+        gravity_direction = [0 ; -1 ; 0] ;
+    
+        % torque limits; each column corresponds to one joint, the first
+        % row is the minimum, and the second row is the maximum in N*m
+        link_mass_torque_flag = false ; % not implemented yet
+        joint_input_limits = [-10, -10 ;
+                              +10, +10] ;
+                       
+    %% MISCELLANEOUS
+        % integration
+        integrator_time_discretization = 0.01 ; % s
+    
         % collision checking
         collision_check_data
         
@@ -50,6 +80,11 @@ classdef generic_arm_agent < agent
     methods
         %% constructor
         function A = generic_arm_agent(varargin)
+            % A = generic_arm_agent('property1',value1,'property2',value2,...)
+            %
+            % This class implements a generic multilink robot arm. By
+            % default, it is a 2-D, 2-link, 2-DOF arm.
+            
             % by default, the arm's states are (position,speed) of each
             % joint, in order from the first joint onwards
             n_states = 2*A.n_joints ;
@@ -219,13 +254,73 @@ classdef generic_arm_agent < agent
         
         %% dynamics
         function zd = dynamics(A,t,z,T,U,Z)
-            % get control inputs
+            % get desired torques and bound them
             u = A.LLC.get_control_inputs(A,t,z,T,U,Z) ;
+            for idx = 1:length(u)
+                u(idx) = bound_values(u(idx), A.joint_input_limits(:,idx)') ;
+            end
+            
+            % get the torque exerted by the link masses on each joint
+            if A.link_mass_torque_flag
+                error('Link mass torque is not yet implemented!')
+            end
             
             % compute dynamics
             zd = zeros(A.n_states,1) ;
             zd(A.joint_state_indices) = z(A.joint_speed_indices) ;
-            zd(A.joint_speed_indices) = u ;
+            zd(A.joint_speed_indices) = u(:) ;
+        end
+        
+        %% integrator
+        function [tout,zout] = integrator(A,arm_dyn,tspan,z0)
+            % [tout,zout] = A.integrator(arm_dynamics,tspan,z0)
+            %
+            % RK4 integration with joint limits and speed limits enforced.
+            
+            % create time vector
+            dt = A.integrator_time_discretization ;
+            tout = tspan(1):dt:tspan(end) ;
+            if tout(end) < tspan(end)
+                tout = [tout, tspan(end)] ;
+            end
+            
+            % preallocate trajectory output
+            Nt = size(tout,2) ;
+            zout = [z0(:), nan(A.n_states,Nt-1)] ;
+
+            % run integration loop
+            for tidx = 2:Nt
+                % get previous state
+                zcur = zout(:,tidx-1) ;
+                tcur = tout(tidx-1) ;
+                
+                % compute RK4 terms
+                k1 = arm_dyn(tcur, zcur) ;
+                k2 = arm_dyn(tcur + dt/2, zcur + k1/2) ;
+                k3 = arm_dyn(tcur + dt/2, zcur + k2/2) ;
+                k4 = arm_dyn(tcur + dt, zcur + k3) ;
+                
+                % compute summed term
+                dzdt = (1/6)*(k1 + 2*k2 + 2*k3 + k4) ;
+                
+                % apply speed limits
+                joint_speeds = dzdt(A.joint_speed_indices)' ;
+                joint_speeds = max([joint_speeds; A.joint_speed_limits(1,:)],[],1) ;
+                joint_speeds = min([joint_speeds; A.joint_speed_limits(2,:)],[],1) ;
+                dzdt(A.joint_speed_indices) = joint_speeds ;
+                
+                % compute next state
+                znew = zcur + dt*dzdt ;
+                
+                % apply state limits
+                joint_values = znew(A.joint_state_indices)' ;
+                joint_values = max([joint_values ; A.joint_limits(1,:)],[],1) ;
+                joint_values = min([joint_values ; A.joint_limits(2,:)],[],1) ;
+                znew(A.joint_state_indices) = joint_values ;
+                
+                % save new state
+                zout(:,tidx) = znew(:) ;
+            end
         end
         
         %% plotting
