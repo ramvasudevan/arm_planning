@@ -9,15 +9,16 @@ classdef robot_arm_agent_3D < robot_arm_agent
             
             dimension = 3 ;
             
-            n_links = 2 ;
+            n_links = 4 ; % 2 real links, 2 virtual links
                       
             n_joints = 4 ;
             
             n_states = 2*n_joints ;
             
-            link_sizes = [0.30, 0.20 ;
-                          0.05, 0.05 ;
-                          0.05, 0.05] ;
+            % the links with size 0 are virtual links
+            link_sizes = [0, 0.30, 0, 0.20 ;
+                          0, 0.05, 0, 0.05 ;
+                          0, 0.05, 0, 0.05] ;
             
             joint_state_indices = 1:2:n_states ;
             
@@ -29,24 +30,28 @@ classdef robot_arm_agent_3D < robot_arm_agent
                           0 1 0 1 ;
                           1 0 0 0 ] ; % axes are in preceding joint's frame
                       
-            joint_locations = [+0.00, +0.00, +0.15, +0.15 ; % predecessor x
+            joint_locations = [+0.00, +0.00, +0.15, +0.00 ; % predecessor x
                                +0.00, +0.00, +0.00, +0.00 ; % predecessor y
-                               +0.05, +0.05, +0.00, +0.00 ; % predecessor z
-                               -0.15, -0.15, -0.10, -0.10 ; % successor x
+                               +0.05, +0.00, +0.00, +0.00 ; % predecessor z
+                               +0.00, -0.15, +0.00, -0.10 ; % successor x
                                +0.00, +0.00, +0.00, +0.00 ; % successor y
                                +0.00, +0.00, +0.00, +0.00 ];% successor z
                            
-            joint_limits = [-Inf, 0,  -Inf, -Inf ;
-                            +Inf, pi, +Inf, +Inf] ;
+            joint_limits = [-Inf, -pi/2,  -Inf, -Inf ;
+                            +Inf, +pi/2, +Inf, +Inf] ;
                         
             joint_speed_limits = (pi/2).*repmat([-1;1],1,n_joints) ;
             
             joint_input_limits = 3.*joint_speed_limits;
             
-            kinematic_chain = [0 0 1 1 ;
-                               1 1 2 2] ;
+            kinematic_chain = [0 1 2 3 ;
+                               1 2 3 4] ;
                            
             gravity_direction = [0;0;-1] ;
+            
+            set_view_when_animating = true ;
+            
+            animation_view = 3 ;
             
             A@robot_arm_agent('dimension',dimension,'n_links',n_links,...
                 'n_joints',n_joints,'n_inputs',n_joints,...
@@ -59,7 +64,9 @@ classdef robot_arm_agent_3D < robot_arm_agent
                 'joint_speed_limits',joint_speed_limits,...
                 'joint_input_limits',joint_input_limits,...
                 'kinematic_chain',kinematic_chain,...
-                'gravity_direction',gravity_direction) ;
+                'gravity_direction',gravity_direction,...
+                'set_view_when_animating',set_view_when_animating,...
+                'animation_view',animation_view) ;
         end
         
         function create_plot_patch_data(A)
