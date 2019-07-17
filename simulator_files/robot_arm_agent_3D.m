@@ -15,10 +15,14 @@ classdef robot_arm_agent_3D < robot_arm_agent
             
             n_states = 2*n_joints ;
             
-            % the links with size 0 are virtual links
-            link_sizes = [0, 0.30, 0, 0.20 ;
-                          0, 0.05, 0, 0.05 ;
-                          0, 0.05, 0, 0.05] ;
+            % 'V' for virtual links, used to define compound joints
+            link_types = ['V','R','V','R'] ;
+            
+            % links 1 and 3 are virtual links that will be represented as
+            % little spheres, yay
+            link_sizes = [0.025, 0.300, 0.025, 0.200 ;
+                          0.025, 0.050, 0.025, 0.050 ;
+                          0.025, 0.050, 0.025, 0.050] ;
             
             joint_state_indices = 1:2:n_states ;
             
@@ -55,7 +59,8 @@ classdef robot_arm_agent_3D < robot_arm_agent
             
             A@robot_arm_agent('dimension',dimension,'n_links',n_links,...
                 'n_joints',n_joints,'n_inputs',n_joints,...
-                'n_states',n_states,'link_sizes',link_sizes,...
+                'n_states',n_states,...
+                'link_types',link_types,'link_sizes',link_sizes,...
                 'joint_state_indices',joint_state_indices,...
                 'joint_speed_indices',joint_speed_indices,...
                 'joint_types',joint_types,'joint_axes',joint_axes,...
@@ -81,9 +86,17 @@ classdef robot_arm_agent_3D < robot_arm_agent
             L = A.link_sizes ;
             
             for lidx = 1:size(L,2)
-                % create box for link
-                [link_faces,link_vertices] = make_cuboid_for_patch(L(:,lidx)) ;
-                
+                l = L(:,lidx) ;
+                switch A.link_types(lidx)
+                    case 'R'
+                        % create box for link
+                        [link_faces,link_vertices] = make_cuboid_for_patch(l) ;
+                    case 'V'
+                        % create ellipsoid for link
+                        [link_faces,link_vertices] = make_ellipsoid_for_patch(l(1),l(2),l(3),zeros(3,1),4) ;
+                    otherwise
+                        error('Invalid link type! Pick V for virtual or R for real.')
+                end
                 % fill in cell array
                 plot_faces_cell{lidx} = link_faces ;
                 plot_verts_cell{lidx} = link_vertices' ;

@@ -30,8 +30,9 @@ classdef robot_arm_PID_LLC < low_level_controller
             LLC.agent_joint_speed_indices = agent.joint_speed_indices ;
             
             % create default control gains, assuming the agent's states are
-            % in the format:
-            %   (q_1, qdot_1, q_2, qdot_2, ... , q_n, qdot_n)
+            % in the format
+            %   (q_1, qdot_1, q_2, qdot_2, ... , q_n, qdot_n),
+            % where q_i is the configuration of joint i
             
             if isempty(LLC.K_ff)
                 LLC.K_ff = eye(LLC.n_agent_inputs) ;

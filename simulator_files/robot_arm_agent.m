@@ -4,8 +4,9 @@ classdef robot_arm_agent < agent
         % default arm is 2-D, 2-link, 2-DOF
         dimension = 2 ;
         n_links = 2 ;
+
+        link_types = ['R','R'] ; % use 'V' for virtual links
         
-        % dimensions
         link_sizes = [0.55, 0.30 ;  % length
                       0.05, 0.05] ; % width
                   
