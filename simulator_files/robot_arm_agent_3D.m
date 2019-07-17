@@ -1,9 +1,9 @@
-classdef generic_arm_agent_3D < generic_arm_agent
+classdef robot_arm_agent_3D < robot_arm_agent
     methods
         %% constructor
-        function A = generic_arm_agent_3D(varargin)
-            % A = generic_arm_agent_3D('property1',value1,...
-            %                          'property2',value2,...)
+        function A = robot_arm_agent_3D(varargin)
+            % A = robot_arm_agent_3D('property1',value1,...
+            %                        'property2',value2,...)
             %
             % This class implements a 3-D, 4-DOF, 2-link robot arm.
             
@@ -27,7 +27,7 @@ classdef generic_arm_agent_3D < generic_arm_agent
             
             joint_axes = [0 0 1 0 ;
                           0 1 0 1 ;
-                          1 0 0 0 ] ;
+                          1 0 0 0 ] ; % axes are in preceding joint's frame
                       
             joint_locations = [+0.00, +0.00, +0.15, +0.15 ; % predecessor x
                                +0.00, +0.00, +0.00, +0.00 ; % predecessor y
@@ -48,7 +48,7 @@ classdef generic_arm_agent_3D < generic_arm_agent
                            
             gravity_direction = [0;0;-1] ;
             
-            A@generic_arm_agent('dimension',dimension,'n_links',n_links,...
+            A@robot_arm_agent('dimension',dimension,'n_links',n_links,...
                 'n_joints',n_joints,'n_inputs',n_joints,...
                 'n_states',n_states,'link_sizes',link_sizes,...
                 'joint_state_indices',joint_state_indices,...

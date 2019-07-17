@@ -1,4 +1,4 @@
-classdef generic_arm_agent < agent
+classdef robot_arm_agent < agent
     properties
     %% links
         % default arm is 2-D, 2-link, 2-DOF
@@ -46,7 +46,10 @@ classdef generic_arm_agent < agent
         % specify the kinematic chain of predecessor and successor links;
         % each column corresponds to a joint, the first row is the joint
         % predecessor link, and the second row is the successor link; 0
-        % indicates the baselink
+        % indicates the baselink; NOTE, if one link is connected to
+        % multiple joints, then the order in which the joints affect the
+        % link (i.e., when doing forward kinematics) is in the order (from
+        % left to right) they are listed in the kinematic chain
         kinematic_chain = [0, 1 ;   % predecessor index
                            1, 2 ] ; % successor index
                        
@@ -80,8 +83,8 @@ classdef generic_arm_agent < agent
     
     methods
     %% constructor
-        function A = generic_arm_agent(varargin)
-            % A = generic_arm_agent('property1',value1,'property2',value2,...)
+        function A = robot_arm_agent(varargin)
+            % A = robot_arm_agent('property1',value1,'property2',value2,...)
             %
             % This class implements a generic multilink robot arm. By
             % default, it is a 2-D, 2-link, 2-DOF arm.
@@ -95,7 +98,7 @@ classdef generic_arm_agent < agent
             n_inputs = A.n_joints ; % inputs are joint torques by default
             
             % default low-level controller
-            LLC = generic_arm_PID_LLC() ;
+            LLC = robot_arm_PID_LLC() ;
             
             % create agent
             A = parse_args(A,'n_states',n_states,'n_inputs',n_inputs,...
@@ -169,7 +172,7 @@ classdef generic_arm_agent < agent
             A.input_time = 0 ;
             
             % reset LLC
-            if isa(A.LLC,'generic_arm_PID_LLC')
+            if isa(A.LLC,'arm_PID_LLC')
                 A.vdisp('Resetting low-level controller integrator error.',3)
                 A.LLC.position_error_state = zeros(length(A.joint_state_indices),1) ;
             end
@@ -180,21 +183,25 @@ classdef generic_arm_agent < agent
     %% stop
 
     %% forward kinematics
-        function [R,t] = forward_kinematics(A,t_in)
-            % [R,t] = A.forward_kinematics(time)
+        function [R,T] = forward_kinematics(A,t)
+            % [R,T] = A.forward_kinematics(time)
             %
             % Compute the rotation and translation of all links in the
             % global (baselink) frame at the given time. If no time is
             % given, then it defaults to 0.
             
             if nargin < 2
-                t_in = 0 ;
+                t = 0 ;
             end
             
             % linearly interpolate the state for the corresponding time
-            z = match_trajectories(t_in,A.time,A.state) ;
+            z = match_trajectories(t,A.time,A.state) ;
+            
+            % get joint data
             j_vals = z(1:2:end) ; % joint values
             j_locs = A.joint_locations ; % joint locations
+            j_axes = A.joint_axes ; 
+            j_type = A.joint_types ;
             
             % extract dimensions
             n = A.n_links ;
@@ -202,9 +209,71 @@ classdef generic_arm_agent < agent
             
             % allocate cell arrays for the rotations and translations
             R = mat2cell(repmat(eye(d),1,n),d,d*ones(1,n)) ;
-            t = mat2cell(repmat(zeros(d,1),1,n),d,ones(1,n)) ;
+            T = mat2cell(repmat(zeros(d,1),1,n),d,ones(1,n)) ;
             
-            % move along the kinematic chain and generate the output
+            % move through each link from baselink outward
+            kc = A.kinematic_chain ;
+            for l_idx = 1:A.n_links
+                % get all joints that precede this link
+                kc_idx_log = kc(2,:) == l_idx ;
+                kc_idx = kc(:,kc_idx_log) ;
+                
+                j_vals_idx = j_vals(:,kc_idx_log) ;
+                j_locs_idx = j_locs(:,kc_idx_log) ;
+                j_axes_idx = j_axes(:,kc_idx_log) ;
+                j_type_idx = j_type(kc_idx_log) ;
+                
+                % get the starting rotation and translation
+                R_idx = R{l_idx} ;
+                T_idx = T{l_idx} ;
+                
+                % for each joint that affects this link, compose the
+                % rotations and translations...
+                for j_idx = 1:size(kc_idx,2)
+                    % get current joint data
+                    j_val = j_vals_idx(j_idx) ;
+                    j_loc = j_locs_idx(:,j_idx) ;
+                    j_axis = j_axes_idx(:,j_idx) ;
+                    j_type = j_type_idx(j_idx) ;
+                    
+                    % get kinematic chain info
+                    k_idx = kc_idx(:,j_idx) ;
+                    p_idx = k_idx(1) ; % predecessor link index
+                    
+                    % get predecessor joint info
+                    if p_idx == 0
+                        R_pre = eye(1) ;
+                        T_pre = zeros(3,1) ;
+                    else
+                        R_pre = R{p_idx} ;
+                        T_pre = T{p_idx} ;
+                    end
+                    
+                    % depending on the current joint type, compute the
+                    % rotation and translation
+                    switch j_type
+                        case 'R'
+                            if d == 3
+                                % rotation matrix of current joint
+                                R_idx = axang2rotm([axis_pred', j_idx])*R_idx ;
+                                
+                                % location of current joint in global coords
+                                T_idx = T_pred + R_pred*j_loc(1:3) - R_idx*j_loc(4:6) ;
+                            else
+                                % rotation matrix of current joint
+                                R_idx = rotation_matrix_2D(j_idx)*R_pred ;
+                                
+                                % location of current joint in global coords
+                                T_idx = T_pred + R_pred*j_loc(1:2) - R_succ*j_loc(3:4) ;
+                            end
+                        case 'P'
+                            error('Prismatic joints are not supported yet!')
+                        otherwise
+                            error('Invalid joint type!')
+                    end
+                end
+            end
+            
             for idx = 1:A.n_joints
                 k_idx = A.kinematic_chain(:,idx) ;
                 p_idx = k_idx(1) ;
@@ -215,11 +284,12 @@ classdef generic_arm_agent < agent
                 % to an angle of 0 and with a translation of 0
                 if p_idx == 0
                     R_pred = eye(d) ;
-                    t_pred = zeros(d,1) ;
+                    T_pred = zeros(d,1) ;
                 else
                     R_pred = R{p_idx} ;
-                    t_pred = t{p_idx} ;
+                    T_pred = T{p_idx} ;
                 end
+                R_succ = R{s_idx} ;
 
                 
                 % get the value and location of the current joint
@@ -232,17 +302,17 @@ classdef generic_arm_agent < agent
                     case 'R'
                         if d == 3
                             % rotation matrix of current joint
-                            axis_pred = A.joint_axes(:,idx) ;
-                            R_succ = axang2rotm([axis_pred', j_idx]) ;
+                            axis_pred = R_pred*A.joint_axes(:,idx) ;
+                            R_succ = axang2rotm([axis_pred', j_idx])*R_succ ;
                             
                             % location of current joint in global coords
-                            t_succ = t_pred + R_pred*j_loc(1:3) - R_succ*j_loc(4:6) ;
+                            T_succ = T_pred + R_pred*j_loc(1:3) - R_succ*j_loc(4:6) ;
                         else
                             % rotation matrix of current joint
                             R_succ = rotation_matrix_2D(j_idx)*R_pred ;
                             
                             % location of current joint in global coords
-                            t_succ = t_pred + R_pred*j_loc(1:2) - R_succ*j_loc(3:4) ;
+                            T_succ = T_pred + R_pred*j_loc(1:2) - R_succ*j_loc(3:4) ;
                         end
                     case 'P'
                         error('Prismatic joints are not supported yet!')
@@ -252,7 +322,7 @@ classdef generic_arm_agent < agent
                 
                 % fill in rotation and translation cells
                 R{s_idx} = R_succ ;
-                t{s_idx} = t_succ ;
+                T{s_idx} = T_succ ;
             end
         end
         
@@ -355,13 +425,13 @@ classdef generic_arm_agent < agent
             end
             
             % get the rotations and translations at the current time
-            [R,t] = A.forward_kinematics(t) ;
+            [R,T] = A.forward_kinematics(t) ;
             
             % generate plot data for each link
             link_verts = cell(1,A.n_links) ;
             for idx = 1:A.n_links
                 link_verts{idx} = R{idx}*A.plot_link_data.link_vertices{idx} + ...
-                                  t{idx} ;
+                                  T{idx} ;
             end
             
             if check_if_plot_is_available(A,'links')

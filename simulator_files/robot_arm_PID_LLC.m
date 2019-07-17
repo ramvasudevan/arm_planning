@@ -1,4 +1,4 @@
-classdef generic_arm_PID_LLC < low_level_controller
+classdef robot_arm_PID_LLC < low_level_controller
     properties
         % agent properties
         agent_joint_state_indices
@@ -16,7 +16,7 @@ classdef generic_arm_PID_LLC < low_level_controller
     
     methods
         %% constructor
-        function LLC = generic_arm_PID_LLC(varargin)
+        function LLC = robot_arm_PID_LLC(varargin)
             LLC = parse_args(LLC,varargin{:}) ;
         end
         
