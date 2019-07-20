@@ -312,9 +312,9 @@ classdef robot_arm_agent < agent
                 
                 % compute RK4 terms
                 k1 = arm_dyn(tcur, zcur) ;
-                k2 = arm_dyn(tcur + dt/2, zcur + k1/2) ;
-                k3 = arm_dyn(tcur + dt/2, zcur + k2/2) ;
-                k4 = arm_dyn(tcur + dt, zcur + k3) ;
+                k2 = arm_dyn(tcur + dt/2, zcur + dt*k1/2) ;
+                k3 = arm_dyn(tcur + dt/2, zcur + dt*k2/2) ;
+                k4 = arm_dyn(tcur + dt, zcur + dt*k3) ;
                 
                 % compute summed term
                 dzdt = (1/6)*(k1 + 2*k2 + 2*k3 + k4) ;

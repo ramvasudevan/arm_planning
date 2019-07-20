@@ -39,17 +39,17 @@ classdef robot_arm_PID_LLC < low_level_controller
             end
             
             if isempty(LLC.K_p)
-                P = [eye(LLC.n_agent_inputs) ; zeros(LLC.n_agent_inputs)] ;
+                P = 0.1*[eye(LLC.n_agent_inputs) ; zeros(LLC.n_agent_inputs)] ;
                 LLC.K_p = reshape(P,LLC.n_agent_inputs,[]) ;
             end
             
             if isempty(LLC.K_d)
-                D = [zeros(LLC.n_agent_inputs) ; 0.1*eye(LLC.n_agent_inputs)] ;
+                D = 0.01*[zeros(LLC.n_agent_inputs) ; eye(LLC.n_agent_inputs)] ;
                 LLC.K_d = reshape(D,LLC.n_agent_inputs,[]) ;
             end
             
             if isempty(LLC.K_i)
-                LLC.K_i = 0.01*eye(LLC.n_agent_inputs) ;
+                LLC.K_i = 0.001*eye(LLC.n_agent_inputs) ;
             end
             
             % reset the integrator error
@@ -74,10 +74,11 @@ classdef robot_arm_PID_LLC < low_level_controller
             end
             
             % compute control input
+            z_cur
             pd_error = z_cur - z_ref ;
             i_error = LLC.position_error_state ;
-            u = LLC.K_ff*u_ref + LLC.K_p*pd_error + ...
-                LLC.K_d*pd_error + LLC.K_i*i_error ;
+            u = LLC.K_ff*u_ref - LLC.K_p*pd_error + ...
+                - LLC.K_d*pd_error - LLC.K_i*i_error ;
             
             % update integrator error
             LLC.position_error_state = i_error + pd_error(LLC.agent_joint_state_indices) ;
