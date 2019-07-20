@@ -2,9 +2,9 @@ clear ; clc ; clf ;
 
 %% user params
 t_move = 10 ;
-k_p = 30 ;
+k_p = 100 ;
 k_d = 10 ; 
-k_i = 0.05 ;
+k_i = 0.01 ;
 
 %% make a new arm
 A = robot_arm_agent() ; 
@@ -22,9 +22,10 @@ A.LLC.K_d = K_d ;
 A.LLC.K_i = K_i ;
 
 %% make trajectory
-T = [0 100] ;
+T = linspace(0,10) ;
 U = zeros(A.n_inputs, size(T,2)) ;
-Z = [1 1 ; zeros(3,2)] ;
+Z = [1 - cos(T) ; sin(T) ; sin(T) ; cos(T)] ;
+% Z = [4*T ; 4*ones(size(T)) ; zeros(2,length(T))] ;
 
 
 %% move arm
@@ -50,4 +51,5 @@ plot(A.time',Z_ref_d','b:',A.time',Z_d','b')
 title('speed')
 
 %% animate
+% figure(2) ; clf
 % animate(A)

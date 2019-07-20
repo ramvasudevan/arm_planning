@@ -273,7 +273,13 @@ classdef robot_arm_agent < agent
             % get desired torques and bound them
             u = A.LLC.get_control_inputs(A,t,z,T,U,Z) ;
             for idx = 1:length(u)
-                u(idx) = bound_values(u(idx), A.joint_input_limits(:,idx)') ;
+                u(idx) = bound_values(u(idx), A.joint_input_limits(:,idx)')  ;
+            end
+            
+            % get the current speeds and bound them
+            s = z(A.joint_speed_indices) ;
+            for idx = 1:length(s)
+                s(idx) = bound_values(s(idx), A.joint_speed_limits(:,idx)') ;
             end
             
             % get the torque exerted by the link masses on each joint
@@ -283,59 +289,59 @@ classdef robot_arm_agent < agent
             
             % compute dynamics
             zd = zeros(A.n_states,1) ;
-            zd(A.joint_state_indices) = z(A.joint_speed_indices) ;
+            zd(A.joint_state_indices) = s(:) ;
             zd(A.joint_speed_indices) = u(:) ;
         end
         
     %% integrator
-        function [tout,zout] = integrator(A,arm_dyn,tspan,z0)
+        function [t_out,z_out] = integrator(A,arm_dyn,t_span,z0)
             % [tout,zout] = A.integrator(arm_dynamics,tspan,z0)
             %
             % RK4 integration with joint limits and speed limits enforced.
             
             % create time vector
             dt = A.integrator_time_discretization ;
-            tout = tspan(1):dt:tspan(end) ;
-            if tout(end) < tspan(end)
-                tout = [tout, tspan(end)] ;
+            t_out = t_span(1):dt:t_span(end) ;
+            if t_out(end) < t_span(end)
+                t_out = [t_out, t_span(end)] ;
             end
             
             % preallocate trajectory output
-            Nt = size(tout,2) ;
-            zout = [z0(:), nan(A.n_states,Nt-1)] ;
+            Nt = size(t_out,2) ;
+            z_out = [z0(:), nan(A.n_states,Nt-1)] ;
 
             % run integration loop
             for tidx = 2:Nt
                 % get previous state
-                zcur = zout(:,tidx-1) ;
-                tcur = tout(tidx-1) ;
+                z_cur = z_out(:,tidx-1) ;
+                t_cur = t_out(tidx-1) ;
                 
                 % compute RK4 terms
-                k1 = arm_dyn(tcur, zcur) ;
-                k2 = arm_dyn(tcur + dt/2, zcur + dt*k1/2) ;
-                k3 = arm_dyn(tcur + dt/2, zcur + dt*k2/2) ;
-                k4 = arm_dyn(tcur + dt, zcur + dt*k3) ;
+                k1 = arm_dyn(t_cur, z_cur) ;
+                k2 = arm_dyn(t_cur + dt/2, z_cur + dt*k1/2) ;
+                k3 = arm_dyn(t_cur + dt/2, z_cur + dt*k2/2) ;
+                k4 = arm_dyn(t_cur + dt, z_cur + dt*k3) ;
                 
                 % compute summed term
                 dzdt = (1/6)*(k1 + 2*k2 + 2*k3 + k4) ;
                 
-                % apply speed limits
-                joint_speeds = dzdt(A.joint_speed_indices)' ;
-                joint_speeds = max([joint_speeds; A.joint_speed_limits(1,:)],[],1) ;
-                joint_speeds = min([joint_speeds; A.joint_speed_limits(2,:)],[],1) ;
-                dzdt(A.joint_speed_indices) = joint_speeds ;
-                
                 % compute next state
-                znew = zcur + dt*dzdt ;
+                z_new = z_cur + dt*dzdt ;
                 
                 % apply state limits
-                joint_values = znew(A.joint_state_indices)' ;
+                joint_values = z_new(A.joint_state_indices)' ;
                 joint_values = max([joint_values ; A.joint_limits(1,:)],[],1) ;
                 joint_values = min([joint_values ; A.joint_limits(2,:)],[],1) ;
-                znew(A.joint_state_indices) = joint_values ;
+                z_new(A.joint_state_indices) = joint_values ;
+                
+                % apply speed limits
+                joint_speeds = z_new(A.joint_speed_indices)' ;
+                joint_speeds = max([joint_speeds; A.joint_speed_limits(1,:)],[],1) ;
+                joint_speeds = min([joint_speeds; A.joint_speed_limits(2,:)],[],1) ;
+                z_new(A.joint_speed_indices) = joint_speeds ;
                 
                 % save new state
-                zout(:,tidx) = znew(:) ;
+                z_out(:,tidx) = z_new(:) ;
             end
         end
         
