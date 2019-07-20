@@ -97,3 +97,117 @@ Shreyas also write this
 
 ## 3. How To Use the Robot Arm Agents
 
+### 3.1 2-D Arm Example
+
+Let's start with the default 2-D agent:
+
+```matlab
+A = robot_arm_agent() ;
+```
+
+This is a 2-link, 2-DOF, 2-D arm. It has 4 states, which are the position and speed of its two rotational joints. You can see what it looks like with the following:
+
+```matlab
+figure(1) ;
+plot(A) ;
+axis equal ; grid on ;
+```
+
+Let's put it at a random state and see what it looks like:
+
+```matlab
+A.state = rand(A.n_states,1) ;
+plot(A) 
+```
+
+We can also give it feedforward inputs to execute, and have it move:
+
+```matlab
+t_move = 3 ; % number of seconds to move
+T = [0 2 4] ; % time vector
+U = 2*rand(A.n_inputs, length(T)) - 1 ; % feedforward input
+
+% call the move method, which runs numerical integration in the background
+A.move(t_move, T, U)
+
+% animate the agent:
+A.animate() ; % you can also call this as animate(A)
+```
+
+You should see the arm flail around.
+
+
+
+### 3.2 Low-level Controller
+
+This arm, by default, has a `robot_arm_PID_LLC` low-level controller, which is the `A.LLC` property. You could write a different low-level controller if you wanted, but it's probably easier to just tune the gains of the existing LLC, which are:
+
+```matlab
+A.LLC.K_ff % feedforward gain
+A.LLC.K_p % proportional gain
+A.LLC.K_i % integration error gain
+A.LLC.K_d % derivative gain
+```
+
+These are gain arrays that are automagically sized appropriately for the agent's number of states and inputs. By default, the gain values are all 1. The easiest way to adjust them would be to multiple the existing arrays by some value. For example:
+
+```matlab
+A.LLC.K_p = 10.*A.LLC.K_p ;
+```
+
+This way you don't have to resize things manually.
+
+
+
+### 3.3 Tracking a Reference Trajectory
+
+**NONE OF THIS WORKS RIGHT NOW AAAAAA HOL' UP**
+
+Now that we know the LLC exists, let's track a reference trajectory. First, let's get a fresh copy of the arm:
+
+```matlab
+clear ; clf ; clc ;
+A = robot_arm_agent() ;
+```
+
+This zeros the states and inputs. Note that, this does clear all of the agent's previously-existing state, input, and time info.
+
+Now, we'll try to make the arm's first joint get to `-pi/2` radians in 2 seconds while the second joint stays at 0 radians. First, let's make the time, input, and trajectory:
+
+```matlab
+% reference time and input:
+T = [0 2] ;
+U = zeros(A.n_inputs, 2) ; % no feedforward input this time
+
+% reference joint position:
+joint_1 = [0, -pi/2] ;
+joint_2 = [0, 0] ;
+
+% reference joint speeds, which try to make the arm stop at the end configuration
+joint_spd_1 = [diff(joint_1)/T(2), 0] ;
+joint_spd_2 = [0, 0] ;
+
+% concatenate joint and speed references in to a reference trajectory:
+Z = [joint_1 ;
+     joint_spd_1 ;
+     joint_2 ;
+     joint_spd_2 ] ;
+     
+% now, move the agent:
+A.move(T(2), T, U, Z)
+```
+
+Now let's see what happened:
+
+```matlab
+animate(A)
+```
+
+Ope, the arm should have way overshot the target. Let's see if we can adjust the LLC gains to make this not happen:
+
+```
+A.LLC.K_p = 0.5*A.LLC.K_p
+A.LLC.K_d = 0.1*A.LLC.K_d
+A.LLC.K_i = 0.01*A.LLC.K_i
+```
+
