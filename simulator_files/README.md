@@ -149,7 +149,7 @@ A.LLC.K_i % integration error gain
 A.LLC.K_d % derivative gain
 ```
 
-These are gain arrays that are automagically sized appropriately for the agent's number of states and inputs. By default, the gain values are all 1. The easiest way to adjust them would be to multiple the existing arrays by some value. For example:
+These are gain arrays that are automagically sized appropriately for the agent's number of states and inputs. The easiest way to adjust them would be to multiple the existing arrays by some value. For example:
 
 ```matlab
 A.LLC.K_p = 10.*A.LLC.K_p ;
@@ -159,32 +159,30 @@ This way you don't have to resize things manually.
 
 
 
-### 3.3 Tracking a Reference Trajectory
+### 3.3 Tracking a Reference Point
 
-**NONE OF THIS WORKS RIGHT NOW AAAAAA HOL' UP**
+Now that we know the LLC exists, let's get the arm to a setpoint. The following code is all in `arm_example_1.m`.
 
-Now that we know the LLC exists, let's track a reference trajectory. First, let's get a fresh copy of the arm:
+To start, let's get a fresh copy of the arm:
 
 ```matlab
 clear ; clf ; clc ;
 A = robot_arm_agent() ;
 ```
 
-This zeros the states and inputs. Note that, this does clear all of the agent's previously-existing state, input, and time info.
-
-Now, we'll try to make the arm's first joint get to `-pi/2` radians in 2 seconds while the second joint stays at 0 radians. First, let's make the time, input, and trajectory:
+Now, we'll try to make the arm's first joint get to `pi/2` radians while the second joint stays at 0 radians. First, let's make the reference time, input, and trajectory:
 
 ```matlab
 % reference time and input:
-T = [0 2] ;
-U = zeros(A.n_inputs, 2) ; % no feedforward input this time
+T = [0 4] ; % we'll give it 4 seconds for the maneuver
+U = zeros(A.n_inputs, size(T,2)) ; % no feedforward input this time
 
 % reference joint position:
-joint_1 = [0, -pi/2] ;
+joint_1 = [pi/2, pi/2] ;
 joint_2 = [0, 0] ;
 
 % reference joint speeds, which try to make the arm stop at the end configuration
-joint_spd_1 = [diff(joint_1)/T(2), 0] ;
+joint_spd_1 = [(pi/2)/T(2), 0] ;
 joint_spd_2 = [0, 0] ;
 
 % concatenate joint and speed references in to a reference trajectory:
@@ -203,11 +201,104 @@ Now let's see what happened:
 animate(A)
 ```
 
-Ope, the arm should have way overshot the target. Let's see if we can adjust the LLC gains to make this not happen:
+You can see how the first joint overshoots and then corrects to get to the target, while the second joint stays at 0 degree the whole time. Currently, the arm is not modeling any sort of inertia or gravity, so the second joint does not have to apply any correcting inputs — but we'll be adding that eventually.
+
+
+
+### 3.4 Tracking a Reference Trajectory
+
+Now let's try tracking a reference trajectory. This code is all in `arm_example_2.m`. The point of this example is to try playing with the arm's control gains.
+
+First, let's reset the arm:
+
+```matlab
+A.reset()
+```
+
+Note that the `reset` method deletes the arm's previously executed time, input, and state trajectory, and sets them all to zero.
+
+Now, let's pick some control gains:
+
+```matlab
+k_ff = 0 ; % no feedforward gain
+k_p = 100 ;
+k_i = 0.01 ;
+k_d = 10 ; 
+```
+
+We can plug these gains into the arm's default PID controller with the following method:
 
 ```
-A.LLC.K_p = 0.5*A.LLC.K_p
-A.LLC.K_d = 0.1*A.LLC.K_d
-A.LLC.K_i = 0.01*A.LLC.K_i
+A.LLC.set_gains(k_ff,k_p,k_i,k_d)
 ```
 
+You could also call this method as follows:
+
+```matlab
+A.LLC.set_gains('P',k_p,'I',k_i,'D',k_d,'FF',k_ff)
+```
+
+Note that the keyword order does not matter.
+
+
+
+Now, let's make a sinusoidal reference trajectory for both joints:
+
+```matlab
+t_move = 10 ;
+t_total = 10 ;
+T = linspace(0,t_total) ;
+U = zeros(A.n_inputs, size(T,2)) ;
+Z = [1 - cos(T) ;
+     sin(T) ;
+     sin(T) ;
+     cos(T)] ;
+```
+
+Move the arm as usual:
+
+```matlab
+A.move(t_move,T,U,Z)
+```
+
+And, animate!
+
+```matlab
+figure(1) ; clf ;
+animate(A)
+```
+
+With the gains we've chosen, two interesting things happen. First, due to the initial speed difference between the arm and its reference, the arm overshoots its speed command. Second, about 6 seconds into the trajectory, the arm bottoms out its first joint, which shows up as a flat spot in the position trajectory and a small bump in the speed trajectory. You can see that with the following lines:
+
+```matlab
+figure(2) ; clf ;
+
+% get states and reference matched in time
+Z_j = A.state(A.joint_state_indices,:) ;
+Z_d = A.state(A.joint_speed_indices,:) ;
+Z_ref_j = match_trajectories(A.time, T, Z(A.joint_state_indices,:), A.LLC.interp_method) ;
+Z_ref_d = match_trajectories(A.time, T, Z(A.joint_speed_indices,:), A.LLC.interp_method) ;
+
+% position
+subplot(2,1,1) ;
+plot(A.time',Z_ref_j','b:',A.time',Z_j','b')
+title('position')
+xlabel('rad')
+
+% speed
+subplot(2,1,2) ;
+plot(A.time',Z_ref_d','b:',A.time',Z_d','b')
+title('speed')
+xlabel('time')
+ylabel('rad/s')
+```
+
+Note that the gains we set earlier are, in fact, the default gains of the controller. However, the following gains work much better for tracking this trajectory:
+
+```matlab
+k_p = 20 ;
+k_d = 100 ; 
+k_i = 0.01 ;
+```
+
+That wraps up this README tutorial for now. Go play!
