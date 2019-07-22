@@ -161,7 +161,7 @@ This way you don't have to resize things manually.
 
 ### 3.3 Tracking a Reference Point
 
-Now that we know the LLC exists, let's get the arm to a setpoint. The following code is all in `arm_example_1.m`.
+Now that we know the LLC exists, let's get the arm to a setpoint. The following code is all in `arm_example_1_tracking_reference_point.m`.
 
 To start, let's get a fresh copy of the arm:
 
@@ -207,7 +207,7 @@ You can see how the first joint overshoots and then corrects to get to the targe
 
 ### 3.4 Tracking a Reference Trajectory
 
-Now let's try tracking a reference trajectory. This code is all in `arm_example_2.m`. The point of this example is to try playing with the arm's control gains.
+Now let's try tracking a reference trajectory. This code is all in `arm_example_2_tracking_reference_trajectory.m`. The point of this example is to try playing with the arm's control gains.
 
 First, let's reset the arm:
 
@@ -300,5 +300,63 @@ k_p = 20 ;
 k_d = 100 ; 
 k_i = 0.01 ;
 ```
+
+
+
+### 3.5 Collision Checking
+
+Besides tracking points and trajectories, we also need to be able to tell if the arm is hitting stuff. Let's use the agent's `get_agent_info` method to do this. This code is in `arm_example_3_collision_checking.m`.
+
+First, let's make an arm and set it to a random joint configuration `q`:
+
+```matlab
+A = robot_arm_agent() ;
+q = rand(2,1) ; % because our arm has 2 DOFs
+A.state(A.joint_state_indices) = q ;
+```
+
+Now, let's make a random obstacle with five sides that approximately fits in a 0.3 m square and is offset to the point (0.5,0.5).
+
+```matlab
+O = 0.3.*make_random_polygon(5) + [0.5;0.5] ;
+```
+
+To check for collisions between the arm and this polygon, first, we'll get the agent's info structure. This is because, when running things in the simulator framework, the world and planner (which often have to do collision checking) do not have direct access to the agent.
+
+```matlab
+I = A.get_agent_info()
+```
+
+We want to check if the agent, at the configuration `q`, is in collision with the obstacle `O`. First, let's get an approximation of the volume that the agent occupies. Conveniently, the `robot_arm_agent` hands us a function that returns this volume:
+
+```matlab
+V = I.get_collision_check_volume(q) ;
+```
+
+Now we can collision check with MATLAB's `polyxpoly` function:
+
+```matlab
+[x_int,y_int] = polyxpoly(V(1,:),V(2,:),O(1,:),O(2,:)) ;
+```
+
+If the outputs of this function are empty vectors, then we are collision free.
+
+We can plot all this as follows:
+
+```matlab
+figure(1) ; clf ; hold on ; axis equal
+
+plot(A)
+plot(V(1,:),V(2,:),'r--','LineWidth',1.5)
+patch('Vertices',O','Faces',[1:size(O,2), 1],...
+    'FaceColor',[1 0 0],'FaceAlpha',0.3,...
+    'EdgeColor',[0.5 0 0],'LineWidth',1.5)
+
+if ~isempty(x_int)
+    plot(x_int,y_int,'kx')
+end
+```
+
+
 
 That wraps up this README tutorial for now. Go play!

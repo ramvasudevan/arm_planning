@@ -15,7 +15,7 @@ classdef robot_arm_agent < agent
     %% joints
         % note that each link can only be associated with one joint
         % preceding it in the current forward kinematics formulation - so,
-        % to make compount joints, one should make virtual links of zero
+        % to make compound joints, one should make virtual links of zero
         % size
         
         n_joints = 2 ;
@@ -52,10 +52,7 @@ classdef robot_arm_agent < agent
         % specify the kinematic chain of predecessor and successor links;
         % each column corresponds to a joint, the first row is the joint
         % predecessor link, and the second row is the successor link; 0
-        % indicates the baselink; NOTE, if one link is connected to
-        % multiple joints, then the order in which the joints affect the
-        % link (i.e., when doing forward kinematics) is in the order (from
-        % left to right) they are listed in the kinematic chain
+        % indicates the baselink
         kinematic_chain = [0, 1 ;   % predecessor index
                            1, 2 ] ; % successor index
                        
@@ -76,7 +73,7 @@ classdef robot_arm_agent < agent
         integrator_time_discretization = 0.01 ; % s
     
         % collision checking
-        collision_check_data
+        collision_check_patch_data
         
         % plotting
         plot_link_data
@@ -133,7 +130,7 @@ classdef robot_arm_agent < agent
                                         0, 0, 1 ] ;
             baselink_faces = [1 2 3 1] ;
             
-            % create links as rectangles
+            % create links as ovals
             L = A.link_sizes ;
             
             for lidx = 1:size(L,2)
@@ -153,10 +150,25 @@ classdef robot_arm_agent < agent
         end
         
         function create_collision_check_patch_data(A)
-            % by default, use the same data as the plot
-            A.create_plot_patch_data() ;
-            A.collision_check_data.faces = A.plot_link_data.link_faces ;
-            A.collision_check_data.vertices = A.plot_link_data.link_vertices ;
+            % set up cell array to save patch data
+            cc_faces_cell = cell(1,A.n_links) ;
+            cc_verts_cell = cell(1,A.n_links) ;
+            
+            % create links as rectangles
+            L = A.link_sizes ;
+            
+            for lidx = 1:size(L,2)
+                % create box for link
+                [link_vertices, link_faces] = make_box(L(:,lidx)) ;
+                
+                % fill in cell array
+                cc_faces_cell{lidx} = link_faces ;
+                cc_verts_cell{lidx} = link_vertices ;
+            end
+            
+            % fill in collision check data object
+            A.collision_check_patch_data.faces = cc_faces_cell ;
+            A.collision_check_patch_data.vertices = cc_verts_cell ;
         end
         
     %% reset
@@ -186,26 +198,79 @@ classdef robot_arm_agent < agent
         end
         
     %% get agent info
+        function agent_info = get_agent_info(A)
+            agent_info = get_agent_info@agent(A) ;
+            agent_info.joint_limits = A.joint_limits ;
+            agent_info.joint_speed_limits = A.joint_speed_limits ;
+            agent_info.get_collision_check_volume = @(q) A.get_collision_check_volume(q) ;
+            agent_info.collision_check_patch_data = A.collision_check_patch_data ;
+            agent_info.forward_kinematics = @(t_or_q) A.forward_kinematics(t_or_q) ;
+        end
+        
+    %% create collision check volume
+        function V = get_collision_check_volume(A,q)
+            % V = A.get_collision_check_volume(q)
+            %
+            % Given a configuration q, return a volume representing the
+            % agent at that configuration. For now, this only works in 2D
+            % and returns a polyline.
+            
+            [R,T] = A.forward_kinematics(q) ;
+            
+            switch A.dimension
+                case 2
+                    F_cell = A.collision_check_patch_data.faces ;
+                    V_cell = A.collision_check_patch_data.vertices ;
+                    V = [] ;
+                    for idx = 1:length(F_cell)
+                        V_idx = R{idx}*V_cell{idx} + T{idx} ;
+                        V = [V, nan(2,1), V_idx(:,F_cell{idx})] ;
+                    end
+                    
+                    V = V(:,2:end) ;
+                case 3
+                    error('3-D collision check volume is not yet supported!')
+            end
+        end
 
     %% stop
 
     %% forward kinematics
-        function [R,T] = forward_kinematics(A,t)
+        function [R,T] = forward_kinematics(A,time_or_config)
             % [R,T] = A.forward_kinematics(time)
+            % [R,T] = A.forward_kinematics(configuration)
             %
             % Compute the rotation and translation of all links in the
             % global (baselink) frame at the given time. If no time is
             % given, then it defaults to 0.
             
             if nargin < 2
-                t = 0 ;
+                time_or_config = 0 ;
             end
             
-            % linearly interpolate the state for the corresponding time
-            z = match_trajectories(t,A.time,A.state) ;
-            
             % get joint data
-            j_vals = z(1:2:end) ; % joint values
+            if length(time_or_config) == 1
+                t = time_or_config ;
+                if t > A.time(end)
+                    t = A.time(end) ;
+                    warning(['Invalid time entered! Using agent''s final ',...
+                        'time t = ',num2str(t),' instead.'])
+                end
+                
+                % interpolate the state for the corresponding time
+                z = match_trajectories(t,A.time,A.state) ;
+                j_vals = z(1:2:end) ; % joint values                    
+            else
+                % assume a configuration was put in
+                q = time_or_config ;
+                
+                if length(q) == A.n_states
+                    q = q(1:2:end) ;
+                elseif length(q) ~= A.n_states/2
+                    error('Please provide either a time or a joint configuration.')
+                end
+                j_vals = q ;
+            end
             j_locs = A.joint_locations ; % joint locations
             
             % extract dimensions
