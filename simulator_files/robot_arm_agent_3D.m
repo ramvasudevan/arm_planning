@@ -19,10 +19,12 @@ classdef robot_arm_agent_3D < robot_arm_agent
             link_types = ['V','R','V','R'] ;
             
             % links 1 and 3 are virtual links that will be represented as
-            % little spheres, yay
-            link_sizes = [0.025, 0.300, 0.025, 0.200 ;
-                          0.025, 0.050, 0.025, 0.050 ;
-                          0.025, 0.050, 0.025, 0.050] ;
+            % little spheres, so the three values for their sizes in x, y,
+            % and z are the radii, respectively, of an axis-aligned
+            % ellipsoid
+            link_sizes = [0.025, 0.300, 0.025, 0.200 ;  % size in x
+                          0.025, 0.025, 0.025, 0.025 ;  % size in y
+                          0.025, 0.025, 0.025, 0.025] ; % size in z
             
             joint_state_indices = 1:2:n_states ;
             
@@ -89,11 +91,14 @@ classdef robot_arm_agent_3D < robot_arm_agent
                 l = L(:,lidx) ;
                 switch A.link_types(lidx)
                     case 'R'
-                        % create box for link
+                        % create box for link that is slightly shorter than
+                        % the actual volume of the box for prettiness
+                        % purposes
+                        l(1) = l(1) - 0.045 ;
                         [link_faces,link_vertices] = make_cuboid_for_patch(l) ;
                     case 'V'
                         % create ellipsoid for link
-                        [link_faces,link_vertices] = make_ellipsoid_for_patch(l(1),l(2),l(3),zeros(3,1),4) ;
+                        [link_faces,link_vertices] = make_ellipsoid_for_patch(l(1),l(2),l(3),zeros(3,1),6) ;
                     otherwise
                         error('Invalid link type! Pick V for virtual or R for real.')
                 end
@@ -110,10 +115,36 @@ classdef robot_arm_agent_3D < robot_arm_agent
         end
         
         function create_collision_check_patch_data(A)
-            % by default, use the same data as the plot
-            A.create_plot_patch_data() ;
-            A.collision_check_data.faces = A.plot_link_data.link_faces ;
-            A.collision_check_data.vertices = A.plot_link_data.link_vertices ;
+            % set up cell array to save patch data
+            cc_faces_cell = cell(1,A.n_links) ;
+            cc_verts_cell = cell(1,A.n_links) ;
+            
+            % create links as cuboids
+            L = A.link_sizes ;
+            
+            for lidx = 1:size(L,2)
+                l = L(:,lidx) ;
+                switch A.link_types(lidx)
+                    case 'R'
+                        [~,link_vertices] = make_cuboid_for_patch(l) ;
+                    case 'V'
+                        % create ellipsoid for link
+                        [~,link_vertices] = make_ellipsoid_for_patch(l(1),l(2),l(3),zeros(3,1),6) ;
+                    otherwise
+                        error('Invalid link type! Pick V for virtual or R for real.')
+                end
+                
+                % get triangulated link faces for collision checking
+                link_faces = convhull(link_vertices) ;
+                
+                % fill in cell array
+                cc_faces_cell{lidx} = link_faces ;
+                cc_verts_cell{lidx} = link_vertices ;
+            end
+            
+            % fill in plot link data object
+            A.collision_check_patch_data.faces = cc_faces_cell ;
+            A.collision_check_patch_data.vertices = cc_verts_cell ;
         end
     end
 end

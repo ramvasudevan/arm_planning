@@ -1,4 +1,4 @@
-classdef robot_arm_agent < agent
+classdef robot_arm_agent < multi_link_agent
     properties
     %% links
         % default arm is 2-D, 2-link, 2-DOF
@@ -208,28 +208,54 @@ classdef robot_arm_agent < agent
         end
         
     %% create collision check volume
-        function V = get_collision_check_volume(A,q)
-            % V = A.get_collision_check_volume(q)
+        function out = get_collision_check_volume(A,q)
+            % out_volume = A.get_collision_check_volume(q)
             %
-            % Given a configuration q, return a volume representing the
-            % agent at that configuration. For now, this only works in 2D
-            % and returns a polyline.
+            % Given a configuration q...
+            % If the agent is 2-D, return a polyline representing the
+            % agent at that configuration. This can be used with polyxpoly
+            % for collision checking.
+            %
+            % If the agent is 3-D, return a
+            % patch structure with two fields (faces and vertices) that can
+            % be used with SurfaceIntersection for collision checking.
+            
+            if nargin < 2
+                q = A.state(A.joint_state_indices,1) ;
+            end
             
             [R,T] = A.forward_kinematics(q) ;
             
+            F_cell = A.collision_check_patch_data.faces ;
+            V_cell = A.collision_check_patch_data.vertices ;
+            
             switch A.dimension
                 case 2
-                    F_cell = A.collision_check_patch_data.faces ;
-                    V_cell = A.collision_check_patch_data.vertices ;
                     V = [] ;
                     for idx = 1:length(F_cell)
                         V_idx = R{idx}*V_cell{idx} + T{idx} ;
                         V = [V, nan(2,1), V_idx(:,F_cell{idx})] ;
                     end
                     
-                    V = V(:,2:end) ;
+                    out = V(:,2:end) ;
                 case 3
-                    error('3-D collision check volume is not yet supported!')
+                    F = [] ;
+                    V = [] ;
+
+                    N_verts = 0 ;
+                    
+                    for idx = 1:length(F_cell)
+                        F_idx = F_cell{idx} + N_verts ;
+                        V_idx = (R{idx}*V_cell{idx}' + T{idx})' ;
+                        
+                        F = [F ; F_idx] ;
+                        V = [V ; V_idx] ;
+                        
+                        N_verts = size(V,1) ;
+                    end
+                    
+                    out.faces = F ;
+                    out.vertices = V ;
             end
         end
 
@@ -473,7 +499,12 @@ classdef robot_arm_agent < agent
             L = 1.2*sum(A.link_sizes(1,:)) ;
             
             % create axis limits
-            lims = repmat([-L,L],1,A.dimension) ;
+            switch A.dimension
+                case 2
+                    lims = [-L,L,0,L] ;
+                case 3
+                    lims = [-L,L,-L,L,0,L] ;
+            end
         end
     end
 end

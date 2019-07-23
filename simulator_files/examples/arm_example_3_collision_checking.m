@@ -9,7 +9,7 @@
 % configuration for the 2-link, 2-DOF, 2-D arm
 q = rand(2,1) ;
 
-% obstacle location
+% obstacle
 obstacle_size = 0.3 ; % this is a scalar value
 obstacle_offset = [0.5 ; 0.5] ;
 
@@ -34,14 +34,16 @@ V = I.get_collision_check_volume(q) ;
 
 if ~isempty(x_int)
     disp('Collision detected!')
+else
+    disp('No collision detected.')
 end
 
 %% inspect timing
 average_volume_time = timeit(@() I.get_collision_check_volume(q)) ;
-disp(['Average time to get volume: ',num2str(average_volume_time),' seconds'])
+disp(['Average time to get volume: ',num2str(average_volume_time*1000,'%0.2f'),' ms'])
 
 average_collision_check_time = timeit(@() polyxpoly(V(1,:),V(2,:),O(1,:),O(2,:))) ;
-disp(['Average time for collision check: ',num2str(average_collision_check_time),' seconds'])
+disp(['Average time for collision check: ',num2str(average_collision_check_time*1000,'%0.2f'),' ms'])
 
 %% plotting
 figure(1) ; clf ; hold on ; axis equal
