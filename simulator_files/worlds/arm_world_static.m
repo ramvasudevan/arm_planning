@@ -1,9 +1,15 @@
 classdef arm_world_static < world
     properties
+        % setup info
         include_base_obstacle = true ;
         obstacle_size_range = [0.05 0.15] ; % [min, max] side length
-        obstacle_creation_timeout = 1 ; % seconds per obstacle
-        start_creation_timeout = 3 ; % seconds allowed to create start
+        create_configuration_timeout = 1 ;
+        create_obstacle_timeout =  1 ;
+        min_dist_in_config_space_between_start_and_goal
+        
+        % arm info
+        arm_joint_limits
+        arm_n_joints
         
         % goal plotting
         goal_plot_patch_data
@@ -29,6 +35,37 @@ classdef arm_world_static < world
         function setup(W,I)
             W.vdisp('Running arm world setup',1)
             
+            W.get_bounds_and_joint_limits(I)
+            
+            if W.include_base_obstacle
+                W.obstacles = {W.create_base_obstacle()} ;
+            end
+            
+            if isempty(W.start)
+                W.create_start(I) ;
+            end
+            
+            if isempty(W.goal)
+                W.create_goal(I) ;
+            end
+            
+            if isempty(W.obstacles) || ...
+               (W.include_base_obstacle && length(W.obstacles) == 1)
+                for idx = 1:W.N_obstacles
+                    O = W.create_collision_free_obstacle(I) ;
+                    if ~isempty(O)
+                        W.obstacles = [W.obstacles, {O}] ;
+                    end
+                end
+            end
+            
+            W.N_obstacles = length(W.obstacles) ;
+            
+            W.vdisp('Arm world setup complete',2)
+        end
+        
+        %% get bounds and joint limits
+        function get_bounds_and_joint_limits(W,I)
             % set world bounds based on agent limits
             W.bounds = I.reach_limits ;
             
@@ -38,132 +75,119 @@ classdef arm_world_static < world
             joint_limits(1,joint_limit_infs(1,:)) = -pi ;
             joint_limits(2,joint_limit_infs(2,:)) = +pi ;
             
-            % create base obstacle (this is like a mounting point for
-            % the arm)
-            if W.include_base_obstacle
-                W.vdisp('Making base obstacle',3) ;
-                W.obstacles = {W.create_base_obstacle()} ;
-            end
+            W.arm_joint_limits = joint_limits ;
+            W.arm_n_joints = size(joint_limits,2) ;
             
-            % create random start configuration that is not in collision
-            % with the base obstacle
+            % set minimum distance between start and goal based on the
+            % joint limits
+            joint_ranges = diff(joint_limits,[],1) ;
+            W.min_dist_in_config_space_between_start_and_goal = norm(0.25*joint_ranges) ;
+        end
+        
+        %% make start and goal
+        function create_start(W,I)
+            W.vdisp('Making start configuration',5)
+            W.start = W.create_collision_free_configuration(I) ;
             if isempty(W.start)
-                W.vdisp('Making start configuration',5)
-                
-                start_config = rand_range(joint_limits(1,:),joint_limits(2,:))' ;
-                
-                if W.include_base_obstacle
-                    W.vdisp('Getting valid start configuration',6)
-                    
-                    start_valid = false ;
-                    start_tic = tic ;
-                    t_cur = toc(start_tic) ;
-                    O = W.obstacles{1} ;
-                    
-                    while ~start_valid && t_cur < W.start_creation_timeout
-                        V_arm = I.get_collision_check_volume(start_config) ;
-                        
-                        switch W.dimension
-                            case 2
-                                V_obs = O.collision_check_patch_data.vertices ;
-                                [x_int,~] = polyxpoly(V_arm(1,:)',V_arm(2,:)',...
-                                    V_obs(:,1),V_obs(:,2)) ;
-                                if isempty(x_int)
-                                    start_valid = true ;
-                                end
-                                
-                            case 3
-                                O_str.faces = O.collision_check_patch_data.faces ;
-                                O_str.vertices = O.collision_check_patch_data.vertices ;
-                                check = SurfaceIntersection(O_str,V_arm) ;
-                                start_valid = ~any(check(:)) ;
-                        end
-                        
-                        start_config = rand_range(joint_limits(1,:),joint_limits(2,:))' ;
-                    end
-                end
-                
-                if start_valid
-                    W.start = start_config ;
-                else
-                    error('Unable to find valid starting configurations!')
-                end
+                W.vdisp('Using agent current pose as start config',3)
+                W.start = I.state(I.joint_state_indices,end) ;
             end
+        end
+        
+        
+        function create_goal(W,I)
+            W.vdisp('Making goal configuration',5)
             
-            % create random goal configuration
-            if isempty(W.goal)
-                W.vdisp('Making goal configuration',5)
-                W.goal = rand_range(joint_limits(1,:),joint_limits(2,:))' ;
-                W.goal_plot_patch_data = I.get_collision_check_volume(W.goal) ;
-            end
+            dist_between_start_and_goal = 0 ;
+            start_tic = tic ;
+            t_cur = toc(start_tic) ;
+            new_goal = [] ;
             
-            % get arm volume at initial configuration
-            V_arm = I.get_collision_check_volume(W.start) ;
+            while dist_between_start_and_goal < W.min_dist_in_config_space_between_start_and_goal && ...
+                t_cur <= W.create_configuration_timeout
             
-            % create obstacles
-            W.vdisp('Creating obstacles!',2) ;
-            W.obstacles = [W.obstacles, cell(1,W.N_obstacles)] ;
-            
-            for idx = 1:W.N_obstacles
-                W.vdisp(['Making obstacle ',num2str(idx)],3) ;
+                new_goal = rand_range(W.arm_joint_limits(1,:),W.arm_joint_limits(2,:))' ;
                 
-                % try creating a box obstacle that doesn't intersect
-                % the initial configuration of the arm
-                obs_ok_flag = false ;
-                start_tic = tic ;
+                dist_between_start_and_goal = norm(W.start - new_goal) ;
+                
                 t_cur = toc(start_tic) ;
-                while ~obs_ok_flag && t_cur < W.obstacle_creation_timeout
-                    % create center
-                    B = W.bounds ;
-                    
-                    center = [rand_range(B(1),B(2)) ; rand_range(B(3),B(4))] ;
-                    
-                    if W.dimension == 3
-                        center = [center ; rand_range(B(5),B(6))] ;
-                    end
-                    
-                    % create side lengths
-                    side_lengths = rand_range(W.obstacle_size_range(1),...
-                        W.obstacle_size_range(2),[],[],1,W.dimension) ;
-                    
-                    % create candidate obstacle
-                    O = box_obstacle_zonotope('center',center(:),...
-                        'side_lengths',side_lengths) ;
-                    
-                    W.vdisp('Collision checking new obstacle',5)
-                    switch W.dimension
-                        case 2
-                            V_obs = O.collision_check_patch_data.vertices ;
-                            [x_int,~] = polyxpoly(V_arm(1,:)',V_arm(2,:)',...
-                                V_obs(:,1),V_obs(:,2)) ;
-                            if isempty(x_int)
-                                obs_ok_flag = true ;
-                            end
-                            
-                        case 3
-                            O_str.faces = O.collision_check_patch_data.faces ;
-                            O_str.vertices = O.collision_check_patch_data.vertices ;
-                            check = SurfaceIntersection(O_str,V_arm) ;
-                            obs_ok_flag = ~any(check(:)) ;
-                    end
-                    t_cur = toc(start_tic) ;
-                end
-                
-                if obs_ok_flag
-                    W.vdisp('Obstacle created!',3)
-                    W.obstacles{idx+1} = O ;
-                else
-                    W.vdisp('Obstacle creation failed',3)
-                end
             end
             
-            W.N_obstacles = length(W.obstacles) ;
+            if isempty(new_goal)
+                W.vdisp('Goal creation failed! Using random goal',3)
+                W.goal = rand_range(W.arm_joint_limits(1,:),W.arm_joint_limits(2,:))' ;
+            else
+                W.goal = new_goal ;
+            end
             
-            W.vdisp('Arm world setup complete',2)
+            W.goal_plot_patch_data = I.get_collision_check_volume(W.goal) ;
+        end
+        
+        %% make configurations
+        function q = create_collision_free_configuration(W,I)
+            config_is_valid = false ;
+            start_tic = tic ;
+            t_cur = toc(start_tic) ;
+            
+            while ~config_is_valid && t_cur <= W.create_configuration_timeout
+                q = W.create_random_configuration() ;
+                config_is_valid = W.collision_check_single_state(I,q) ;
+                t_cur = toc(start_tic) ;
+            end
+            
+            if ~config_is_valid
+                q = [] ;
+                W.vdisp('Configuration creation failed!',3)
+            end
+        end
+        
+        function q = create_random_configuration(W)
+            q = rand_range(W.arm_joint_limits(1,:),W.arm_joint_limits(2,:))' ;
         end
         
         %% make obstacles
+        function O = create_collision_free_obstacle(W,I,q)
+            if nargin < 3
+                q = W.start ;
+            end
+            
+            obstacle_is_valid = false ;
+            start_tic = tic ;
+            t_cur = toc(start_tic) ;
+            V_arm = I.get_collision_check_volume(q) ;
+            
+            while ~obstacle_is_valid && t_cur <= W.create_obstacle_timeout
+                O = W.create_random_obstacle() ;
+                obstacle_is_valid = W.collision_check_single_obstacle(O,V_arm) ;
+                t_cur = toc(start_tic) ;
+            end
+            
+            if ~obstacle_is_valid
+                O = [] ;
+                W.vdisp('Obstacle creation failed! Try again...',3)
+            end
+        end
+        
+        function O = create_random_obstacle(W)
+            % create center
+            B = W.bounds ;
+            center = [rand_range(B(1),B(2)) ; rand_range(B(3),B(4))] ;
+            
+            if W.dimension == 3
+                center = [center ; rand_range(B(5),B(6))] ;
+            end
+            
+            % create side lengths
+            side_lengths = rand_range(W.obstacle_size_range(1),...
+                W.obstacle_size_range(2),[],[],1,W.dimension) ;
+            
+            % create obstacle
+            O = box_obstacle_zonotope('center',center(:),...
+                'side_lengths',side_lengths) ;
+        end
+        
         function O = create_base_obstacle(W)
+            W.vdisp('Making base obstacle',3) ;
             switch W.dimension
                 case 2
                     side_lengths = [W.bounds(2) - W.bounds(1), 0.05] ;
@@ -179,6 +203,45 @@ classdef arm_world_static < world
                 'side_lengths',side_lengths,...
                 'plot_face_color',[0.1 0.1 0.5],...
                 'plot_edge_color',[0 0 1]) ;
+        end
+        
+        %% collision checking
+        function out = collision_check_single_state(W,I,q)
+            % out = collision_check_single_state(W,agent_info,agent_state)
+            %
+            % Run a collision check for the given state and return true if
+            % it is in collision. This gets called by W.collision_check.
+            
+            O = W.obstacles ;
+            N_O = length(O) ; % in case W.N_obstacles is wrong
+            out = false ; % optimism!
+            o_idx = 1 ;
+            V_arm = I.get_collision_check_volume(q) ;
+            
+            while (o_idx <= N_O) && ~out
+                O_idx = O{o_idx} ;
+                out = W.collision_check_single_obstacle(O_idx,V_arm) ;
+                o_idx = o_idx + 1 ;
+            end
+        end
+        
+        function out = collision_check_single_obstacle(W,obs,arm)
+            switch W.dimension
+                case 2
+                    obs = obs.collision_check_patch_data.vertices ;
+                    [x_int,~] = polyxpoly(arm(1,:)',arm(2,:)',...
+                        obs(:,1),obs(:,2)) ;
+                    if isempty(x_int)
+                        out = true ;
+                    else
+                        out = false ;
+                    end
+                case 3
+                    O_str.faces = obs.collision_check_patch_data.faces ;
+                    O_str.vertices = obs.collision_check_patch_data.vertices ;
+                    check = SurfaceIntersection(O_str,arm) ;
+                    out = ~any(check(:)) ;
+            end
         end
         
         %% plotting

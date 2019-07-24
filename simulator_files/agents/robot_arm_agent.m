@@ -212,6 +212,7 @@ classdef robot_arm_agent < multi_link_agent
     %% get agent info
         function agent_info = get_agent_info(A)
             agent_info = get_agent_info@agent(A) ;
+            agent_info.joint_state_indices = A.joint_state_indices ;
             agent_info.joint_limits = A.joint_limits ;
             agent_info.joint_speed_limits = A.joint_speed_limits ;
             agent_info.get_collision_check_volume = @(q) A.get_collision_check_volume(q) ;
@@ -509,7 +510,7 @@ classdef robot_arm_agent < multi_link_agent
         
         function lims = get_axis_lims(A)
             % figure out the maximum length of the arm
-            L = 1.2*sum(A.link_sizes(1,:)) ;
+            L = sum(A.link_sizes(1,:)) ;
             
             % create axis limits
             switch A.dimension

@@ -12,7 +12,7 @@ clear ; clc ;
 N_obstacles = 10 ;
 
 % dimension of world
-dimension = 2 ; % 2 or 3
+dimension = 3 ; % 2 or 3
 
 % world verbosity
 world_verbosity = 10 ;

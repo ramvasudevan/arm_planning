@@ -43,8 +43,8 @@ classdef robot_arm_agent_3D < robot_arm_agent
                                +0.00, +0.00, +0.00, +0.00 ; % successor y
                                +0.00, +0.00, +0.00, +0.00 ];% successor z
                            
-            joint_limits = [-Inf, -pi/2,  -Inf, -Inf ;
-                            +Inf, +pi/2, +Inf, +Inf] ;
+            joint_limits = [-Inf, -pi, -Inf, -Inf ;
+                            +Inf,   0, +Inf, +Inf] ;
                         
             joint_speed_limits = (pi/2).*repmat([-1;1],1,n_joints) ;
             
