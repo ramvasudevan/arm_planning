@@ -76,12 +76,12 @@ classdef robot_arm_agent < multi_link_agent
         collision_check_patch_data
         
         % plotting
-        plot_link_data
-        plot_link_face_color = [0 0 1] ;
-        plot_link_face_opacity = 0.1 ;
-        plot_link_edge_color = [0 0 1] ;
-        plot_link_edge_opacity = 1.0 ;
-        plot_link_edge_width = 1.25 ;
+        link_plot_data
+        link_plot_face_color = [0 0 1] ;
+        link_plot_face_opacity = 0.1 ;
+        link_plot_edge_color = [0 0 1] ;
+        link_plot_edge_opacity = 1.0 ;
+        link_plot_edge_width = 1.25 ;
     end
     
     methods
@@ -121,13 +121,19 @@ classdef robot_arm_agent < multi_link_agent
         end
         
         function create_plot_patch_data(A)
+            % A.create_plot_patch_data()
+            %
+            % This method fills in A.link_plot_data with a cell array of
+            % faces vectors (each 1-by-NF) and a cell array of vertices
+            % arrays (each NV-by-2).
+            
             % set up cell array to save patch data
             plot_faces_cell = cell(1,A.n_links) ;
             plot_verts_cell = cell(1,A.n_links) ;
             
             % create baselink triangle for plotting
             baselink_vertices = 0.05.*[-1, 1, 0 ;
-                                        0, 0, 1 ] ;
+                                        0, 0, 1 ]' ;
             baselink_faces = [1 2 3 1] ;
             
             % create links as ovals
@@ -135,7 +141,7 @@ classdef robot_arm_agent < multi_link_agent
             
             for lidx = 1:size(L,2)
                 % create box for link
-                [link_vertices, link_faces] = make_oval(L(:,lidx)) ;
+                [link_faces, link_vertices] = make_oval(L(:,lidx)) ;
                 
                 % fill in cell array
                 plot_faces_cell{lidx} = link_faces ;
@@ -143,13 +149,19 @@ classdef robot_arm_agent < multi_link_agent
             end
             
             % fill in plot link data object
-            A.plot_link_data.link_faces = plot_faces_cell ;
-            A.plot_link_data.link_vertices = plot_verts_cell ;
-            A.plot_link_data.baselink_faces = baselink_faces ;
-            A.plot_link_data.baselink_vertices = baselink_vertices ;
+            A.link_plot_data.link_faces = plot_faces_cell ;
+            A.link_plot_data.link_vertices = plot_verts_cell ;
+            A.link_plot_data.baselink_faces = baselink_faces ;
+            A.link_plot_data.baselink_vertices = baselink_vertices ;
         end
         
         function create_collision_check_patch_data(A)
+            % A.create_collision_check_patch_data()
+            %
+            % Create a cell array of faces vectors (each 1-by-NF) and a
+            % cell array of vertices arrays (each NV-by-2) to be used for
+            % collision checking.
+            
             % set up cell array to save patch data
             cc_faces_cell = cell(1,A.n_links) ;
             cc_verts_cell = cell(1,A.n_links) ;
@@ -159,7 +171,7 @@ classdef robot_arm_agent < multi_link_agent
             
             for lidx = 1:size(L,2)
                 % create box for link
-                [link_vertices, link_faces] = make_box(L(:,lidx)) ;
+                [link_faces, link_vertices] = make_box(L(:,lidx)) ;
                 
                 % fill in cell array
                 cc_faces_cell{lidx} = link_faces ;
@@ -205,6 +217,7 @@ classdef robot_arm_agent < multi_link_agent
             agent_info.get_collision_check_volume = @(q) A.get_collision_check_volume(q) ;
             agent_info.collision_check_patch_data = A.collision_check_patch_data ;
             agent_info.forward_kinematics = @(t_or_q) A.forward_kinematics(t_or_q) ;
+            agent_info.reach_limits = A.get_axis_lims() ;
         end
         
     %% create collision check volume
@@ -233,7 +246,7 @@ classdef robot_arm_agent < multi_link_agent
                 case 2
                     V = [] ;
                     for idx = 1:length(F_cell)
-                        V_idx = R{idx}*V_cell{idx} + T{idx} ;
+                        V_idx = R{idx}*V_cell{idx}' + T{idx} ;
                         V = [V, nan(2,1), V_idx(:,F_cell{idx})] ;
                     end
                     
@@ -447,19 +460,19 @@ classdef robot_arm_agent < multi_link_agent
             end
             
             % plot baselink
-            BF = A.plot_link_data.baselink_faces ;
-            BV = A.plot_link_data.baselink_vertices' ;
+            BF = A.link_plot_data.baselink_faces ;
+            BV = A.link_plot_data.baselink_vertices ;
             
             if check_if_plot_is_available(A,'baselink')
                 A.plot_data.baselink.Faces = BF ;
                 A.plot_data.baselink.Vertices = BV ;
             else
                 baselink_data = patch('Faces',BF,'Vertices',BV,...
-                    'FaceColor',A.plot_link_face_color,...
-                    'FaceAlpha',A.plot_link_face_opacity,...
-                    'EdgeColor',A.plot_link_edge_color,...
-                    'LineWidth',A.plot_link_edge_width,...
-                    'EdgeAlpha',A.plot_link_edge_opacity) ;
+                    'FaceColor',A.link_plot_face_color,...
+                    'FaceAlpha',A.link_plot_face_opacity,...
+                    'EdgeColor',A.link_plot_edge_color,...
+                    'LineWidth',A.link_plot_edge_width,...
+                    'EdgeAlpha',A.link_plot_edge_opacity) ;
                 A.plot_data.baselink = baselink_data ;
             end
             
@@ -469,25 +482,25 @@ classdef robot_arm_agent < multi_link_agent
             % generate plot data for each link
             link_verts = cell(1,A.n_links) ;
             for idx = 1:A.n_links
-                link_verts{idx} = R{idx}*A.plot_link_data.link_vertices{idx} + ...
-                                  T{idx} ;
+                link_verts{idx} = (R{idx}*A.link_plot_data.link_vertices{idx}' + ...
+                                  T{idx})' ;
             end
             
             if check_if_plot_is_available(A,'links')
                 for idx = 1:A.n_links
-                    A.plot_data.links(idx).Faces = A.plot_link_data.link_faces{idx} ;
-                    A.plot_data.links(idx).Vertices = link_verts{idx}' ;
+                    A.plot_data.links(idx).Faces = A.link_plot_data.link_faces{idx} ;
+                    A.plot_data.links(idx).Vertices = link_verts{idx} ;
                 end
             else
                 link_array = [] ;
                 for idx = 1:A.n_links
-                    link_data = patch('Faces',A.plot_link_data.link_faces{idx},...
-                        'Vertices',link_verts{idx}',...
-                        'FaceColor',A.plot_link_face_color,...
-                        'FaceAlpha',A.plot_link_face_opacity,...
-                        'EdgeColor',A.plot_link_edge_color,...
-                        'LineWidth',A.plot_link_edge_width,...
-                        'EdgeAlpha',A.plot_link_edge_opacity) ;
+                    link_data = patch('Faces',A.link_plot_data.link_faces{idx},...
+                        'Vertices',link_verts{idx},...
+                        'FaceColor',A.link_plot_face_color,...
+                        'FaceAlpha',A.link_plot_face_opacity,...
+                        'EdgeColor',A.link_plot_edge_color,...
+                        'LineWidth',A.link_plot_edge_width,...
+                        'EdgeAlpha',A.link_plot_edge_opacity) ;
                     link_array = [link_array, link_data] ;
                 end
                 A.plot_data.links = link_array ;

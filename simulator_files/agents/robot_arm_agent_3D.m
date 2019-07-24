@@ -104,14 +104,14 @@ classdef robot_arm_agent_3D < robot_arm_agent
                 end
                 % fill in cell array
                 plot_faces_cell{lidx} = link_faces ;
-                plot_verts_cell{lidx} = link_vertices' ;
+                plot_verts_cell{lidx} = link_vertices ;
             end
             
             % fill in plot link data object
-            A.plot_link_data.link_faces = plot_faces_cell ;
-            A.plot_link_data.link_vertices = plot_verts_cell ;
-            A.plot_link_data.baselink_faces = baselink_faces ;
-            A.plot_link_data.baselink_vertices = baselink_vertices' ;
+            A.link_plot_data.link_faces = plot_faces_cell ;
+            A.link_plot_data.link_vertices = plot_verts_cell ;
+            A.link_plot_data.baselink_faces = baselink_faces ;
+            A.link_plot_data.baselink_vertices = baselink_vertices ;
         end
         
         function create_collision_check_patch_data(A)
