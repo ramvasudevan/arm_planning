@@ -9,10 +9,10 @@ clear ; clc ;
 
 %% user parameters
 % number of obstacles
-N_obstacles = 10 ;
+N_obstacles = 5 ;
 
 % dimension of world
-dimension = 3 ; % 2 or 3
+dimension = 2 ; % 2 or 3
 
 % world verbosity
 world_verbosity = 10 ;

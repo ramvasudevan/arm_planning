@@ -1,17 +1,14 @@
-classdef robot_arm_agent_3D < robot_arm_agent
+classdef robot_arm_3D_2link_4DOF < robot_arm_agent
     methods
-        function A = robot_arm_agent_3D(varargin)
+        function A = robot_arm_3D_2link_4DOF(varargin)
             dimension = 3 ;
                       
             n_links_and_joints = 4 ;
             
             n_states = 2*n_links_and_joints ;
             
-            % 'cuboid' or 'ellipsoid'
             link_shapes = {'ellipsoid','cuboid','ellipsoid','cuboid'} ;
             
-            % for cuboid links, the sizes are the side lengths; for
-            % ellipsoid links, the sizes are the x/y/z diameters
             link_sizes = [0.05, 0.300, 0.05, 0.200 ;  % size in x
                           0.05, 0.025, 0.05, 0.025 ;  % size in y
                           0.05, 0.025, 0.05, 0.025] ; % size in z
