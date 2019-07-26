@@ -8,7 +8,7 @@ classdef arm_world_static < world
         min_dist_in_config_space_between_start_and_goal
         
         % arm info
-        arm_joint_limits
+        arm_joint_state_limits
         arm_n_joints
         
         % goal plotting
@@ -35,7 +35,7 @@ classdef arm_world_static < world
         function setup(W,I)
             W.vdisp('Running arm world setup',1)
             
-            W.get_bounds_and_joint_limits(I)
+            W.get_bounds_and_joint_state_limits(I)
             
             if W.include_base_obstacle
                 W.obstacles = {W.create_base_obstacle()} ;
@@ -65,22 +65,22 @@ classdef arm_world_static < world
         end
         
         %% get bounds and joint limits
-        function get_bounds_and_joint_limits(W,I)
+        function get_bounds_and_joint_state_limits(W,I)
             % set world bounds based on agent limits
             W.bounds = I.reach_limits ;
             
             % set any joint limits that are +Inf to pi and -Inf to -pi
-            joint_limits = I.joint_limits ;
-            joint_limit_infs = isinf(joint_limits) ;
-            joint_limits(1,joint_limit_infs(1,:)) = -pi ;
-            joint_limits(2,joint_limit_infs(2,:)) = +pi ;
+            joint_state_limits = I.joint_state_limits ;
+            joint_limit_infs = isinf(joint_state_limits) ;
+            joint_state_limits(1,joint_limit_infs(1,:)) = -pi ;
+            joint_state_limits(2,joint_limit_infs(2,:)) = +pi ;
             
-            W.arm_joint_limits = joint_limits ;
-            W.arm_n_joints = size(joint_limits,2) ;
+            W.arm_joint_state_limits = joint_state_limits ;
+            W.arm_n_joints = size(joint_state_limits,2) ;
             
             % set minimum distance between start and goal based on the
             % joint limits
-            joint_ranges = diff(joint_limits,[],1) ;
+            joint_ranges = diff(joint_state_limits,[],1) ;
             W.min_dist_in_config_space_between_start_and_goal = norm(0.25*joint_ranges) ;
         end
         
@@ -94,7 +94,6 @@ classdef arm_world_static < world
             end
         end
         
-        
         function create_goal(W,I)
             W.vdisp('Making goal configuration',5)
             
@@ -106,7 +105,7 @@ classdef arm_world_static < world
             while dist_between_start_and_goal < W.min_dist_in_config_space_between_start_and_goal && ...
                 t_cur <= W.create_configuration_timeout
             
-                new_goal = rand_range(W.arm_joint_limits(1,:),W.arm_joint_limits(2,:))' ;
+                new_goal = rand_range(W.arm_joint_state_limits(1,:),W.arm_joint_state_limits(2,:))' ;
                 
                 dist_between_start_and_goal = norm(W.start - new_goal) ;
                 
@@ -115,7 +114,7 @@ classdef arm_world_static < world
             
             if isempty(new_goal)
                 W.vdisp('Goal creation failed! Using random goal',3)
-                W.goal = rand_range(W.arm_joint_limits(1,:),W.arm_joint_limits(2,:))' ;
+                W.goal = rand_range(W.arm_joint_state_limits(1,:),W.arm_joint_state_limits(2,:))' ;
             else
                 W.goal = new_goal ;
             end
@@ -131,7 +130,7 @@ classdef arm_world_static < world
             
             while ~config_is_valid && t_cur <= W.create_configuration_timeout
                 q = W.create_random_configuration() ;
-                config_is_valid = W.collision_check_single_state(I,q) ;
+                config_is_valid = ~(W.collision_check_single_state(I,q)) ;
                 t_cur = toc(start_tic) ;
             end
             
@@ -142,7 +141,7 @@ classdef arm_world_static < world
         end
         
         function q = create_random_configuration(W)
-            q = rand_range(W.arm_joint_limits(1,:),W.arm_joint_limits(2,:))' ;
+            q = rand_range(W.arm_joint_state_limits(1,:),W.arm_joint_state_limits(2,:))' ;
         end
         
         %% make obstacles
@@ -158,7 +157,7 @@ classdef arm_world_static < world
             
             while ~obstacle_is_valid && t_cur <= W.create_obstacle_timeout
                 O = W.create_random_obstacle() ;
-                obstacle_is_valid = W.collision_check_single_obstacle(O,V_arm) ;
+                obstacle_is_valid = ~(W.collision_check_single_obstacle(O,V_arm)) ;
                 t_cur = toc(start_tic) ;
             end
             
@@ -225,22 +224,22 @@ classdef arm_world_static < world
             end
         end
         
-        function out = collision_check_single_obstacle(W,obs,arm)
+        function out = collision_check_single_obstacle(W,obstacle_object,arm_volume)
             switch W.dimension
                 case 2
-                    obs = obs.collision_check_patch_data.vertices ;
-                    [x_int,~] = polyxpoly(arm(1,:)',arm(2,:)',...
-                        obs(:,1),obs(:,2)) ;
+                    obstacle_object = obstacle_object.collision_check_patch_data.vertices ;
+                    [x_int,~] = polyxpoly(arm_volume(1,:)',arm_volume(2,:)',...
+                        obstacle_object(:,1),obstacle_object(:,2)) ;
                     if isempty(x_int)
-                        out = true ;
-                    else
                         out = false ;
+                    else
+                        out = true ;
                     end
                 case 3
-                    O_str.faces = obs.collision_check_patch_data.faces ;
-                    O_str.vertices = obs.collision_check_patch_data.vertices ;
-                    check = SurfaceIntersection(O_str,arm) ;
-                    out = ~any(check(:)) ;
+                    O_str.faces = obstacle_object.collision_check_patch_data.faces ;
+                    O_str.vertices = obstacle_object.collision_check_patch_data.vertices ;
+                    check = SurfaceIntersection(O_str,arm_volume) ;
+                    out = any(check(:)) ;
             end
         end
         

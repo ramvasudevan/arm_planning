@@ -63,5 +63,5 @@ xlabel('time')
 ylabel('rad/s')
 
 %% animate result
-figure(2) ; clf ;
+figure(2) ; clf ; pause(0.01)
 A.animate()
