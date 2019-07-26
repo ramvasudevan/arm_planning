@@ -90,6 +90,12 @@ classdef robot_arm_agent < multi_link_agent
             % This class implements a generic multilink robot arm. By
             % default, it is a 2-D, 2-link, 2-DOF arm.
             
+            % make sure there are input arguments
+            if nargin == 0
+                error(['Please create a subclass of this class with all ',...
+                    'required properties defined!'])
+            end
+            
             % by default, the arm's states are (position,speed) of each
             % joint, in order from the first joint onwards
             n_states = 2*A.n_links_and_joints ;
@@ -396,6 +402,7 @@ classdef robot_arm_agent < multi_link_agent
         function agent_info = get_agent_info(A)
             agent_info = get_agent_info@agent(A) ;
             agent_info.joint_state_indices = A.joint_state_indices ;
+            agent_info.joint_speed_indices = A.joint_speed_indices ;
             agent_info.joint_state_limits = A.joint_state_limits ;
             agent_info.joint_speed_limits = A.joint_speed_limits ;
             agent_info.get_collision_check_volume = @(q) A.get_collision_check_volume(q) ;
