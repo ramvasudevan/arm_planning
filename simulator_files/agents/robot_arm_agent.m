@@ -331,6 +331,7 @@ classdef robot_arm_agent < multi_link_agent
             A.link_plot_data.baselink_vertices = baselink_vertices ;
         end
         
+        %% collision check data
         function create_collision_check_patch_data(A)
             % A.create_collision_check_patch_data()
             %
@@ -338,21 +339,22 @@ classdef robot_arm_agent < multi_link_agent
             % cell array of vertices arrays (each NV-by-2) to be used for
             % collision checking.
             
-            % set up cell array to save patch data
-            cc_faces_cell = cell(1,A.n_links_and_joints) ;
-            cc_verts_cell = cell(1,A.n_links_and_joints) ;
             
-            % create links as rectangles
-            L = A.link_sizes ;
-            
-            for l_idx = 1:size(L,2)
-                l = L(:,l_idx) ;
-                
-                % create link based on link type
-                switch A.dimension
-                    case 2
-                        [link_faces, link_vertices] = make_box(l) ;
-                    case 3
+            switch A.dimension
+                case 2
+                    cc_faces_cell = A.link_plot_data.link_faces ;
+                    cc_verts_cell = A.link_plot_data.link_vertices ;
+                case 3
+                    % set up cell array to save patch data
+                    cc_faces_cell = cell(1,A.n_links_and_joints) ;
+                    cc_verts_cell = cell(1,A.n_links_and_joints) ;
+                    
+                    % create links as rectangles
+                    L = A.link_sizes ;
+                    
+                    for l_idx = 1:size(L,2)
+                        l = L(:,l_idx) ;
+                        
                         switch A.link_shapes{l_idx}
                             case 'cuboid'
                                 [~,link_vertices] = make_cuboid_for_patch(l) ;
@@ -360,11 +362,11 @@ classdef robot_arm_agent < multi_link_agent
                                 [~,link_vertices] = make_ellipsoid_for_patch(l(1),l(2),l(3),zeros(3,1),6) ;
                         end
                         link_faces = convhull(link_vertices) ;
-                end
-                
-                % fill in cell array
-                cc_faces_cell{l_idx} = link_faces ;
-                cc_verts_cell{l_idx} = link_vertices ;
+                        
+                        % fill in cell array
+                        cc_faces_cell{l_idx} = link_faces ;
+                        cc_verts_cell{l_idx} = link_vertices ;
+                    end
             end
             
             % fill in collision check data object

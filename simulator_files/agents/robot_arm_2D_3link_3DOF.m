@@ -5,15 +5,15 @@ classdef robot_arm_2D_3link_3DOF < robot_arm_agent
             
             dimension = 2 ;
             
-            link_shapes = {'box','box','oval'} ;
+            link_shapes = {'oval','oval','oval'} ;
             
-            link_sizes = [0.20, 0.20, 0.10 ;
+            link_sizes = [0.20, 0.20, 0.20 ;
                           0.05, 0.05, 0.05] ;
 
-            joint_locations = [+0.000 +0.080 +0.080 ;
+            joint_locations = [+0.000 +0.075 +0.075 ;
                                +0.050 +0.000 +0.000 ;
-                               -0.080 -0.040 -0.040 ;
-                                0.000 +0.000 +0.002] ;
+                               -0.075 -0.075 -0.075 ;
+                                0.000 +0.000 +0.000] ;
             
             joint_state_limits = [+0,  -Inf, -pi ;
                                   +pi, +Inf, +pi] ;

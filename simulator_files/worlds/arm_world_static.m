@@ -26,7 +26,7 @@ classdef arm_world_static < world
         function W = arm_world_static(varargin)
             % W = arm_world_static('property1',value1,'property2',value2,...)
             
-            default_goal_radius = 0.1 ; % rad/joint
+            default_goal_radius = 0.05 ; % rad/joint
             W@world('start',[],'goal',[],'N_obstacles',0,'verbose',10,...
                 'goal_radius',default_goal_radius,...
                 varargin{:}) ;
@@ -49,10 +49,6 @@ classdef arm_world_static < world
                 W.create_start(I) ;
             end
             
-            if isempty(W.goal)
-                W.create_goal(I) ;
-            end
-            
             if isempty(W.obstacles) || ...
                (W.include_base_obstacle && length(W.obstacles) == 1)
                 for idx = 1:W.N_obstacles
@@ -61,6 +57,10 @@ classdef arm_world_static < world
                         W.obstacles = [W.obstacles, {O}] ;
                     end
                 end
+            end
+            
+            if isempty(W.goal)
+                W.create_goal(I) ;
             end
             
             W.N_obstacles = length(W.obstacles) ;
@@ -110,7 +110,8 @@ classdef arm_world_static < world
             while dist_between_start_and_goal < W.min_dist_in_config_space_between_start_and_goal && ...
                 t_cur <= W.create_configuration_timeout
             
-                new_goal = rand_range(W.arm_joint_state_limits(1,:),W.arm_joint_state_limits(2,:))' ;
+                % new_goal = rand_range(W.arm_joint_state_limits(1,:),W.arm_joint_state_limits(2,:))' ;
+                new_goal = W.create_collision_free_configuration(I) ;
                 
                 dist_between_start_and_goal = norm(W.start - new_goal) ;
                 
@@ -233,6 +234,7 @@ classdef arm_world_static < world
             switch W.dimension
                 case 2
                     obstacle_object = obstacle_object.collision_check_patch_data.vertices ;
+                    obstacle_object = [obstacle_object ; obstacle_object(1,:)] ;
                     [x_int,~] = polyxpoly(arm_volume(1,:)',arm_volume(2,:)',...
                         obstacle_object(:,1),obstacle_object(:,2)) ;
                     if isempty(x_int)
