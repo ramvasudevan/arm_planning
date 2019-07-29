@@ -18,7 +18,7 @@ t_total = 2 ;
 
 %% automated from here
 % create arm
-A = robot_arm_agent_3D() ;
+A = robot_arm_3D_2link_4DOF() ;
 
 %% create reference trajectory and input
 % reference time and input:

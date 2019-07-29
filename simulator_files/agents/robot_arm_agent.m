@@ -173,7 +173,7 @@ classdef robot_arm_agent < multi_link_agent
             end
             
             if isempty(A.n_inputs)
-                A.n_inputs = 2*N ;
+                A.n_inputs = N ;
                 A.vdisp(['Setting number of inputs to ',num2str(A.n_states)],6)
             end
             
@@ -405,6 +405,7 @@ classdef robot_arm_agent < multi_link_agent
             agent_info.joint_speed_indices = A.joint_speed_indices ;
             agent_info.joint_state_limits = A.joint_state_limits ;
             agent_info.joint_speed_limits = A.joint_speed_limits ;
+            agent_info.joint_input_limits = A.joint_input_limits ;
             agent_info.get_collision_check_volume = @(q) A.get_collision_check_volume(q) ;
             agent_info.collision_check_patch_data = A.collision_check_patch_data ;
             agent_info.forward_kinematics = @(t_or_q) A.forward_kinematics(t_or_q) ;

@@ -15,7 +15,7 @@ t_move = 4 ;
 t_total = 4 ;
 
 %% AUTOMATED FROM HERE %%
-A = robot_arm_agent() ;
+A = robot_arm_2D_2DOF() ;
 
 %% create reference trajectory
 % reference time and input:

@@ -15,7 +15,7 @@ obstacle_offset = [0.5 ; 0.5] ;
 
 %% automated from here
 % create arm
-A = robot_arm_agent() ;
+A = robot_arm_2D_2DOF() ;
 
 % set arm's state
 A.state(A.joint_state_indices) = q ;

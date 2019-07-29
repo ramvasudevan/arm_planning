@@ -99,10 +99,10 @@ Shreyas also write this
 
 ### 3.1 2-D Arm Example
 
-Let's start with the default 2-D agent:
+Let's start with a 2-D arm agent:
 
 ```matlab
-A = robot_arm_agent() ;
+A = robot_arm_2D_2DOF() ;
 ```
 
 This is a 2-link, 2-DOF, 2-D arm. It has 4 states, which are the position and speed of its two rotational joints. You can see what it looks like with the following:
@@ -167,7 +167,7 @@ To start, let's get a fresh copy of the arm:
 
 ```matlab
 clear ; clf ; clc ;
-A = robot_arm_agent() ;
+A = robot_arm_2D_2DOF() ;
 ```
 
 Now, we'll try to make the arm's first joint get to `pi/2` radians while the second joint stays at 0 radians. First, let's make the reference time, input, and trajectory:
@@ -310,7 +310,7 @@ Besides tracking points and trajectories, we also need to be able to tell if the
 First, let's make an arm and set it to a random joint configuration `q`:
 
 ```matlab
-A = robot_arm_agent() ;
+A = robot_arm_2D_2DOF() ;
 q = rand(2,1) ; % because our arm has 2 DOFs
 A.state(A.joint_state_indices) = q ;
 ```

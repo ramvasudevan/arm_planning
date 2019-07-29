@@ -21,9 +21,9 @@ world_verbosity = 10 ;
 % make arm
 switch dimension
     case 2
-        A = robot_arm_agent ;
+        A = robot_arm_2D_2DOF ;
     case 3
-        A = robot_arm_agent_3D ;
+        A = robot_arm_3D_2link_4DOF ;
     otherwise
         error('Pick dimension = 2 or dimension = 3.')
 end
