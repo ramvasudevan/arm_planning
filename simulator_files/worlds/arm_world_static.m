@@ -10,6 +10,7 @@ classdef arm_world_static < world
         % arm info
         arm_joint_state_limits
         arm_n_joints
+        arm_joint_state_indices
         
         % goal plotting
         goal_plot_patch_data
@@ -24,7 +25,10 @@ classdef arm_world_static < world
         %% constructor
         function W = arm_world_static(varargin)
             % W = arm_world_static('property1',value1,'property2',value2,...)
+            
+            default_goal_radius = 0.1 ; % rad/joint
             W@world('start',[],'goal',[],'N_obstacles',0,'verbose',10,...
+                'goal_radius',default_goal_radius,...
                 varargin{:}) ;
             
             W.plot_data.obstacles = [] ;
@@ -77,6 +81,7 @@ classdef arm_world_static < world
             
             W.arm_joint_state_limits = joint_state_limits ;
             W.arm_n_joints = size(joint_state_limits,2) ;
+            W.arm_joint_state_indices = I.joint_state_indices ;
             
             % set minimum distance between start and goal based on the
             % joint limits
@@ -241,6 +246,14 @@ classdef arm_world_static < world
                     check = SurfaceIntersection(O_str,arm_volume) ;
                     out = any(check(:)) ;
             end
+        end
+        
+        %% goal check
+        function out = goal_check(W,agent_info)
+            z = agent_info.state(W.arm_joint_state_indices,:) ;
+            dz = min(abs(z - repmat(W.goal,1,size(z,2))),[],2) ;
+            dz_log = all(dz <= W.goal_radius) ;
+            out = all(dz_log) ;
         end
         
         %% plotting

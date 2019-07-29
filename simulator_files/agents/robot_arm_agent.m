@@ -375,18 +375,21 @@ classdef robot_arm_agent < multi_link_agent
         %% reset
         function reset(A,state)
             
-            A.vdisp('Resetting states to 0',3) ;
-            if nargin < 2
-                A.state = zeros(A.n_states,1) ;
-            else
-                if length(state) ~= A.n_states
-                    error('Input has incorrect number of states!')
+            A.vdisp('Resetting states',3) ;
+            
+            A.state = zeros(A.n_states,1) ;
+            
+            if nargin > 1
+                if length(state) == A.n_links_and_joints
+                    A.state(A.joint_state_indices) = state ;
+                elseif length(state) == A.n_states
+                    A.state = state ;
                 else
-                    A.state = state(:) ;
+                    error('Input has incorrect number of states!')
                 end
             end
             
-            A.vdisp('Resetting time and inputs to 0',3)
+            A.vdisp('Resetting time and inputs',3)
             A.time = 0 ;
             A.input = zeros(A.n_inputs,1) ;
             A.input_time = 0 ;
@@ -401,6 +404,7 @@ classdef robot_arm_agent < multi_link_agent
         %% get agent info
         function agent_info = get_agent_info(A)
             agent_info = get_agent_info@agent(A) ;
+            agent_info.n_links_and_joints = A.n_links_and_joints ;
             agent_info.joint_state_indices = A.joint_state_indices ;
             agent_info.joint_speed_indices = A.joint_speed_indices ;
             agent_info.joint_state_limits = A.joint_state_limits ;
