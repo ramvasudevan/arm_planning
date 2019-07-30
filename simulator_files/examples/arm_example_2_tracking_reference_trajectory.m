@@ -10,7 +10,7 @@ clear ; clc ; clf ;
 
 %% user params
 % control gains
-k_p = 20 ;
+k_p = 10 ;
 k_d = 100 ; 
 k_i = 0.1 ;
 
