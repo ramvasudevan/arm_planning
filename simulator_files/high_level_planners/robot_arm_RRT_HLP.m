@@ -16,7 +16,8 @@ classdef robot_arm_RRT_HLP < high_level_planner
         
         
         % path
-        path = [] % path of configuration from start to finish - should become part of waypoints vector?
+        tree = [] % RRT graph. Path is stored in waypoints vector
+        num_nodes = 0;
         
     end
     
@@ -106,7 +107,59 @@ classdef robot_arm_RRT_HLP < high_level_planner
             HLP.node_parent_idx = [HLP.node_parent_idx; q_near_idx];
         end
         
+        % bounds => joint limits
+        % obstacles are from World object
+        function generate_tree(HLP, obstacles,bounds, q_start)
+            % reserve space
+            HLP.nodes = zeros(HLP.dimension, HLP.k);
+            
+            % set starting position as root
+            HLP.nodes(1:HLP.dimension, 1) = q_start;
+            HLP.node_parent_idx(1) = 0;
+            
+            for i = 1:HLP.k
+                q_rand = HLP.generate_random_config(bounds);
+                q_near_idx = HLP.find_nearest_node(q_rand);
+                q_new = HLP.generate_new_config(q_rand, q_near_idx);
+                % TODO double check if this is 0 or 1
+                if (HLP.collsion_check(q_new, obstacles) == 0)
+                    % add the node 
+                    HLP.add_node(q_new, q_near_idx);
+                    HLP.num_nodes = i;
+                end
+                if(norm(q_new, HLP.goal) < HLP.waypoint_reached_radius)
+                    break    
+                end               
+                
+            end
+        end
         
+        function generate_waypoints(HLP)
+            
+            % reserve space
+            HLP.waypoints = zeros(HLP.num_nodes,1);
+            
+            % trace back path
+            %for i = 1:HLP.num_nodes
+                %HLP.waypoints(i) = HLP.nodes(HLP.node_parent_idx(HLP.num_nodes - i + 1));
+            %end
+            current_node_idx = HLP.num_nodes;
+            
+            % insert final node
+            HLP.waypoints(HLP.num_nodes) = HLP.nodes(current_node_idx);
+            
+            for i = 2:HLP.num_nodes
+                parent_node = HLP.node_parent_idx(current_node_idx);
+                HLP.waypoints(HLP.num_nodes - i + 1) = HLP.nodes(parent_node);
+                current_node_idx = parent_node;
+                
+            end
+        end
+        
+        function waypoint = get_waypoint(HLP)
+            % Choose waypoint that is some ?lookahead distance? along the path found by the RRT
+            % find nearest node to current position
+        end
         
     end
 end

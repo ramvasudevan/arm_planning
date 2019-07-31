@@ -20,8 +20,27 @@ classdef robot_arm_RRT_HLP_2D < robot_arm_RRT_HLP
         end
         
         %% function generate_waypoints
-        %% function get_waypoint
         
+        %% function get_waypoint
+        % waypoint = get_waypoint(agent_info,obstacles,lookahead_distance)
+        
+        %% Collision checking
+        % obs = vector of obstacles provided by world 
+        % arm = Info.collision_check_volume
+        
+        function out = collision_check_single_obstacle(HLP,obs,arm)
+            
+            obs = obs.collision_check_patch_data.vertices ;
+            
+            [x_int,~] = polyxpoly(arm(1,:)',arm(2,:)',...
+                obs(:,1),obs(:,2)) ;
+            
+            if isempty(x_int)
+                out = false ;
+            else
+                out = true ;
+            end
+        end
         % O = W.obstacles
         function out = collision_check_config(HLP,O,I, q_check)
             % out = collision_check_single_state(W,agent_info,agent_state)
@@ -37,7 +56,7 @@ classdef robot_arm_RRT_HLP_2D < robot_arm_RRT_HLP
             
             while (o_idx <= N_O) && ~out
                 O_idx = O{o_idx} ;
-                out = collision_check_single_obstacle(O_idx,V_arm) ;
+                out = HLP.collision_check_single_obstacle(O_idx,V_arm) ;
                 o_idx = o_idx + 1 ;
             end
         end
@@ -50,21 +69,7 @@ classdef robot_arm_RRT_HLP_2D < robot_arm_RRT_HLP
             check = 1;
         end
         
-        % obs = vector of obstacles provided by world 
-        % arm = Info.collision_check_volume
         
-        function out = collision_check_single_obstacle(HLP,obs,arm)
-            
-            obs = obs.collision_check_patch_data.vertices ;
-            
-            [x_int,~] = polyxpoly(arm(1,:)',arm(2,:)',...
-                obs(:,1),obs(:,2)) ;
-            
-            if isempty(x_int)
-                out = true ;
-            else
-                out = false ;
-            end
-        end
+    end
 end
 
