@@ -156,9 +156,21 @@ classdef robot_arm_RRT_HLP < high_level_planner
             end
         end
         
-        function waypoint = get_waypoint(HLP)
+        function waypoint = get_waypoint(HLP, current_config)
             % Choose waypoint that is some ?lookahead distance? along the path found by the RRT
-            % find nearest node to current position
+            % Dont need to find nearest node to current position?
+            
+            % given current waypoint and idx, interpolate ahead to next
+            % waypoint
+           
+            waypoint = HLP.default_lookahead_distance * (HLP.waypoints(HLP.current_waypoint_index + 1) - current_config) + current_config;
+            
+            if norm(waypoint-HLP.waypoints(HLP.current_waypoint_index)) < HLP.waypoint_reached_radius
+                HLP.current_waypoint_index = HLP.current_waypoint_index + 1;
+                if HLP.current_waypoint_index <= length(HLP.waypoints)
+                    HLP.current_waypoint = HLP.waypoints(HLP.current_waypoint_index);
+                end
+            end
         end
         
     end
