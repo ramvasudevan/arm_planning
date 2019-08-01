@@ -359,6 +359,7 @@ classdef robot_arm_agent < multi_link_agent
                             case 'cuboid'
                                 [~,link_vertices] = make_cuboid_for_patch(l) ;
                             case 'ellipsoid'
+                                l = l./2 ;
                                 [~,link_vertices] = make_ellipsoid_for_patch(l(1),l(2),l(3),zeros(3,1),6) ;
                         end
                         link_faces = convhull(link_vertices) ;
