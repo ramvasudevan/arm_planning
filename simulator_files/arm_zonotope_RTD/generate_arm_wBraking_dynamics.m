@@ -6,7 +6,7 @@ function [] = generate_arm_wBraking_dynamics(t_plan,t_total)
 t_to_stop = t_total - t_plan; % time from peak speed to stopping
 theta_dot_f = 0; % final speed = 0
 
-syms x y theta_dot_0 theta_dot_pk t real
+syms x y theta theta_dot_0 theta_dot_pk t real
 
 z = [x; y; theta_dot_0; theta_dot_pk; t];
 
@@ -23,6 +23,13 @@ dz = [dx; dy; dtheta_dot_0; dtheta_dot_pk; dt];
 
 syms tdummy udummy real;
 matlabFunction(dz, 'File', 'arm_dyn_toPeak', 'vars', {tdummy z udummy});
+
+% also save dynamics for ODE45
+dtheta = theta_dot;
+z_ode = [theta; theta_dot_0; theta_dot_pk];
+dz_ode = [dtheta; dtheta_dot_0
+
+%%
 
 theta_dot = theta_dot_pk + (theta_dot_f - theta_dot_pk)/(t_to_stop)*(t - t_plan);
 

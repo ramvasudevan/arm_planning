@@ -27,10 +27,10 @@ yobs = [obs_center(2) - obs_width, obs_center(2) + obs_width, obs_center(2) + ob
 pobs = patch(xobs, yobs, 'r');
 pobs.FaceAlpha = 0.2;
 
-obstacles{1} = [xobs;yobs]';
+% obstacles{1} = [xobs;yobs]';
 
-obstacles{1} = zonotope([obs_center, [obs_width, 0; 0, obs_width]]);
-pobs = plotFilled(obstacles{1}, [1, 2], 'r');
+obstacles{1}.zono = zonotope([obs_center, [obs_width, 0; 0, obs_width]]);
+pobs = plotFilled(obstacles{1}.zono, [1, 2], 'r');
 pobs.FaceAlpha = 0.2;
 
 while true
@@ -50,11 +50,7 @@ while true
         for j = 1:length(k_unsafe_A{i})
             for k = 1:length(k_unsafe_A{i}{j})
                 if ~isempty(k_unsafe_A{i}{j}{k})
-                    if i == 2
-                        A = [k_unsafe_A{i}{j}{k}; uA];
-                    else
-                        A = [k_unsafe_A{i}{j}{k}, zeros(size(k_unsafe_A{i}{j}{k})); uA];
-                    end
+                    A = [k_unsafe_A{i}{j}{k}; uA];
                     B = [k_unsafe_b{i}{j}{k}; uB];
                     mypoly = mptPolytope(A, B);
                     try

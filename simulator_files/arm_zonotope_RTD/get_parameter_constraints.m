@@ -10,7 +10,7 @@ nParams = length(param_dim);
 k_unsafe_A = cell(length(link.FRS), 1);
 k_unsafe_b = cell(length(link.FRS), 1);
 
-tic
+% tic
 for i = 1:length(link.FRS)
     frs = link.FRS{i};
     frs_Z = get(frs, 'Z');
@@ -53,7 +53,7 @@ for i = 1:length(link.FRS)
     test_kV = max(my_k_unsafe_A*k_lim.V - repmat(my_k_unsafe_b, 1, size(k_lim.V, 2)));
     if any(test_kV <= 0)
         % a k vertex is inside polytope, keep it.
-        k_unsafe_A{i} = my_k_unsafe_A;
+        k_unsafe_A{i} = [my_k_unsafe_A, zeros(size(my_k_unsafe_A, 1), link.info.max_params - nParams)];
         k_unsafe_b{i} = my_k_unsafe_b;
     end
     
@@ -86,7 +86,7 @@ for i = 1:length(link.FRS)
 %     end
     
 end
-disp('Time of constraint generation:');
-toc
+% disp('Time of constraint generation:');
+% toc
 end
 

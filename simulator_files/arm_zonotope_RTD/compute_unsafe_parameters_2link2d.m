@@ -40,7 +40,7 @@ for i = 1:nLinks
     k_unsafe_A{i} = cell(nObs, 1);
     k_unsafe_b{i} = cell(nObs, 1);
     for j = 1:nObs
-        [k_unsafe_A{i}{j}, k_unsafe_b{i}{j}] = get_parameter_constraints(links{i}, k_lim{i}, obstacles{j});
+        [k_unsafe_A{i}{j}, k_unsafe_b{i}{j}] = get_parameter_constraints(links{i}, k_lim{i}, obstacles{j}.zono);
     end
 end
 

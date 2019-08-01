@@ -24,7 +24,7 @@ Rcont1EE = file1.RcontEE;
 Rcont2 = file2.Rcont;
 
 links = cell(2, 1);
-tic;
+% tic;
 % rotate and stack Rcont to get FRSs of links
 for i = 1:length(Rcont1)
 %     Z1 = get(Rcont1{i}{1}, 'Z');
@@ -48,6 +48,10 @@ for i = 1:length(Rcont1)
     Z1EE(3, :) = [];
     Z2(3, :) = [];
     
+    %%% MALICIOUS HACK RAISE THE FRS's BY 0.055 TO GET OFF THE GROUND
+%     Z1(:, 1) = Z1(:, 1) + [0; 0.050; 0; 0];
+%     Z2(:, 1) = Z2(:, 1) + [0; 0.050; 0; 0];
+    
     mytimestep = file1.options.timeStep;
     myzeros = zeros(1, size(Z1EE, 2) - 1);
     
@@ -57,14 +61,16 @@ for i = 1:length(Rcont1)
     links{1}.FRS{i} = zonotope(newZ1);
     links{2}.FRS{i} = zonotope(newZ2);
 end
-disp('Computation time of FRS 2Link generation');
-toc;
+% disp('Computation time of FRS 2Link generation');
+% toc;
 
 links{1}.info.labels = {'X-position'; 'Y-position'; 'k1 (peak theta_1_dot)'; 'time'};
 links{1}.info.position_dimensions = [1; 2];
 links{1}.info.param_dimensions = [3];
+links{1}.info.max_params = 2;
 links{2}.info.labels = {'X-position'; 'Y-position'; 'k1 (peak theta_1_dot)'; 'k2 (peak (theta_1_dot + theta_2_dot) )'; 'time'};
 links{2}.info.position_dimensions = [1; 2];
 links{2}.info.param_dimensions = [3; 4];
+links{2}.info.max_params = 2;
 
 end
