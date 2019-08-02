@@ -219,7 +219,7 @@ classdef robot_arm_sampling_based_HLP < high_level_planner
             HLP.update_nodes_and_adjacency_matrix(q_new,q_near_idx) ;
         end
         
-        function update_nodes_and_adjacency_matrix(HLP,q_new,q_connect_idxs)
+        function update_nodes_and_adjacency_matrix(HLP,q_new,q_connect_idxs,weights)
             % update_nodes_and_adjacency_matrix(HLP,q_new,q_connect_idxs)
             %
             % Increment the number of nodes, add the new node to the node
@@ -233,8 +233,11 @@ classdef robot_arm_sampling_based_HLP < high_level_planner
             HLP.nodes(:,HLP.n_nodes) = q_new ;
             
             % update the adjacency matrix
-            HLP.adjacency_matrix(q_connect_idxs,HLP.n_nodes) = 1 ;
-            HLP.adjacency_matrix(HLP.n_nodes,q_connect_idxs) = 1 ;
+            if nargin < 4
+                weights = 1 ;
+            end
+            HLP.adjacency_matrix(q_connect_idxs,HLP.n_nodes) = weights ;
+            HLP.adjacency_matrix(HLP.n_nodes,q_connect_idxs) = weights ;
         end
         
         %% utility

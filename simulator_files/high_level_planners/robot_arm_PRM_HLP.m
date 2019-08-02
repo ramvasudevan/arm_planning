@@ -21,7 +21,7 @@ classdef robot_arm_PRM_HLP < robot_arm_sampling_based_HLP
             % new node growth distance
             if HLP.new_node_nearest_neighbor_distance < HLP.new_node_growth_distance
                HLP.vdisp('Updating PRM nearest neighbor distance!',5)
-               HLP.new_node_nearest_neighbor_distance = HLP.new_node_growth_distance ;
+               HLP.new_node_nearest_neighbor_distance = 2.*HLP.new_node_growth_distance ;
             end
         end
         
@@ -49,7 +49,8 @@ classdef robot_arm_PRM_HLP < robot_arm_sampling_based_HLP
             q_dists = dist_point_to_points(q_new,HLP.nodes) ;
             q_near_log = q_dists <= HLP.new_node_nearest_neighbor_distance ;
             q_near_idxs = HLP.all_node_idxs(q_near_log) ;
-            HLP.update_nodes_and_adjacency_matrix(q_new,q_near_idxs) ;
+            HLP.update_nodes_and_adjacency_matrix(q_new,q_near_idxs,...
+                q_dists(q_near_log)) ;
         end
     end
 end

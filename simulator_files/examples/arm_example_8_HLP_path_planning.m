@@ -1,4 +1,11 @@
 %% description
+% This script demonstrates how to set up and use the high-level planner for
+% the robot arm. Currently, there are PRM and RRT planners available.
+%
+% Author: Shreyas Kousik
+% Created: 2 Aug 2019
+% Updated: 2 Aug 2019
+clear ; clc ;
 
 %% user parameters
 % arm and world
@@ -6,8 +13,8 @@ dimension = 2 ; % 2 or 3
 N_obstacles = 4 ;
 
 % high-level planner
-HLP_type = 'RRT' ; % choose 'PRM' or 'RRT'
-sampling_timeout = 1 ; % seconds to run sampling
+HLP_type = 'PRM' ; % choose 'PRM' or 'RRT'
+sampling_timeout = 0.1 ; % seconds to run sampling
 new_node_growth_distance = 0.5 ;
 
 % user-friendly params
