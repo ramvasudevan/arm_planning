@@ -66,6 +66,9 @@ classdef robot_arm_agent < multi_link_agent
         % row is the minimum, and the second row is the maximum in N*m
         joint_input_limits
         
+        % amount of time to execute a stopping maneuver
+        t_stop = 0.5 ;
+        
         %% miscellaneous
         % integration
         integrator_time_discretization = 0.01 ; % s
@@ -472,6 +475,33 @@ classdef robot_arm_agent < multi_link_agent
         end
         
         %% stop
+        function stop(A,t)
+            % A.stop(stopping_duration)
+            %
+            % Executes a braking maneuver from the current state for the
+            % duration specified by stopping_duration; if no input is
+            % given, then the arm stops for the duration A.t_stop, which is
+            % 0.5 s by default.
+            
+            if nargin < 2
+                t = A.t_stop ;
+            end
+            
+            % time
+            T_stop = [0, t] ;
+            
+            % desired trajectory
+            Z_stop = repmat(A.state(:,end),1,2) ;
+            Z_stop(A.joint_speed_indices,:) = 0 ; % joint speeds to zero
+            
+            % feedforward input
+            joint_speed_cur = A.state(A.joint_speed_indices,end) ;
+            U_brake = (zeros(size(joint_speed_cur)) - joint_speed_cur)./ t ;
+            U_stop = [U_brake, zeros(size(U_brake))] ;
+            
+            % send command
+            A.move(t,T_stop,U_stop,Z_stop) ;
+        end
         
         %% forward kinematics
         function [R,T] = forward_kinematics(A,time_or_config)

@@ -24,7 +24,7 @@ classdef robot_arm_RRT_HLP_2D < robot_arm_RRT_HLP
         %% function get_waypoint
         % waypoint = get_waypoint(agent_info,obstacles,lookahead_distance)
         
-        %% Collision checking
+        %% collision checking
         % obs = vector of obstacles provided by world 
         % arm = Info.collision_check_volume
         

@@ -5,7 +5,7 @@ classdef robot_arm_generic_planner < planner
         dimension
         arm_n_states
         arm_n_inputs
-        arm_n_joints
+        arm_n_links_and_joints
         arm_joint_state_limits
         arm_joint_speed_limits
         arm_joint_input_limits
@@ -37,26 +37,13 @@ classdef robot_arm_generic_planner < planner
         
         %% setup
         function setup(P,agent_info,world_info)
-            % set any joint limits that are +Inf to pi and -Inf to -pi
-            joint_state_limits = agent_info.joint_state_limits ;
-            joint_limit_infs = isinf(joint_state_limits) ;
-            joint_state_limits(1,joint_limit_infs(1,:)) = -pi ;
-            joint_state_limits(2,joint_limit_infs(2,:)) = +pi ;
-            
-            % agent info
+            % fill in agent info
             P.vdisp('Getting agent info',9)
             P.dimension = agent_info.dimension ;
             P.bounds = agent_info.reach_limits ;
-            P.arm_n_states = agent_info.n_states ;
-            P.arm_n_inputs = agent_info.n_inputs ;
-            P.arm_n_joints = agent_info.n_links_and_joints ;
-            P.arm_joint_state_limits = joint_state_limits ;
-            P.arm_joint_speed_limits = agent_info.joint_speed_limits ;
-            P.arm_joint_input_limits = agent_info.joint_input_limits ;
-            P.arm_joint_state_indices = agent_info.joint_state_indices ;
-            P.arm_joint_speed_indices = agent_info.joint_speed_indices ;
+            P = fill_in_arm_properties(P,agent_info,true) ;
             
-            % world info
+            % fill in world info
             P.vdisp('Getting world info',9)
             P.start = world_info.start ;
             P.goal = world_info.goal ;

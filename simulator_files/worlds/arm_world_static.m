@@ -9,7 +9,7 @@ classdef arm_world_static < world
         
         % arm info
         arm_joint_state_limits
-        arm_n_joints
+        arm_n_links_and_joints
         arm_joint_state_indices
         
         % goal plotting
@@ -27,7 +27,7 @@ classdef arm_world_static < world
             % W = arm_world_static('property1',value1,'property2',value2,...)
             
             default_goal_radius = 0.05 ; % rad/joint
-            W@world('start',[],'goal',[],'N_obstacles',0,'verbose',10,...
+            W@world('start',[],'goal',[],'N_obstacles',0,...
                 'goal_radius',default_goal_radius,...
                 varargin{:}) ;
             
@@ -39,16 +39,20 @@ classdef arm_world_static < world
         function setup(W,I)
             W.vdisp('Running arm world setup',1)
             
-            W.get_bounds_and_joint_state_limits(I)
+            % make sure the world's properties agree with the arm's
+            W.get_arm_info(I)
             
+            % generate an obstacle to attach the arm's baselink to
             if W.include_base_obstacle
                 W.obstacles = {W.create_base_obstacle()} ;
             end
             
+            % create a start configuration
             if isempty(W.start)
                 W.create_start(I) ;
             end
             
+            % create obstacles
             if isempty(W.obstacles) || ...
                (W.include_base_obstacle && length(W.obstacles) == 1)
                 for idx = 1:W.N_obstacles
@@ -59,17 +63,26 @@ classdef arm_world_static < world
                 end
             end
             
+            % update the number of obstacles
+            W.N_obstacles = length(W.obstacles) ;
+            
+            % create a goal configuration
             if isempty(W.goal)
                 W.create_goal(I) ;
             end
-            
-            W.N_obstacles = length(W.obstacles) ;
             
             W.vdisp('Arm world setup complete',2)
         end
         
         %% get bounds and joint limits
-        function get_bounds_and_joint_state_limits(W,I)
+        function get_arm_info(W,I)
+            % update the world's dimension based on the arm's dimension
+            if W.dimension ~= I.dimension
+                W.vdisp(['Updating world dimension to ',num2str(I.dimension),...
+                    ' to match the arm!'],3)
+                W.dimension = I.dimension ;
+            end
+            
             % set world bounds based on agent limits
             W.bounds = I.reach_limits ;
             
@@ -80,7 +93,7 @@ classdef arm_world_static < world
             joint_state_limits(2,joint_limit_infs(2,:)) = +pi ;
             
             W.arm_joint_state_limits = joint_state_limits ;
-            W.arm_n_joints = size(joint_state_limits,2) ;
+            W.arm_n_links_and_joints = size(joint_state_limits,2) ;
             W.arm_joint_state_indices = I.joint_state_indices ;
             
             % set minimum distance between start and goal based on the
