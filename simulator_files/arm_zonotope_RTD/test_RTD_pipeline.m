@@ -16,7 +16,7 @@ plot([0; ee1(1); ee2(1)], [0; ee1(2); ee2(2)], 'k-', 'LineWidth', 2);
 
 %% create obstacle dun dun dunn nn
 
-obs_center = [0; 0.5];
+obs_center = [0; 1.5];
 % obs_center = [-2; 0.5];
 obs_width = [0.1];
 xobs = [obs_center(1) - obs_width, obs_center(1) - obs_width, obs_center(1) + obs_width, obs_center(1) + obs_width];
