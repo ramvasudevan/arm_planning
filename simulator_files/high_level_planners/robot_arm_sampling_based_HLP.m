@@ -47,12 +47,21 @@ classdef robot_arm_sampling_based_HLP < high_level_planner
             HLP.vdisp('Setting goal',9)
             HLP.goal = world_info.goal ;
             
+            % set up graph structure
+            HLP.initialize_graph(agent_info,world_info)
+        end
+        
+        function initialize_graph(HLP,agent_info,world_info)
             % initialize nodes and adjacency matrix
             HLP.vdisp('Initializing planner graph structures',4)
             HLP.n_nodes = 1 ;
             HLP.nodes = nan(HLP.arm_n_links_and_joints,HLP.n_nodes_max) ;
             HLP.nodes(:,1) = agent_info.state(HLP.arm_joint_state_indices,end) ;
             HLP.adjacency_matrix = sparse(HLP.n_nodes_max, HLP.n_nodes_max) ;
+            
+            % reset best path and best path nodes
+            HLP.best_path_nodes = [] ;
+            HLP.best_path_node_idxs = [] ;
         end
         
         %% get waypoint

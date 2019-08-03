@@ -1,6 +1,7 @@
 classdef robot_arm_RRT_HLP < robot_arm_sampling_based_HLP
     %% properties
     properties
+        make_new_tree_every_iteration_flag = false ;
         new_node_growth_distance = 0.1 ;
     end
     %% methods
@@ -11,6 +12,15 @@ classdef robot_arm_RRT_HLP < robot_arm_sampling_based_HLP
         end
         
         %% sampling
+        function sample(HLP,agent_info,world_info)
+            if HLP.make_new_tree_every_iteration_flag
+                HLP.initialize_graph(agent_info,world_info)
+            end
+            
+            % call superclass sample method
+            sample@robot_arm_sampling_based_HLP(HLP,agent_info,world_info) ;
+        end
+        
         function q_new = create_new_node(HLP,~,~)
             HLP.vdisp('Creating new node',9)
             

@@ -2,9 +2,9 @@
 % This script generates an agent, world, and planner. It plugs them in to
 % the simulator framework, and then runs a single simulation.
 %
-% Author: Shreyas Kousik
+% Authors: Shreyas Kousik and Patrick Holmes
 % Created: 29 July 2019
-% Updated: 30 July 2019
+% Updated: 3 August 2019
 clear ; clc ; close all
 
 %% user parameters

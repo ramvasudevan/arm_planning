@@ -25,7 +25,10 @@ classdef robot_arm_generic_planner < planner
     methods
         %% constructor
         function P = robot_arm_generic_planner(varargin)
-            P@planner(varargin{:}) ;
+            % create default high-level planner
+            HLP = robot_arm_straight_line_HLP() ;
+            
+            P@planner('HLP',HLP,varargin{:}) ;
             
             % check that t_stop is greater than t_move
             if P.t_stop <= P.t_move
@@ -47,6 +50,10 @@ classdef robot_arm_generic_planner < planner
             P.vdisp('Getting world info',9)
             P.start = world_info.start ;
             P.goal = world_info.goal ;
+            
+            % set up high-level planner
+            P.HLP.verbose = P.verbose ;
+            P.HLP.setup(agent_info,world_info) ;
         end
         
     end
