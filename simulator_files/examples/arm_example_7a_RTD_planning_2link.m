@@ -32,7 +32,7 @@ A.joint_input_limits = 1*A.joint_input_limits;
 W = arm_world_static('include_base_obstacle', 1, 'goal_radius', 0.001, 'N_obstacles',N_obstacles,'dimension',dimension,...
     'verbose',verbosity) ;
 
-P = robot_arm_RTD_planner('verbose', verbosity, 't_plan', t_plan) ;
+P = robot_arm_RTD_planner_2link2d('verbose', verbosity, 't_plan', t_plan) ;
 
 % set up world using arm
 I = A.get_agent_info ;

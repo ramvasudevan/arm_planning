@@ -10,7 +10,7 @@ clear ; clc ; close all
 %% user parameters
 N_obstacles = 5 ;
 dimension = 2 ;
-nLinks = 2;
+nLinks = 4;
 verbosity = 6 ;
 allow_replan_errors = true ;
 t_plan = 0.5 ;
@@ -21,6 +21,8 @@ switch nLinks
         A = robot_arm_2D_2link_2DOF_thin('verbose',verbosity) ;
     case 3
         A = robot_arm_2D_3link_3DOF_thin('verbose',verbosity) ;
+    case 4
+        A = robot_arm_2D_4link_4DOF_thin('verbose',verbosity) ;
     case 7
         A = robot_arm_2D_7link_7DOF_thin('verbose', verbosity) ;
 end
@@ -50,7 +52,7 @@ W.setup(I)
 A.state(A.joint_state_indices) = W.start ;
 
 % create simulator
-S = simulator(A,W,P,'allow_replan_errors',allow_replan_errors) ;
+S = simulator(A,W,P,'allow_replan_errors',allow_replan_errors,'max_sim_time',1000,'max_sim_iterations',1000) ;
 
 %% run simulation
 S.run()

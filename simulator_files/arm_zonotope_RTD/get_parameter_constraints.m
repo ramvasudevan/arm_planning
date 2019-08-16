@@ -31,7 +31,7 @@ for i = 1:length(link.FRS)
     frs_k_dep_G_pos = frs_G(position_dim, param_col);
     
     % buffer obstacle by k-independent generators
-    buff_obstacle = obstacle + zonotope([zeros(size(position_dim)), frs_k_ind_G_pos]);
+    buff_obstacle = obstacle + zonotope([zeros(length(position_dim),1), frs_k_ind_G_pos]);
     
     % use mptPoly to get H-rep of obstacle
     obs_poly = mptPolytope(buff_obstacle - frs_c(position_dim));
