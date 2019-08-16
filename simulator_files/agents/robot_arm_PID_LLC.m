@@ -1,9 +1,5 @@
-classdef robot_arm_PID_LLC < low_level_controller
+classdef robot_arm_PID_LLC < robot_arm_LLC
     properties
-        % agent properties
-        agent_joint_state_indices
-        agent_joint_speed_indices
-        
         % gains
         K_ff
         K_p
@@ -25,17 +21,13 @@ classdef robot_arm_PID_LLC < low_level_controller
     methods
         %% constructor
         function LLC = robot_arm_PID_LLC(varargin)
-            LLC = parse_args(LLC,varargin{:}) ;
+            LLC@robot_arm_LLC(varargin{:}) ;
         end
         
         %% setup
         function setup(LLC,agent)
             % call default setup
-            setup@low_level_controller(LLC,agent)
-            
-            % get indices of joint states and speeds
-            LLC.agent_joint_state_indices = agent.joint_state_indices ;
-            LLC.agent_joint_speed_indices = agent.joint_speed_indices ;
+            setup@robot_arm_LLC(LLC,agent)
             
             % create default control gains, assuming the agent's states are
             % in the format
@@ -59,7 +51,7 @@ classdef robot_arm_PID_LLC < low_level_controller
             end
             
             % reset the integrator error
-            LLC.position_error_state = zeros(length(LLC.agent_joint_state_indices),1) ;
+            LLC.position_error_state = zeros(length(LLC.arm_joint_state_indices),1) ;
         end
         
         %% get control inputs
@@ -90,7 +82,7 @@ classdef robot_arm_PID_LLC < low_level_controller
                 - LLC.K_d*pd_error - LLC.K_i*i_error ;
             
             % update integrator error
-            LLC.position_error_state = i_error + pd_error(LLC.agent_joint_state_indices) ;
+            LLC.position_error_state = i_error + pd_error(LLC.arm_joint_state_indices) ;
         end
         
         %% set control gains

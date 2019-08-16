@@ -418,7 +418,7 @@ classdef robot_arm_agent < multi_link_agent
             agent_info.joint_input_limits = A.joint_input_limits ;
             agent_info.get_collision_check_volume = @(q) A.get_collision_check_volume(q) ;
             agent_info.collision_check_patch_data = A.collision_check_patch_data ;
-            agent_info.forward_kinematics = @(t_or_q) A.forward_kinematics(t_or_q) ;
+            agent_info.get_link_rotations_and_translations = @(t_or_q) A.get_link_rotations_and_translations(t_or_q) ;
             agent_info.reach_limits = A.get_axis_lims() ;
         end
         
@@ -439,7 +439,7 @@ classdef robot_arm_agent < multi_link_agent
                 q = A.state(A.joint_state_indices,1) ;
             end
             
-            [R,T] = A.forward_kinematics(q) ;
+            [R,T] = A.get_link_rotations_and_translations(q) ;
             
             F_cell = A.collision_check_patch_data.faces ;
             V_cell = A.collision_check_patch_data.vertices ;
@@ -504,9 +504,9 @@ classdef robot_arm_agent < multi_link_agent
         end
         
         %% forward kinematics
-        function [R,T] = forward_kinematics(A,time_or_config)
-            % [R,T] = A.forward_kinematics(time)
-            % [R,T] = A.forward_kinematics(configuration)
+        function [R,T] = get_link_rotations_and_translations(A,time_or_config)
+            % [R,T] = A.get_link_rotations_and_translations(time)
+            % [R,T] = A.get_link_rotations_and_translations(configuration)
             %
             % Compute the rotation and translation of all links in the
             % global (baselink) frame at the given time. If no time is
@@ -701,7 +701,7 @@ classdef robot_arm_agent < multi_link_agent
             end
             
             % get the rotations and translations at the current time
-            [R,T] = A.forward_kinematics(t) ;
+            [R,T] = A.get_link_rotations_and_translations(t) ;
             
             % generate plot data for each link
             link_verts = cell(1,A.n_links_and_joints) ;
