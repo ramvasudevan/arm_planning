@@ -679,6 +679,7 @@ classdef robot_arm_agent < multi_link_agent
         function zd = dynamics(A,t,z,T,U,Z)
             % get desired torques and bound them
             u = A.LLC.get_control_inputs(A,t,z,T,U,Z) ;
+            
             for idx = 1:length(u)
                 u(idx) = bound_values(u(idx), A.joint_input_limits(:,idx)')  ;
             end
