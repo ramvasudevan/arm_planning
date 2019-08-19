@@ -304,17 +304,8 @@ classdef robot_arm_agent < multi_link_agent
             % get link sizes
             L = A.link_sizes ;
             
-            switch A.dimension
-                case 2
-                    % create baselink triangle for plotting
-                    baselink_vertices = 0.05.*[-1, 1, 0 ;
-                        0, 0, 1 ]' ;
-                    baselink_faces = [1 2 3 1] ;
-                    
-                case 3
-                    % create baselink cone for plotting
-                    [baselink_faces,baselink_vertices] = make_cone_for_patch(0.05,0.05) ;
-            end
+            % make baselink plot data
+            [baselink_faces,baselink_vertices] = A.create_baselink_plot_patch_data() ;
                     
             % create links
             for l_idx = 1:size(L,2)
@@ -351,6 +342,20 @@ classdef robot_arm_agent < multi_link_agent
             A.link_plot_data.link_vertices = plot_verts_cell ;
             A.link_plot_data.baselink_faces = baselink_faces ;
             A.link_plot_data.baselink_vertices = baselink_vertices ;
+        end
+        
+        function [faces,vertices] = create_baselink_plot_patch_data(A)
+            switch A.dimension
+                case 2
+                    % create baselink triangle for plotting
+                    vertices = 0.05.*[-1, 1, 0 ;
+                        0, 0, 1 ]' ;
+                    faces = [1 2 3 1] ;
+                    
+                case 3
+                    % create baselink cone for plotting
+                    [faces,vertices] = make_cone_for_patch(0.05,0.05) ;
+            end
         end
         
         %% collision check data
