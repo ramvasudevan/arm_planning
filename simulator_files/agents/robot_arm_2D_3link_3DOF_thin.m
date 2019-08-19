@@ -10,9 +10,9 @@ classdef robot_arm_2D_3link_3DOF_thin < robot_arm_agent
             link_sizes = [1, 1, 1 ;
                           0.001, 0.001, 0.001] ;
 
-            joint_locations = [+0.000 +0.5 +0.5 ;
+            joint_locations = [+0.000 +0.500 +0.500 ;
                                +0.001 +0.000 +0.000 ;
-                               -0.5 -0.5 -0.5 ;
+                               -0.500 -0.500 +0.500 ;
                                 0.000 +0.000 +0.000] ;
             
             joint_state_limits = [-Inf, -Inf, -Inf ;

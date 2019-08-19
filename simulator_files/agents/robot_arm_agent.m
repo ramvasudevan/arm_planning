@@ -38,7 +38,9 @@ classdef robot_arm_agent < multi_link_agent
         
         % specify the location of each joint as an (x,y) coordinate in the
         % local frame of the pred/succ links; this array must have as many
-        % columns as there are joints
+        % columns as there are joints; note that, for any joint that is
+        % succeeded by a link with no successors, the "successor" joint
+        % location is the end effector location on that link
         joint_locations
         
         % joint limits and speed limits, where each column corresponds to
@@ -68,6 +70,23 @@ classdef robot_arm_agent < multi_link_agent
         
         % amount of time to execute a stopping maneuver
         t_stop = 0.5 ;
+        
+        %% forward kinematics
+        % these properties will be filled in with symbolic functions
+        
+        % return the position of the end effector as a location in
+        % workspace (either 2-D or 3-D), given an input configuration; this
+        % should output a vector of length A.dimension
+        forward_kinematics_end_effector
+        
+        % return the location of each joint and the end effector as
+        % locations in workspace, given an input configuration; this should
+        % output a vector of length A.n_links_and_joints * A.dimension
+        forward_kinematics_joint_locations
+        
+        % the jacobian with respect to the arm's DOFs of the joint location
+        % forward kinematics function above
+        forward_kinematics_joint_locations_jacobian
         
         %% miscellaneous
         % integration
@@ -311,7 +330,7 @@ classdef robot_arm_agent < multi_link_agent
                         % create box for link that is slightly shorter than
                         % the actual volume of the box for prettiness
                         % purposes
-                        l(1) = l(1) - 0.045 ;
+                        % l(1) = l(1) - 0.045 ;
                         [link_faces,link_vertices] = make_cuboid_for_patch(l) ;
                     case 'ellipsoid'
                         % remember that the link sizes specify the
@@ -417,6 +436,7 @@ classdef robot_arm_agent < multi_link_agent
             agent_info.joint_speed_limits = A.joint_speed_limits ;
             agent_info.joint_input_limits = A.joint_input_limits ;
             agent_info.get_collision_check_volume = @(q) A.get_collision_check_volume(q) ;
+            agent_info.get_joint_locations = @(q) A.get_joint_locations(q) ;
             agent_info.collision_check_patch_data = A.collision_check_patch_data ;
             agent_info.get_link_rotations_and_translations = @(t_or_q) A.get_link_rotations_and_translations(t_or_q) ;
             agent_info.reach_limits = A.get_axis_lims() ;
@@ -504,13 +524,17 @@ classdef robot_arm_agent < multi_link_agent
         end
         
         %% forward kinematics
-        function [R,T] = get_link_rotations_and_translations(A,time_or_config)
+        function [R,T,J] = get_link_rotations_and_translations(A,time_or_config)
             % [R,T] = A.get_link_rotations_and_translations(time)
             % [R,T] = A.get_link_rotations_and_translations(configuration)
+            % [R,T,J] = A.get_link_rotations_and_translations(t_or_q)
             %
             % Compute the rotation and translation of all links in the
             % global (baselink) frame at the given time. If no time is
             % given, then it defaults to 0.
+            %
+            % The optional third output is the joint locations in 2- or 3-D
+            % space, which is also output by A.get_joint_locations(t_or_q).
             
             if nargin < 2
                 time_or_config = 0 ;
@@ -539,6 +563,7 @@ classdef robot_arm_agent < multi_link_agent
                 end
                 j_vals = q ;
             end
+            
             j_locs = A.joint_locations ; % joint locations
             
             % extract dimensions
@@ -548,6 +573,9 @@ classdef robot_arm_agent < multi_link_agent
             % allocate cell arrays for the rotations and translations
             R = mat2cell(repmat(eye(d),1,n),d,d*ones(1,n)) ;
             T = mat2cell(repmat(zeros(d,1),1,n),d,ones(1,n)) ;
+            
+            % allocate array for the joint locations
+            J = nan(d,n) ;
             
             % move through the kinematic chain and get the rotations and
             % translation of each link
@@ -576,17 +604,17 @@ classdef robot_arm_agent < multi_link_agent
                 switch A.joint_types{idx}
                     case 'revolute'
                         if d == 3
-                            % rotation matrix of current joint
+                            % rotation matrix of current link
                             axis_pred = R_pred*A.joint_axes(:,idx) ;
-                            R_succ = axang2rotm([axis_pred', j_idx])*R_pred ;
+                            R_succ = axis_angle_to_rotation_matrix_3D([axis_pred', j_idx])*R_pred ;
                             
-                            % location of current joint in global coords
+                            % location of current link in global coords
                             T_succ = T_pred + R_pred*j_loc(1:3) - R_succ*j_loc(4:6) ;
                         else
-                            % rotation matrix of current joint
+                            % rotation matrix of current link
                             R_succ = rotation_matrix_2D(j_idx)*R_pred ;
                             
-                            % location of current joint in global coords
+                            % location of current link in global coords
                             T_succ = T_pred + R_pred*j_loc(1:2) - R_succ*j_loc(3:4) ;
                         end
                     case 'prismatic'
@@ -598,7 +626,48 @@ classdef robot_arm_agent < multi_link_agent
                 % fill in rotation and translation cells
                 R{s_idx} = R_succ ;
                 T{s_idx} = T_succ ;
+                
+                % fill in the joint location
+                j_loc_local = j_locs((d+1):end,idx) ;
+                J(:,idx) = -R_succ*j_loc_local + T_succ ;
             end
+        end
+        
+        function  J = get_joint_locations(A,time_or_config)
+            % J = A.get_joint_locations(time_or_config)
+            %
+            % Return the joint locations in 2-D or 3-D space as an d-by-n
+            % array, where n = A.n_links_and_joints and d = A.dimension.
+            
+            [~,~,J] = A.get_link_rotations_and_translations(time_or_config) ;
+        end
+        
+        function [R,T,J] = forward_kinematics(A,time_or_config)
+            % [R,T,J] = A.forward_kinematics(time_or_config)
+            %
+            % Given a time or configuration, return the link rotation
+            % and translation arrays R and T, and the joint locations J.
+            
+            [R,T,J] = A.get_link_rotations_and_translations(time_or_config) ;
+        end
+        
+        %% inverse kinematics
+        function q = get_joint_configuration(A,J,q0)
+            % q = A.get_joint_configuration(J)
+            % q = A.get_joint_configuration(J,q0)
+            %
+            % Given joint locations J as a d-by-n array, return the
+            % static configuration q as an n-by-1 vector where n is the
+            % number of joints of the arm. This uses nonlinear least
+            % squares to find the joint configuration.
+            %
+            % The optional second input is an initial guess for the
+            % nonlinear least squares solver. If it is not returned, the
+            % arm uses its last state (the column vector A.state(:,end)) as
+            % the initial guess.
+            
+            % create the least-squares function to solve for the config
+            error('ope')
         end
         
         %% dynamics
