@@ -23,7 +23,7 @@ t_move = 10 ;
 t_total = 10 ;
 
 %% make a new arm
-A = robot_arm_2D_2link_2DOF() ; 
+A = robot_arm_2D_2link_2DOF() ;
 
 %% set control gains and interpolation method
 A.LLC.set_gains('P',k_p,'I',k_i,'D',k_d) ;

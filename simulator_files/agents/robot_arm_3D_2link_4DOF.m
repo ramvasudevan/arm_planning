@@ -26,7 +26,7 @@ classdef robot_arm_3D_2link_4DOF < robot_arm_agent
             joint_locations = [+0.00, +0.00, +0.15, +0.00 ; % predecessor x
                                +0.00, +0.00, +0.00, +0.00 ; % predecessor y
                                +0.05, +0.00, +0.00, +0.00 ; % predecessor z
-                               +0.00, -0.15, +0.00, +0.10 ; % successor x
+                               +0.00, -0.15, +0.00, -0.10 ; % successor x
                                +0.00, +0.00, +0.00, +0.00 ; % successor y
                                +0.00, +0.00, +0.00, +0.00 ];% successor z
                            

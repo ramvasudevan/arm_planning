@@ -584,7 +584,7 @@ classdef robot_arm_agent < multi_link_agent
             
             % move through the kinematic chain and get the rotations and
             % translation of each link
-            for idx = 1:A.n_links_and_joints
+            for idx = 1:n
                 k_idx = A.kinematic_chain(:,idx) ;
                 p_idx = k_idx(1) ;
                 s_idx = k_idx(2) ;
@@ -604,29 +604,25 @@ classdef robot_arm_agent < multi_link_agent
                 j_idx = j_vals(idx) ;
                 j_loc = j_locs(:,idx) ;
                 
-                % depending on the joint type, compute the rotation and
-                % translation of the next link
+                % compute link rotation
                 switch A.joint_types{idx}
                     case 'revolute'
                         if d == 3
                             % rotation matrix of current link
                             axis_pred = R_pred*A.joint_axes(:,idx) ;
                             R_succ = axis_angle_to_rotation_matrix_3D([axis_pred', j_idx])*R_pred ;
-                            
-                            % location of current link in global coords
-                            T_succ = T_pred + R_pred*j_loc(1:3) - R_succ*j_loc(4:6) ;
                         else
                             % rotation matrix of current link
                             R_succ = rotation_matrix_2D(j_idx)*R_pred ;
-                            
-                            % location of current link in global coords
-                            T_succ = T_pred + R_pred*j_loc(1:2) - R_succ*j_loc(3:4) ;
                         end
                     case 'prismatic'
                         error('Prismatic joints are not supported yet!')
                     otherwise
                         error('Invalid joint type!')
                 end
+                
+                % create translation
+                T_succ = T_pred + R_pred*j_loc(1:d) - R_succ*j_loc(d+1:end) ;
                 
                 % fill in rotation and translation cells
                 R{s_idx} = R_succ ;
@@ -671,8 +667,19 @@ classdef robot_arm_agent < multi_link_agent
             % arm uses its last state (the column vector A.state(:,end)) as
             % the initial guess.
             
+            % set up the initial config
+            if nargin < 3
+                q0 = A.state(:,end) ;
+            end
+            
             % create the least-squares function to solve for the config
-            error('ope')
+            J = J(:) ;
+            n = A.n_links_and_joints ;
+            d = A.dimension ;
+            lsq_fn = @(x) reshape(A.get_joint_locations(x),n*d,1) - J ;
+            
+            % run least squares
+            q = lsqnonlin(lsq_fn, q0) ;
         end
         
         %% dynamics

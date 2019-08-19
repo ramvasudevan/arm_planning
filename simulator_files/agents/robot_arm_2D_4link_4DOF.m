@@ -12,7 +12,7 @@ classdef robot_arm_2D_4link_4DOF < robot_arm_agent
 
             joint_locations = [+0.000 +0.075 +0.075 +0.075 ;
                                +0.050 +0.000 +0.000 +0.000 ;
-                               -0.075 -0.075 -0.075 +0.075 ;
+                               -0.075 -0.075 -0.075 -0.075 ;
                                 0.000 +0.000 +0.000 +0.000] ;
             
             joint_state_limits = [+0,  -pi, -pi, -pi ;
