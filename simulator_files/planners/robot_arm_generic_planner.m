@@ -30,6 +30,9 @@ classdef robot_arm_generic_planner < planner
             
             P@planner('HLP',HLP,varargin{:}) ;
             
+            P.HLP.make_new_tree_every_iteration_flag = 1 ;
+            P.HLP.sampling_timeout = P.t_plan ;
+            
             % check that t_stop is greater than t_move
             if P.t_stop <= P.t_move
                 t_stop_new = P.t_move + 1 ;

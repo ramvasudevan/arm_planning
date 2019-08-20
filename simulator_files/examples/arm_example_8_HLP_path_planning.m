@@ -9,11 +9,11 @@ clear ; clc ;
 
 %% user parameters
 % arm and world
-dimension = 2 ; % 2 or 3
+dimension = 3 ; % 2 or 3
 N_obstacles = 4 ;
 
 % high-level planner
-HLP_type = 'PRM' ; % choose 'PRM' or 'RRT'
+HLP_type = 'RRT' ; % choose 'PRM' or 'RRT'
 sampling_timeout = 0.1 ; % seconds to run sampling
 new_node_growth_distance = 0.5 ;
 

@@ -28,7 +28,13 @@ for i = 1:length(link.FRS)
     %   frs_k_ind_G_pos = [sum(abs(frs_k_ind_G_pos(1, :))), 0; 0, sum(abs(frs_k_ind_G_pos(2, :)))];
     
     frs_k_dep_G = frs_G(:, param_col);
-    frs_k_dep_G_pos = frs_G(position_dim, param_col);
+    
+    % rearrange frs_k_dep_G so that parameters occur in descending order
+    [row_k, col_k] = find(frs_k_dep_G(param_dim, :) ~= 0);
+    [~, Ik] = sort(row_k);
+    frs_k_dep_G = frs_k_dep_G(:, col_k(Ik));
+    
+    frs_k_dep_G_pos = frs_k_dep_G(position_dim, :);
     
     % buffer obstacle by k-independent generators
     buff_obstacle = obstacle + zonotope([zeros(length(position_dim),1), frs_k_ind_G_pos]);

@@ -23,7 +23,7 @@ A.LLC.K_d = 1*A.LLC.K_d;
 A.joint_input_limits = 1*A.joint_input_limits;
 
 
-W = arm_world_static('include_base_obstacle', 1, 'goal_radius', 0.001, 'N_obstacles',N_obstacles,'dimension',dimension,...
+W = arm_world_static('include_base_obstacle', 1, 'goal_radius', 0.005, 'N_obstacles',N_obstacles,'dimension',dimension,...
     'verbose',verbosity) ;
 
 P = robot_arm_generic_planner('verbose', verbosity, 't_plan', t_plan) ;

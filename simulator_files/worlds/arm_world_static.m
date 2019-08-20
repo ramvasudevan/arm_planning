@@ -6,6 +6,7 @@ classdef arm_world_static < world
         create_configuration_timeout = 1 ;
         create_obstacle_timeout =  1 ;
         min_dist_in_config_space_between_start_and_goal
+        floor_normal_axis = 3;
         
         % arm info
         arm_joint_state_limits
@@ -211,10 +212,25 @@ classdef arm_world_static < world
                     side_lengths = [W.bounds(2) - W.bounds(1), 0.05] ;
                     center = [0 ; -side_lengths(2)/2] ;
                 case 3
-                    side_lengths = [W.bounds(2) - W.bounds(1), ...
-                        W.bounds(4) - W.bounds(3),...
-                        0.05] ;
-                    center = [0 ; 0 ; -side_lengths(3)/2] ;
+                    switch W.floor_normal_axis
+                        case 1
+                            side_lengths = [0.05, ...
+                                W.bounds(4) - W.bounds(3), ...
+                                W.bounds(6) - W.bounds(5)] ;
+                            center = [-side_lengths(1)/2 ; 0 ; 0] ;
+                        case 2
+                            side_lengths = [W.bounds(2) - W.bounds(1), ...
+                                0.05, ...
+                                W.bounds(6) - W.bounds(5)] ;
+                            center = [0 ; -side_lengths(2)/2 ; 0] ;
+                        case 3
+                            side_lengths = [W.bounds(2) - W.bounds(1), ...
+                                W.bounds(4) - W.bounds(3),...
+                                0.05] ;
+                            center = [0 ; 0 ; -side_lengths(3)/2] ;
+                        otherwise
+                            error('floor axis not supported');
+                    end
             end
             
             O = box_obstacle_zonotope('center',center,...

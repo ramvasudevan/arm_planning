@@ -43,6 +43,9 @@ classdef robot_arm_sampling_based_HLP < high_level_planner
             HLP.vdisp('Filling in HLP''s arm properties',9)
             HLP = fill_in_arm_properties(HLP,agent_info,true) ;
             
+            % set the HLP's dimension
+            HLP.dimension = agent_info.dimension ;
+            
             % get the world goal
             HLP.vdisp('Setting goal',9)
             HLP.goal = world_info.goal ;
