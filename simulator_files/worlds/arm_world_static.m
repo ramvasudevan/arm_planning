@@ -7,6 +7,7 @@ classdef arm_world_static < world
         create_obstacle_timeout =  1 ;
         min_dist_in_config_space_between_start_and_goal
         floor_normal_axis = 3;
+        workspace_goal_check = 0;
         
         % arm info
         arm_joint_state_limits
@@ -190,10 +191,10 @@ classdef arm_world_static < world
         function O = create_random_obstacle(W)
             % create center
             B = W.bounds ;
-            center = [rand_range(B(1),B(2)) ; rand_range(B(3),B(4))] ;
+            center = [rand_range(B(1),B(2))/2 ; rand_range(B(3),B(4))/2] ;
             
             if W.dimension == 3
-                center = [center ; rand_range(B(5),B(6))] ;
+                center = [center ; rand_range(B(5),B(6))/2] ;
             end
             
             % create side lengths
@@ -281,10 +282,41 @@ classdef arm_world_static < world
         
         %% goal check
         function out = goal_check(W,agent_info)
-            z = agent_info.state(W.arm_joint_state_indices,:) ;
-            dz = min(abs(z - repmat(W.goal,1,size(z,2))),[],2) ;
-            dz_log = all(dz <= W.goal_radius) ;
-            out = all(dz_log) ;
+            
+            if ~W.workspace_goal_check
+                z = agent_info.state(W.arm_joint_state_indices,:) ;
+                dz = min(abs(z - repmat(W.goal,1,size(z,2))),[],2) ;
+                dz_log = all(dz <= W.goal_radius) ;
+                out = all(dz_log) ;
+            else
+                %%%PATRICK HACK FOR 1 LINK
+                %                 z_agent = agent_info.state(W.arm_joint_state_indices,end) ;
+                %                 z_goal = W.goal;
+                %                 x_agent = make_orientation(z_agent(1), 3)*make_orientation(z_agent(2), 2)*[0.33; 0; 0];
+                %                 x_goal = make_orientation(z_goal(1), 3)*make_orientation(z_goal(2), 2)*[0.33; 0; 0];
+                %                 dz = min(sqrt(sum((x_agent - x_goal).^2)));
+                %                 out = dz <= W.goal_radius;
+                
+                %%%PATRICK HACK FOR FETCH
+                z_agent = agent_info.state(W.arm_joint_state_indices,end) ;
+                z_goal = W.goal;
+%                 x_agent = make_orientation(z_agent(1), 3)*make_orientation(z_agent(2), 2)*[0.33; 0; 0];
+                
+                x_agent_1 = make_orientation(z_agent(1), 3)*make_orientation(z_agent(2), 2)*[0.33; 0; 0];
+                x_agent_2 = x_agent_1 + make_orientation(z_agent(1), 3)*make_orientation(z_agent(2), 2)*make_orientation(z_agent(3), 1)*make_orientation(z_agent(4), 2)*[0.33; 0; 0];
+                x_agent_3 = x_agent_2 + make_orientation(z_agent(1), 3)*make_orientation(z_agent(2), 2)*make_orientation(z_agent(3), 1)*make_orientation(z_agent(4), 2)*make_orientation(z_agent(5), 1)*make_orientation(z_agent(6), 2)*[0.33; 0; 0];
+                x_agent = [x_agent_1; x_agent_2; x_agent_3];
+                
+%                 x_goal = make_orientation(z_goal(1), 3)*make_orientation(z_goal(2), 2)*[0.33; 0; 0];
+                x_goal_1 = make_orientation(z_goal(1), 3)*make_orientation(z_goal(2), 2)*[0.33; 0; 0];
+                x_goal_2 = x_goal_1 + make_orientation(z_goal(1), 3)*make_orientation(z_goal(2), 2)*make_orientation(z_goal(3), 1)*make_orientation(z_goal(4), 2)*[0.33; 0; 0];
+                x_goal_3 = x_goal_2 + make_orientation(z_goal(1), 3)*make_orientation(z_goal(2), 2)*make_orientation(z_goal(3), 1)*make_orientation(z_goal(4), 2)*make_orientation(z_goal(5), 1)*make_orientation(z_goal(6), 2)*[0.33; 0; 0];
+                x_goal = [x_goal_1; x_goal_2; x_goal_3];
+                
+                dz = min(sqrt(sum((x_agent - x_goal).^2)));
+                out = dz <= W.goal_radius;
+            end
+            
         end
         
         %% plotting

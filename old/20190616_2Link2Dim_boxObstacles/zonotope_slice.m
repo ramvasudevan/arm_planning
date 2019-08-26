@@ -33,7 +33,7 @@ if size(slice_lambda, 2) > 1
     error('slice_lambda is not 1D');
 end
 if any(abs(slice_lambda) > 1)
-    error('Slice point is outside bounds of reach set, and therefore is not verified');
+    error('zonoRTD:slicePoint', 'Slice point is outside bounds of reach set, and therefore is not verified');
 end
 
 newG = G;

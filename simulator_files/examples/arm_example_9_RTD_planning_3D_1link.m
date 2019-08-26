@@ -7,18 +7,20 @@
 % Updated: 3 August 2019
 %
 % Updated: 19 August 2019 - moving RTD to 3D and using a 1 link model
-clear ; clc ; close all
+clear ; clc ; figure(1); clf; view(3);
 
 %% user parameters
-N_obstacles = 5 ;
+N_obstacles = 10 ;
 dimension = 3 ;
 nLinks = 1 ;
 verbosity = 6 ;
 allow_replan_errors = true ;
 t_plan = 0.5 ;
+time_discretization = 0.01 ;
+T = 1 ;
 floor_normal_axis = 1;
 
-A = robot_arm_3D_1link_2DOF_thin('verbose', verbosity, 'floor_normal_axis', floor_normal_axis);
+A = robot_arm_3D_1link_2DOF_thin('verbose', verbosity, 'floor_normal_axis', floor_normal_axis, 'animation_set_axes_flag', 0, 'animation_set_view_flag', 0);
 
 %% automated from here
 
@@ -28,16 +30,20 @@ A.LLC.K_i = 1*A.LLC.K_i;
 A.LLC.K_d = 1*A.LLC.K_d;
 A.joint_input_limits = 1*A.joint_input_limits;
 
-W = arm_world_static('floor_normal_axis', floor_normal_axis, 'include_base_obstacle', 1, 'goal_radius', 0.0025, 'N_obstacles',N_obstacles,'dimension',dimension,...
+W = arm_world_static('floor_normal_axis', floor_normal_axis, 'include_base_obstacle', 0, 'goal_radius', 0.1, 'N_obstacles',N_obstacles,'dimension',dimension,'workspace_goal_check', 1,...
     'verbose',verbosity) ;
 
 FRS_options = struct();
 FRS_options.position_dimensions = [1;2;3];
-FRS_options.extra_position_dimenisions = [4;5];
+FRS_options.extra_position_dimensions = [4;5];
 FRS_options.IC_dimensions = [6;7];
 FRS_options.param_dimensions = [8;9];
 FRS_options.nLinks = nLinks;
-P = robot_arm_RTD_planner_3D_fetch(FRS_options, 'verbose', verbosity, 't_plan', t_plan) ;
+FRS_options.time_discretization = 0.01;
+FRS_options.t_plan = t_plan;
+FRS_options.T = T;
+FRS_options.L = 0.33;
+P = robot_arm_RTD_planner_3D_1link(FRS_options, 'verbose', verbosity, 't_plan', t_plan, 'time_discretization', time_discretization) ;
 
 % set up world using arm
 I = A.get_agent_info ;

@@ -40,9 +40,10 @@ for i = 1:length(link.FRS)
     buff_obstacle = obstacle + zonotope([zeros(length(position_dim),1), frs_k_ind_G_pos]);
     
     % use mptPoly to get H-rep of obstacle
-    obs_poly = mptPolytope(buff_obstacle - frs_c(position_dim));
-    A_poly = get(obs_poly, 'A');
-    b_poly = get(obs_poly, 'b');
+%     obs_poly = mptPolytope_PH(buff_obstacle - frs_c(position_dim));
+    [A_poly, b_poly] = polytope_PH(buff_obstacle - frs_c(position_dim));
+%     A_poly = get(obs_poly, 'A');
+%     b_poly = get(obs_poly, 'b');
     
     % get hyperplanes defining polytope of unsafe k
     my_k_unsafe_A = zeros(size(A_poly, 1), nParams);

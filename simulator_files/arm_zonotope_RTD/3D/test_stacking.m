@@ -131,7 +131,7 @@ disp(['If this number is less than 1, then all traj points contained in zonotope
 
 %% now, try to do IK that solves for fetch generalized coordinates that produce the desired joint location trajectories
 
-Q = get_fetch_q_from_traj(X);
+Q = get_fetch_q_from_traj(X, q_0);
 checkX = zeros(9, size(Q, 2));
 % check that the FK of Q lines up with X
 for i = 1:size(Q, 2)
