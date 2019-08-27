@@ -32,8 +32,8 @@ J1 = jacobian(X1, [q1;q2]);
 J2 = jacobian(X2, [q3;q4]);
 J3 = jacobian(X3, [q5;q6]);
 
-matlabFunction(X1, J1, 'File', 'joint1_IK', 'Outputs', {'E', 'J'}, 'Vars', {[x1;y1;z1], [q1;q2]});
-matlabFunction(X2, J1, 'File', 'joint2_IK', 'Outputs', {'E', 'J'}, 'Vars', {[x2;y2;z2], [q1;q2], [q3;q4]});
-matlabFunction(X3, J1, 'File', 'joint3_IK', 'Outputs', {'E', 'J'}, 'Vars', {[x3;y3;z3], [q1;q2;q3;q4], [q5;q6]});
+% matlabFunction(X1, J1, 'File', 'joint1_IK', 'Outputs', {'E', 'J'}, 'Vars', {[x1;y1;z1], [q1;q2]});
+% matlabFunction(X2, J1, 'File', 'joint2_IK', 'Outputs', {'E', 'J'}, 'Vars', {[x2;y2;z2], [q1;q2], [q3;q4]});
+% matlabFunction(X3, J1, 'File', 'joint3_IK', 'Outputs', {'E', 'J'}, 'Vars', {[x3;y3;z3], [q1;q2;q3;q4], [q5;q6]});
 
 

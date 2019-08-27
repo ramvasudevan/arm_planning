@@ -1,4 +1,4 @@
-function [PA, Pb] = polytope(Z, varargin)
+function [PA, Pb] = polytope_PH(Z, varargin)
 % polytope - Converts a zonotope from a G- to a H-representation
 %
 % This function is implemented based on Theorem 7 of
@@ -57,18 +57,22 @@ end
 %obtain number of generators, dimensions
 %Z=deleteAligned(Z);
 % Z=deleteZeros(Z);
-c=Z.Z(:,1);
-G=Z.Z(:,2:end);
+% c=Z.Z(:,1);
+% G=Z.Z(:,2:end);
+c = Z(:, 1);
+G = Z(:, 2:end);
 G(:, ~any(G)) = [];
 [dim,nrOfGenerators]=size(G);
 
 if dim > 1
     %get number of possible facets
-    comb=combinator(nrOfGenerators,dim-1,'c');
-%     comb2 = [];
-%     for i = 1:nrOfGenerators - 1
-%         comb2 = [comb2; i*ones(nrOfGenerators - i, 1), (i+1:nrOfGenerators)'];
-%     end
+%     comb=combinator(nrOfGenerators,dim-1,'c');
+
+    if nrOfGenerators > options.maxcombs
+        comb=combinator(nrOfGenerators,dim-1,'c');
+    else
+        comb = options.combs{nrOfGenerators};
+    end
 
     %build C matrices
     C=[];
@@ -95,10 +99,13 @@ end
 
 %build d vector
 %determine delta d
-deltaD=zeros(length(C(:,1)),1);
-for iGen=1:nrOfGenerators
-    deltaD=deltaD+abs(C*G(:,iGen));
-end
+
+% deltaD=zeros(length(C(:,1)),1);
+% for iGen=1:nrOfGenerators
+%     deltaD=deltaD+abs(C*G(:,iGen));
+% end
+
+deltaD = sum(abs((C*G)'))';
 
 %compute dPos, dNeg
 dPos=C*c+deltaD;

@@ -41,7 +41,7 @@ for i = 1:options.nLinks
     
     [~, closest_idx] = min(abs(phi_dot_0(i) - c_IC(1, :)));
     filename = sprintf('FRS_3D/arm_FRS_%0.3f_0.000.mat', c_IC(1, closest_idx));
-    file{i} = load(filename);
+    file{i} = load(filename, 'Rcont', 'RcontEE', 'options');
     Rcont{i} = file{i}.Rcont;
     RcontEE{i} = file{i}.RcontEE;
 end

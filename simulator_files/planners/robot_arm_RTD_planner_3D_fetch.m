@@ -18,6 +18,7 @@ classdef robot_arm_RTD_planner_3D_fetch < robot_arm_generic_planner
         
         iter = 0;
         first_iter_pause = 1;
+       
     end
     methods
         %% constructor
@@ -30,6 +31,8 @@ classdef robot_arm_RTD_planner_3D_fetch < robot_arm_generic_planner
             P@robot_arm_generic_planner('lookahead_distance', lookahead_distance, 't_move', t_move, 'HLP', HLP, ...
                 varargin{2:end}) ;
             P.FRS_options = varargin{1};
+            P.FRS_options.combs = generate_combinations_upto(200);
+            P.FRS_options.maxcombs = 200;
         end
         
         %% replan
@@ -124,6 +127,7 @@ classdef robot_arm_RTD_planner_3D_fetch < robot_arm_generic_planner
 %                 Z = P.generate_trajectory(T, q_0, q_dot_0, k_opt);
                 X = generate_trajectory_from_k(P.R, P.phi_dot_0, k_opt, P.FRS_options);
                 Q = get_fetch_q_from_traj(X, q_0);
+%                 Q = zeros(6, length(T));
                 Q_dot = (diff(Q')./P.time_discretization)';
                 Q_dot(:, end+1) = Q_dot(:, end);
                 
@@ -249,7 +253,8 @@ classdef robot_arm_RTD_planner_3D_fetch < robot_arm_generic_planner
             
             initial_guess = (lb + ub)/2;
            
-            [k_opt, ~, exitflag, ~] = fmincon(cost_func, initial_guess, [], [], [], [], lb, ub, constraint_func) ;
+            options = optimoptions('fmincon','SpecifyConstraintGradient',true);
+            [k_opt, ~, exitflag, ~] = fmincon(cost_func, initial_guess, [], [], [], [], lb, ub, constraint_func, options) ;
             
             if exitflag <= 0
                 error('planner:trajOpt', 'Solver did not converge.');
@@ -280,25 +285,39 @@ classdef robot_arm_RTD_planner_3D_fetch < robot_arm_generic_planner
             cost = sum((x_plan - x_des).^2);
         end
         
-        function [c, ceq] = eval_constraint(P, k_opt, k_unsafe_A, k_unsafe_b)
+        function [c, ceq, gradc, gradceq] = eval_constraint(P, k_opt, k_unsafe_A, k_unsafe_b)
             epsilon = 1e-3;
             ceq = [];
+            gradceq = [];
             
-            c_unsafe = [];
-            %% Obstacle constraint checking:
+            c = [];
+            gradc = [];
+            %% Obstacle constraint generation:
             for i = 1:length(k_unsafe_A) % for each link
                 for j = 1:length(k_unsafe_A{i}) % for each obstacle
-                    for k = 1:length(k_unsafe_A{i}{j}) % for each time step
-                        if ~isempty(k_unsafe_A{i}{j}{k})
-                            myc = k_unsafe_A{i}{j}{k}*k_opt - k_unsafe_b{i}{j}{k};
-                            myc = -(max(myc) - epsilon);
-                            c_unsafe = [c_unsafe; myc];
+                    idx = find(~cellfun('isempty', k_unsafe_A{i}{j}));
+%                     for k = 1:length(k_unsafe_A{i}{j}) % for each time step
+                    for k = 1:length(idx)
+                        c_obs = k_unsafe_A{i}{j}{idx(k)}*k_opt - k_unsafe_b{i}{j}{idx(k)};
+                        c_obs_max = max(c_obs);
+                        c_k = -(c_obs_max - epsilon);
+                        c = [c; c_k];
+                        
+                        % specify gradients
+                        if nargout > 2
+                            maxidx = find(c_obs == c_obs_max);
+                            if length(maxidx) > 1
+%                                 disp('ahhh');
+                                tempgradc = k_unsafe_A{i}{j}{idx(k)}(maxidx, :);
+                                gradc = [gradc, -max(tempgradc)'];
+                            else
+                                gradc = [gradc, -k_unsafe_A{i}{j}{idx(k)}(maxidx, :)'];
+                            end
                         end
                     end
                 end
             end
             
-            c = [c_unsafe];
         end
         
         function [x_plan] = compute_x_plan(P, q_0, q_dot_0, k)

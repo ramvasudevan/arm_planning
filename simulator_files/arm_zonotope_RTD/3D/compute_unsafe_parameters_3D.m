@@ -53,9 +53,11 @@ for i = 1:nLinks
     k_unsafe_A{i} = cell(nObs, 1);
     k_unsafe_b{i} = cell(nObs, 1);
     for j = 1:nObs
-        obsZ = obstacles{j}.zono;
-        obsZ = obsZ + zonotope([[0;0;0], options.buffer_dist/2*eye(3)]);
-        [k_unsafe_A{i}{j}, k_unsafe_b{i}{j}] = get_parameter_constraints(links{i}, k_lim{i}, obsZ);
+%         obsZ = obstacles{j}.zono;
+%         obsZ = obsZ + zonotope([[0;0;0], options.buffer_dist/2*eye(3)]);
+
+        obsZ = [obstacles{j}.Z, options.buffer_dist/2*eye(3)];
+        [k_unsafe_A{i}{j}, k_unsafe_b{i}{j}] = get_parameter_constraints(links{i}, k_lim{i}, obsZ, options);
         %%% MALICIOUS HACK DISCARD GROUND OBSTACLE FOR FIRST LINK
 %         if i == 1 && j == 1
 %             k_unsafe_A{i}{j} = [];

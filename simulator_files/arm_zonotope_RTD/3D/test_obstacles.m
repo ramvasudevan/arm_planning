@@ -31,6 +31,7 @@ options.timeStep = 0.01;
 options.t_stop = 1;
 options.t_plan = 0.5;
 options.L = 0.33; % in meters
+options.buffer_dist = 0;
 
 plot3(0,0,0,'k.', 'MarkerSize', 50);
 
