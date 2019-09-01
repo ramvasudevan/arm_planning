@@ -1,4 +1,29 @@
 classdef robot_arm_straight_line_HLP < high_level_planner
+    %% properties
+    properties
+        make_new_tree_every_iteration_flag = false ;
+        % arm
+        arm_n_states
+        arm_n_inputs
+        arm_n_links_and_joints
+        arm_joint_state_limits
+        arm_joint_speed_limits
+        arm_joint_input_limits
+        arm_joint_state_indices
+        arm_joint_speed_indices
+        
+        % samples
+        nodes
+        adjacency_matrix
+        n_nodes
+        n_nodes_max = 20000 ;
+        all_node_idxs ;
+        sampling_timeout = 0.1 ; % seconds per planning iteration
+        
+        % path
+        best_path_nodes
+        best_path_node_idxs
+    end
     methods
         %%  constructor
         function HLP = robot_arm_straight_line_HLP(varargin)

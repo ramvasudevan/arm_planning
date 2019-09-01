@@ -95,6 +95,12 @@ classdef robot_arm_agent < multi_link_agent
         link_plot_edge_color = [0 0 1] ;
         link_plot_edge_opacity = 1.0 ;
         link_plot_edge_width = 1.25 ;
+        
+        % floor orientation
+        floor_normal_axis = 3 ;
+        
+        % buffer distance for obstacles
+        buffer_dist = 0;
     end
     
     methods
@@ -589,6 +595,7 @@ classdef robot_arm_agent < multi_link_agent
             agent_info.collision_check_patch_data = A.collision_check_patch_data ;
             agent_info.get_link_rotations_and_translations = @(t_or_q) A.get_link_rotations_and_translations(t_or_q) ;
             agent_info.reach_limits = A.get_axis_lims() ;
+            agent_info.buffer_dist = A.buffer_dist ;
         end
         
         %% get collision check volume
@@ -986,7 +993,14 @@ classdef robot_arm_agent < multi_link_agent
                 case 2
                     lims = [-L,L,0,L] ;
                 case 3
-                    lims = [-L,L,-L,L,0,L] ;
+                    switch A.floor_normal_axis
+                        case 1
+                            lims = [-L, L, -L, L, -L, L] ;
+                        case 2
+                            lims = [-L, L, 0, L, -L, L] ;
+                        case 3
+                            lims = [-L,L,-L,L,0,L] ;
+                    end
             end
         end
     end

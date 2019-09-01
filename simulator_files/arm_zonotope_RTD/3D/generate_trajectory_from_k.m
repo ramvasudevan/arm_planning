@@ -15,23 +15,23 @@ theta_dot_0 = zeros(size(phi_dot_0)); % assume no velocity in theta to start
 % k1(i) is the peak angular velocity about the "z" axis specified by R
 % k2(i) is the peak angular velocity about a body fixed "y" axis
 
-% t_to_peak = 0+options.timeStep/2:options.timeStep:options.tPlan;
-% t_to_stop = options.tPlan + options.timeStep/2:options.timeStep:options.T;
+% t_to_peak = 0+options.time_discretization/2:options.time_discretization:options.t_plan;
+% t_to_stop = options.t_plan + options.time_discretization/2:options.time_discretization:options.T;
 
-t_to_peak = 0:options.timeStep:options.tPlan;
-t_to_stop = options.tPlan:options.timeStep:options.T;
+t_to_peak = 0:options.time_discretization:options.t_plan;
+t_to_stop = options.t_plan:options.time_discretization:options.T;
 
 % t_all = [t_to_peak, t_to_stop];
 
-% phi_ddot_to_peak = ((k1 - phi_dot_0)/options.tPlan);
-% phi_ddot_to_stop = ((0 - k1)/(options.T - options.tPlan));
-% theta_ddot_to_peak = ((k2 - theta_dot_0)/options.tPlan);
-% theta_ddot_to_stop = ((0 - k2)/(options.T - options.tPlan));
+% phi_ddot_to_peak = ((k1 - phi_dot_0)/options.t_plan);
+% phi_ddot_to_stop = ((0 - k1)/(options.T - options.t_plan));
+% theta_ddot_to_peak = ((k2 - theta_dot_0)/options.t_plan);
+% theta_ddot_to_stop = ((0 - k2)/(options.T - options.t_plan));
 % 
 % phi_to_peak = 0 + phi_dot_0.*t_to_peak + 1/2*phi_ddot_to_peak.*t_to_peak.^2;
-% phi_to_stop = phi_to_peak(:, end) + k1.*(t_to_stop - options.tPlan) + 1/2*phi_ddot_to_stop.*(t_to_stop - options.tPlan).^2;
+% phi_to_stop = phi_to_peak(:, end) + k1.*(t_to_stop - options.t_plan) + 1/2*phi_ddot_to_stop.*(t_to_stop - options.t_plan).^2;
 % theta_to_peak = 0 + theta_dot_0*t_to_peak + 1/2*theta_ddot_to_peak.*t_to_peak.^2;
-% theta_to_stop = theta_to_peak(:, end) + k2.*(t_to_stop - options.tPlan) + 1/2*theta_ddot_to_stop.*(t_to_stop - options.tPlan).^2;
+% theta_to_stop = theta_to_peak(:, end) + k2.*(t_to_stop - options.t_plan) + 1/2*theta_ddot_to_stop.*(t_to_stop - options.t_plan).^2;
 % 
 % phi = [phi_to_peak, phi_to_stop];  % angle about "z" axis
 % theta = [theta_to_peak, theta_to_stop];  % angle about body fixed "y"
