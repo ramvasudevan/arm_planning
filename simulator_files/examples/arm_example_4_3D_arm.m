@@ -3,6 +3,7 @@
 %
 % Author: Shreyas Kousik
 % Created: 22 Jul 2019
+% Updated: 21 Aug 2019
 %
 clear ; clf ; clc ;
 
@@ -18,7 +19,9 @@ t_total = 2 ;
 
 %% automated from here
 % create arm
-A = robot_arm_3D_2link_4DOF() ;
+A = robot_arm_3D_2link_4DOF('verbose',10) ;
+A.integrator_time_discretization = 0.005 ;
+A.use_robotics_toolbox_model_for_dynamics_flag = true ;
 
 %% create reference trajectory and input
 % reference time and input:
@@ -39,7 +42,9 @@ Z(A.joint_speed_indices,1) = reference_speed ;
 
 %% move the agent
 A.reset() ;
+tic
 A.move(t_move, T, U, Z)
+toc
 
 %% plot states vs. reference
 figure(1) ; clf ;
@@ -64,5 +69,5 @@ xlabel('time')
 ylabel('rad/s')
 
 %% animate result
-figure(2) ; clf ; pause(0.01) ;
+figure(2) ; clf ; pause(0.1) ;
 A.animate()

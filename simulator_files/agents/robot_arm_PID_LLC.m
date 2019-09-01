@@ -75,11 +75,19 @@ classdef robot_arm_PID_LLC < robot_arm_LLC
                 z_ref = z_cur ;
             end
             
+            
             % compute control input
             pd_error = z_cur - z_ref ;
             i_error = LLC.position_error_state ;
             u = LLC.K_ff*u_ref - LLC.K_p*pd_error + ...
                 - LLC.K_d*pd_error - LLC.K_i*i_error ;
+            
+            
+            % add gravity compensation
+            if LLC.arm_use_robotics_toolbox_model_for_dynamics_flag
+                q = z_cur(LLC.arm_joint_state_indices) ;
+                u = u + A.robotics_toolbox_model.gravityTorque(q) ;
+            end
             
             % update integrator error
             LLC.position_error_state = i_error + pd_error(LLC.arm_joint_state_indices) ;

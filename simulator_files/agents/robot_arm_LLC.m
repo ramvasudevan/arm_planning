@@ -5,6 +5,7 @@ classdef robot_arm_LLC < low_level_controller
         arm_n_links_and_joints
         arm_joint_state_indices
         arm_joint_speed_indices
+        arm_use_robotics_toolbox_model_for_dynamics_flag
     end
     
     methods

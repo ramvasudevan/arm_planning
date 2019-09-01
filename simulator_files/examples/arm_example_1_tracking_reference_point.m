@@ -15,7 +15,7 @@ t_move = 4 ;
 t_total = 4 ;
 
 %% AUTOMATED FROM HERE %%
-A = robot_arm_2D_2link_2DOF() ;
+A = robot_arm_2D_2link_2DOF('verbose',10) ;
 
 %% create reference trajectory
 % reference time and input:

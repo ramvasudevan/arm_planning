@@ -23,6 +23,10 @@ classdef robot_arm_agent < multi_link_agent
         % the links all have 1 kg mass by default
         link_masses
         
+        % for a 3-D arm, each link has a 3-by-3 inertia matrix stored in a
+        % 1-by-n_links_and_joints cell array
+        link_inertia_matrices
+        
         %% joints
         % note that each link can only be associated with one joint
         % preceding it in the current forward kinematics formulation
@@ -71,22 +75,11 @@ classdef robot_arm_agent < multi_link_agent
         % amount of time to execute a stopping maneuver
         t_stop = 0.5 ;
         
-        %% forward kinematics
-        % these properties will be filled in with symbolic functions
-        
-        % return the position of the end effector as a location in
-        % workspace (either 2-D or 3-D), given an input configuration; this
-        % should output a vector of length A.dimension
-        forward_kinematics_end_effector
-        
-        % return the location of each joint and the end effector as
-        % locations in workspace, given an input configuration; this should
-        % output a vector of length A.n_links_and_joints * A.dimension
-        forward_kinematics_joint_locations
-        
-        % the jacobian with respect to the arm's DOFs of the joint location
-        % forward kinematics function above
-        forward_kinematics_joint_locations_jacobian
+        %% robotics toolbox model
+        % the agent file will autogenerate a robotics toolbox robot model
+        % that can be used for the forward dynamics
+        robotics_toolbox_model
+        use_robotics_toolbox_model_for_dynamics_flag = false ;
         
         %% miscellaneous
         % integration
@@ -152,6 +145,71 @@ classdef robot_arm_agent < multi_link_agent
             A.create_collision_check_patch_data() ;
         end
         
+        function create_robotics_toolbox_model(A)
+            robot = robotics.RigidBodyTree;
+            J = A.joint_locations ;
+            J_lims = A.joint_state_limits ;
+            
+            if A.dimension == 2
+                J = [J(1:2,:) ; zeros(1,A.n_links_and_joints) ;
+                     J(3:4,:) ; zeros(1,A.n_links_and_joints) ] ;
+            end
+            
+            n = A.n_links_and_joints ;
+            for idx = 1:n
+                % make link
+                new_link_name = ['link_',num2str(idx)] ;
+                new_link = robotics.RigidBody(new_link_name);
+                new_link.Mass = A.link_masses(idx) ;
+                new_link.Inertia = [diag(A.link_inertia_matrices{idx})', zeros(1,3)] ;
+                
+                % make joint
+                new_joint_name = ['joint_',num2str(idx)] ;
+                new_joint = robotics.Joint(new_joint_name,'revolute') ;
+                new_joint.HomePosition = 0 ;
+                new_joint.JointAxis = A.joint_axes(:,idx) ;
+                new_joint.PositionLimits = J_lims(:,idx)' ;
+                
+                % set joint location on predecessor link
+                switch idx
+                    case 1
+                        joint_location = J(1:3,idx)' ;
+                    otherwise
+                        joint_location = J(1:3,idx)' - J(4:6,idx-1)' ;
+                end
+                tform_1 = trvec2tform(joint_location) ;
+                setFixedTransform(new_joint,tform_1) ;
+                new_link.Joint = new_joint ;
+                
+                % add link to robot body
+                switch idx
+                    case 1
+                        parent_name = 'base' ;
+                    otherwise
+                        parent_name = ['link_',num2str(idx-1)] ;
+                end
+                addBody(robot,new_link,parent_name)
+            end
+            
+            % add end effector
+            ee = robotics.RigidBody('end_effector') ;
+            ee.Mass = 0 ;
+            ee.Inertia = zeros(1,6) ;
+            tform_ee = trvec2tform([A.link_sizes(1,end), 0, 0]) ;
+            setFixedTransform(ee.Joint,tform_ee) ;
+            addBody(robot,ee,['link_',num2str(n)])
+            
+            % set gravity vector
+            robot.Gravity = 9.81.*A.gravity_direction ;
+            
+            % set data format to match the simulator
+            robot.DataFormat = 'column' ;
+            
+            % update agent
+            A.robotics_toolbox_model = robot ;
+        end
+        
+        %% property check
         function check_and_fix_properties(A)
             % A.check_and_fix_properties()
             %
@@ -237,6 +295,39 @@ classdef robot_arm_agent < multi_link_agent
                 A.link_masses = ones(1,N) ;
             end
             
+            % check link inertia matrices
+            % see: en.wikipedia.org/wiki/List_of_moments_of_inertia
+            if isempty(A.link_inertia_matrices)
+                A.vdisp('Creating link inertia matrices!',6)
+                
+                J_cell = cell(1,N) ;
+                
+                for idx = 1:N
+                    m = A.link_masses(idx) ;
+                    l = A.link_sizes(:,idx) ;                    
+                    switch A.link_shapes{idx}
+                        case {'box', 'oval'}
+                            % treat things as thin boxes in 2-D
+                            I_x = 0 ;
+                            I_y = 0 ;
+                            I_z = (1/12)*m*sum(l.^2) ;                            
+                        case 'cuboid'
+                            I_x = (1/12)*m*((l(2)+l(3)).^2) ;
+                            I_y = (1/12)*m*((l(1)+l(3)).^2) ;
+                            I_z = (1/12)*m*((l(1)+l(2)).^2) ;                            
+                        case 'ellipsoid'
+                            l = l./2 ;
+                            I_x = (1/5)*m*((l(2)+l(3)).^2) ;
+                            I_y = (1/5)*m*((l(1)+l(3)).^2) ;
+                            I_z = (1/5)*m*((l(1)+l(2)).^2) ;                            
+                        otherwise
+                            error([A.link_shapes{idx}, 'is an unsupported link shape!'])
+                    end
+                    J_cell{idx} = diag([I_x, I_y, I_z]) ;                    
+                end                
+                A.link_inertia_matrices = J_cell ;
+            end
+            
             %% joints
             A.vdisp('Checking joints',5)
             
@@ -287,6 +378,48 @@ classdef robot_arm_agent < multi_link_agent
                 end
             end
             
+            %% robotics toolbox model
+            if isempty(A.robotics_toolbox_model)
+                A.vdisp('Making Robotics Toolbox model',5)
+                A.create_robotics_toolbox_model() ;
+            end
+        end
+        
+        %% random state generation
+        function varargout = create_random_state(A)
+            % [z,u] = A.create_random_state()
+            % [q,qd,u] = A.create_random_state()
+            %
+            % Create a random state z and random input u, given the arm's
+            % state, speed, and input limits. If three output args are
+            % specified, then return the config q, joint speeds qd, and
+            % input u.
+            
+            % set any joint limits that are +Inf to pi and -Inf to -pi
+            state_lims = A.joint_state_limits ;
+            joint_limit_infs = isinf(state_lims) ;
+            state_lims(1,joint_limit_infs(1,:)) = -pi ;
+            state_lims(2,joint_limit_infs(2,:)) = +pi ;
+            
+            % make random state
+            q = rand_range(state_lims(1,:),state_lims(2,:))' ;
+            qd = rand_range(A.joint_speed_limits(1,:),A.joint_speed_limits(2,:))' ;
+            
+            % make random input
+            u = rand_range(A.joint_input_limits(1,:),A.joint_input_limits(2,:))' ;
+            
+            switch nargout
+                case 1
+                    varargout = {q} ;
+                case 2                    
+                    z = nan(A.n_states,1) ;
+                    z(A.joint_state_indices) = q ;
+                    z(A.joint_speed_indices) = qd ;
+                    
+                    varargout = {z, u} ;
+                case 3
+                    varargout = {q, qd, u} ;
+            end
         end
         
         %% plot data
@@ -403,16 +536,27 @@ classdef robot_arm_agent < multi_link_agent
         end
         
         %% reset
-        function reset(A,state)
+        function reset(A,state,joint_speeds)
             
             A.vdisp('Resetting states',3) ;
             
+            % reset to zero by default
             A.state = zeros(A.n_states,1) ;
             
             if nargin > 1
                 if length(state) == A.n_links_and_joints
+                    % fill in joint positions if they are provided
+                    A.vdisp('Using provided joint positions',6)
                     A.state(A.joint_state_indices) = state ;
+                    
+                    if nargin > 2
+                        % fill in joint speeds if they are provided
+                        A.vdisp('Using provided joint speeds',6)
+                        A.state(A.joint_speed_indices) = joint_speeds ;
+                    end
                 elseif length(state) == A.n_states
+                    % fill in full position and speed state if provided
+                    A.vdisp('Using provided full state',6)
                     A.state = state ;
                 else
                     error('Input has incorrect number of states!')
@@ -440,7 +584,7 @@ classdef robot_arm_agent < multi_link_agent
             agent_info.joint_state_limits = A.joint_state_limits ;
             agent_info.joint_speed_limits = A.joint_speed_limits ;
             agent_info.joint_input_limits = A.joint_input_limits ;
-            agent_info.get_collision_check_volume = @(q) A.get_collision_check_volume(q) ;
+            agent_info.get_collision_check_volume = @(q) A.collision_check_volume(q) ;
             agent_info.get_joint_locations = @(q) A.get_joint_locations(q) ;
             agent_info.collision_check_patch_data = A.collision_check_patch_data ;
             agent_info.get_link_rotations_and_translations = @(t_or_q) A.get_link_rotations_and_translations(t_or_q) ;
@@ -615,14 +759,15 @@ classdef robot_arm_agent < multi_link_agent
                             % rotation matrix of current link
                             R_succ = rotation_matrix_2D(j_idx)*R_pred ;
                         end
+                        
+                        % create translation
+                        T_succ = T_pred + R_pred*j_loc(1:d) - R_succ*j_loc(d+1:end) ;
                     case 'prismatic'
-                        error('Prismatic joints are not supported yet!')
+                        % R_succ = R_pred ;
+                        error('Prismatic joints are not yet supported!')
                     otherwise
                         error('Invalid joint type!')
                 end
-                
-                % create translation
-                T_succ = T_pred + R_pred*j_loc(1:d) - R_succ*j_loc(d+1:end) ;
                 
                 % fill in rotation and translation cells
                 R{s_idx} = R_succ ;
@@ -650,6 +795,16 @@ classdef robot_arm_agent < multi_link_agent
             % and translation arrays R and T, and the joint locations J.
             
             [R,T,J] = A.get_link_rotations_and_translations(time_or_config) ;
+        end
+        
+        function ee_pos = forward_kinematics_end_effector(A,time_or_config)
+            % ee_pos = forward_kinematics_end_effector(A,time_or_config)
+            %
+            % Return the position of the end effector as a location in
+            % workspace (either 2-D or 3-D), given an input configuration;
+            % the output is a vector of length A.dimension.
+            [~,~,J] = A.get_link_rotations_and_translations(time_or_config) ;
+            ee_pos = J(:,end) ;
         end
         
         %% inverse kinematics
@@ -687,20 +842,29 @@ classdef robot_arm_agent < multi_link_agent
             % get desired torques and bound them
             u = A.LLC.get_control_inputs(A,t,z,T,U,Z) ;
             
-            for idx = 1:length(u)
-                u(idx) = bound_values(u(idx), A.joint_input_limits(:,idx)')  ;
-            end
+            u = bound_array_elementwise(u,...
+                A.joint_input_limits(1,:)',A.joint_input_limits(2,:)') ;
             
-            % get the current speeds and bound them
-            s = z(A.joint_speed_indices) ;
-            for idx = 1:length(s)
-                s(idx) = bound_values(s(idx), A.joint_speed_limits(:,idx)') ;
+            % get joint speeds
+            qd = z(A.joint_speed_indices) ;
+            qd = bound_array_elementwise(qd,...
+                A.joint_speed_limits(1,:)',A.joint_speed_limits(2,:)') ;
+            
+            % preallocate dynamics
+            zd = zeros(A.n_states,1) ;
+            
+            if A.use_robotics_toolbox_model_for_dynamics_flag
+                % get joint accelerations
+                q = z(A.joint_state_indices) ;
+                qdd = A.robotics_toolbox_model.forwardDynamics(q,qd,u) ;
+            else
+                % assume the inputs are the joint accelerations
+                qdd = u(:) ;
             end
             
             % compute dynamics
-            zd = zeros(A.n_states,1) ;
-            zd(A.joint_state_indices) = s(:) ;
-            zd(A.joint_speed_indices) = u(:) ;
+            zd(A.joint_state_indices) = qd(:) ;
+            zd(A.joint_speed_indices) = qdd(:) ;
         end
         
         %% integrator
