@@ -590,7 +590,7 @@ classdef robot_arm_agent < multi_link_agent
             agent_info.joint_state_limits = A.joint_state_limits ;
             agent_info.joint_speed_limits = A.joint_speed_limits ;
             agent_info.joint_input_limits = A.joint_input_limits ;
-            agent_info.get_collision_check_volume = @(q) A.collision_check_volume(q) ;
+            agent_info.get_collision_check_volume = @(q) A.get_collision_check_volume(q) ;
             agent_info.get_joint_locations = @(q) A.get_joint_locations(q) ;
             agent_info.collision_check_patch_data = A.collision_check_patch_data ;
             agent_info.get_link_rotations_and_translations = @(t_or_q) A.get_link_rotations_and_translations(t_or_q) ;

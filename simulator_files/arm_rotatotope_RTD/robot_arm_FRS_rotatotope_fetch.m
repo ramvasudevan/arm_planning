@@ -31,7 +31,7 @@ classdef robot_arm_FRS_rotatotope_fetch
     end
     
     methods
-        function obj = robot_arm_FRS_rotatotope_fetch(q, q_dot)
+        function obj = robot_arm_FRS_rotatotope_fetch(q, q_dot, FRS_options)
             %robot_arm_FRS_rotatotope_fetch constructs an FRS for the full arm
             % based on rotatotopes. this class is specific to the Fetch,
             % and will create an FRS using default link lengths and
@@ -46,8 +46,14 @@ classdef robot_arm_FRS_rotatotope_fetch
             obj.FRS_key = FRSkeytmp.c_IC;
             
             obj = obj.create_FRS();
-            obj.FRS_options.combs = generate_combinations_upto(200);
-            obj.FRS_options.maxcombs = 200;
+            
+            if ~exist('FRS_options', 'var')
+                obj.FRS_options.combs = generate_combinations_upto(200);
+                obj.FRS_options.maxcombs = 200;
+                obj.FRS_options.buffer_dist = 0;
+            else
+                obj.FRS_options = FRS_options;
+            end
             
             % all rotatotopes defined for same parameter set:
             obj.c_k = obj.link_rotatotopes{end}{end}.c_k;

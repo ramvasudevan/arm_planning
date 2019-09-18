@@ -395,7 +395,12 @@ classdef rotatotope
            
            frs_k_dep_G = obj.Rg(:, kc_col);
            
-           buff_obstacle = [obstacle(:, 1) - obj.Rc, obstacle(:, 2:end), frs_k_ind_G];
+           % buffer the obstacle by k-independent generators, as well as
+           % buffer_dist specified by planner:
+           buff_obstacle_c = [obstacle(:, 1) - obj.Rc];
+           buff_obstacle_G = [obstacle(:, 2:end), frs_k_ind_G, options.buffer_dist/2*eye(3)];
+           buff_obstacle_G(:, ~any(buff_obstacle_G)) = []; % delete zero columns of G
+           buff_obstacle = [buff_obstacle_c, buff_obstacle_G];
            
            [A_poly, b_poly] = polytope_PH(buff_obstacle, options);
            
