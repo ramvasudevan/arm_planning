@@ -1,4 +1,4 @@
-function [PA, Pb] = polytope_PH(Z, varargin)
+function [PA, Pb] = polytope_PH(Z, options)
 % polytope - Converts a zonotope from a G- to a H-representation
 %
 % This function is implemented based on Theorem 7 of
@@ -48,11 +48,11 @@ function [PA, Pb] = polytope_PH(Z, varargin)
 
 %------------- BEGIN CODE --------------
 
-if nargin == 1
-    options.polytopeType = 'mpt';
-elseif nargin == 2
-    options = varargin{1};
-end
+% if nargin == 1
+%     options.polytopeType = 'mpt';
+% elseif nargin == 2
+%     options = varargin{1};
+% end
 
 %obtain number of generators, dimensions
 %Z=deleteAligned(Z);
@@ -108,8 +108,9 @@ end
 deltaD = sum(abs((C*G)'))';
 
 %compute dPos, dNeg
-dPos=C*c+deltaD;
-dNeg=-C*c+deltaD;
+d = C*c;
+% dPos=C*c+deltaD;
+% dNeg=-C*c+deltaD;
 
 %convert to mpt or ppl Polytope
 % if isfield(options,'polytopeType') && strcmp(options.polytopeType,'ppl')
@@ -119,6 +120,7 @@ dNeg=-C*c+deltaD;
 % end
 
 PA = [C; -C];
-Pb = [dPos; dNeg];
+% Pb = [dPos; dNeg];
+Pb = [d+deltaD; -d+deltaD];
 
 %------------- END OF CODE --------------

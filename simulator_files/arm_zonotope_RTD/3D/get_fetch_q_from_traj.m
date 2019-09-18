@@ -16,6 +16,7 @@ options = optimoptions('fsolve', 'Display', 'none', 'Algorithm', 'levenberg-marq
 % options = optimoptions('fsolve','SpecifyObjectiveGradient',true);
 % options = optimoptions('fsolve','SpecifyObjectiveGradient',true, 'Algorithm', 'levenberg-marquardt');
 
+
 % tic
 qj1 = fsolve(@(q) joint1_IK(X0(1:3, 1), q), q_0(1:2, 1), options);
 qj2 = fsolve(@(q) joint2_IK(X0(4:6, 1), qj1, q), q_0(3:4, 1), options);
@@ -31,6 +32,24 @@ for i = 2:size(X, 2)
     Q(:, i) = [qj1; qj2; qj3];
 end
 % toc
+
+
+% options = optimoptions('lsqnonlin', 'Display', 'none');
+% % tic
+% qj1 = lsqnonlin(@(q) joint1_IK(X0(1:3, 1), q), q_0(1:2, 1), [], [], options);
+% qj2 = lsqnonlin(@(q) joint2_IK(X0(4:6, 1), qj1, q), q_0(3:4, 1), [], [], options);
+% qj3 = lsqnonlin(@(q) joint3_IK(X0(7:9, 1), [qj1;qj2], q), q_0(5:6, 1), [], [], options);
+% Q(:, 1) = [qj1; qj2; qj3];
+% 
+% for i = 2:size(X, 2)
+%     qj1 = lsqnonlin(@(q) joint1_IK(X(1:3, i), q), Q(1:2, i-1), [], [], options);
+%     qj2 = lsqnonlin(@(q) joint2_IK(X(4:6, i), qj1, q), Q(3:4, i-1), [], [], options);
+%     qj3 = lsqnonlin(@(q) joint3_IK(X(7:9, i), [qj1;qj2], q), Q(5:6, i-1), [], [], options);
+%     
+%     Q(:, i) = [qj1; qj2; qj3];
+% end
+% % toc
+
 
 end
 

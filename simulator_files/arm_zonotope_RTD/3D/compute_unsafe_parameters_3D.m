@@ -44,28 +44,43 @@ links = stack_FRS_3D(R, phi_dot_0, options); % this also slices at the correct i
 nLinks = length(links);
 nObs = length(obstacles);
 
+% k_lim = cell(nLinks, 1);
+% k_unsafe_A = cell(nLinks, 1);
+% k_unsafe_b = cell(nLinks, 1);
+% for i = 1:nLinks
+%     k_lim{i} = get_parameter_limits(links{i});
+%     k_unsafe_A_obs = cell(nObs, 1);
+%     k_unsafe_b_obs = cell(nObs, 1);
+%     for j = 1:nObs
+%         obsZ = [obstacles{j}.Z, options.buffer_dist/2*eye(3)];
+%         [k_unsafe_A_obs{j}, k_unsafe_b_obs{j}] = get_parameter_constraints(links{i}, k_lim{i}, obsZ, options);
+%         %%% MALICIOUS HACK DISCARD GROUND OBSTACLE FOR FIRST LINK
+% %         if i == 1 && j == 1
+% %             k_unsafe_A{i}{j} = [];
+% %             k_unsafe_b{i}{j} = [];
+% %         end
+%     end
+%     k_unsafe_A{i} = k_unsafe_A_obs;
+%     k_unsafe_b{i} = k_unsafe_b_obs;
+% end
+
+% rewriting to put parfor over obstacle on outside:
 k_lim = cell(nLinks, 1);
-k_unsafe_A = cell(nLinks, 1);
-k_unsafe_b = cell(nLinks, 1);
 for i = 1:nLinks
-% for i = 2
     k_lim{i} = get_parameter_limits(links{i});
-    k_unsafe_A{i} = cell(nObs, 1);
-    k_unsafe_b{i} = cell(nObs, 1);
-    for j = 1:nObs
-%         obsZ = obstacles{j}.zono;
-%         obsZ = obsZ + zonotope([[0;0;0], options.buffer_dist/2*eye(3)]);
-
-        obsZ = [obstacles{j}.Z, options.buffer_dist/2*eye(3)];
-        [k_unsafe_A{i}{j}, k_unsafe_b{i}{j}] = get_parameter_constraints(links{i}, k_lim{i}, obsZ, options);
-        %%% MALICIOUS HACK DISCARD GROUND OBSTACLE FOR FIRST LINK
-%         if i == 1 && j == 1
-%             k_unsafe_A{i}{j} = [];
-%             k_unsafe_b{i}{j} = [];
-%         end
-    end
 end
-
+k_unsafe_A = cell(nObs, 1);
+k_unsafe_b = cell(nObs, 1);
+parfor i = 1:nObs
+    obsZ = [obstacles{i}.Z, options.buffer_dist/2*eye(3)];
+    k_unsafe_A_obs = cell(nLinks, 1);
+    k_unsafe_b_obs = cell(nLinks, 1);
+    for j = 1:nLinks
+        [k_unsafe_A_obs{j}, k_unsafe_b_obs{j}] = get_parameter_constraints(links{j}, k_lim{j}, obsZ, options);
+    end
+    k_unsafe_A{i} = k_unsafe_A_obs;
+    k_unsafe_b{i} = k_unsafe_b_obs;
+end
 
 end
 
