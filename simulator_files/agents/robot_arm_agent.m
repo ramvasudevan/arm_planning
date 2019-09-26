@@ -151,70 +151,6 @@ classdef robot_arm_agent < multi_link_agent
             A.create_collision_check_patch_data() ;
         end
         
-        function create_robotics_toolbox_model(A)
-            robot = robotics.RigidBodyTree;
-            J = A.joint_locations ;
-            J_lims = A.joint_state_limits ;
-            
-            if A.dimension == 2
-                J = [J(1:2,:) ; zeros(1,A.n_links_and_joints) ;
-                     J(3:4,:) ; zeros(1,A.n_links_and_joints) ] ;
-            end
-            
-            n = A.n_links_and_joints ;
-            for idx = 1:n
-                % make link
-                new_link_name = ['link_',num2str(idx)] ;
-                new_link = robotics.RigidBody(new_link_name);
-                new_link.Mass = A.link_masses(idx) ;
-                new_link.Inertia = [diag(A.link_inertia_matrices{idx})', zeros(1,3)] ;
-                
-                % make joint
-                new_joint_name = ['joint_',num2str(idx)] ;
-                new_joint = robotics.Joint(new_joint_name,'revolute') ;
-                new_joint.HomePosition = 0 ;
-                new_joint.JointAxis = A.joint_axes(:,idx) ;
-                new_joint.PositionLimits = J_lims(:,idx)' ;
-                
-                % set joint location on predecessor link
-                switch idx
-                    case 1
-                        joint_location = J(1:3,idx)' ;
-                    otherwise
-                        joint_location = J(1:3,idx)' - J(4:6,idx-1)' ;
-                end
-                tform_1 = trvec2tform(joint_location) ;
-                setFixedTransform(new_joint,tform_1) ;
-                new_link.Joint = new_joint ;
-                
-                % add link to robot body
-                switch idx
-                    case 1
-                        parent_name = 'base' ;
-                    otherwise
-                        parent_name = ['link_',num2str(idx-1)] ;
-                end
-                addBody(robot,new_link,parent_name)
-            end
-            
-            % add end effector
-            ee = robotics.RigidBody('end_effector') ;
-            ee.Mass = 0 ;
-            ee.Inertia = zeros(1,6) ;
-            tform_ee = trvec2tform([A.link_sizes(1,end), 0, 0]) ;
-            setFixedTransform(ee.Joint,tform_ee) ;
-            addBody(robot,ee,['link_',num2str(n)])
-            
-            % set gravity vector
-            robot.Gravity = 9.81.*A.gravity_direction ;
-            
-            % set data format to match the simulator
-            robot.DataFormat = 'column' ;
-            
-            % update agent
-            A.robotics_toolbox_model = robot ;
-        end
-        
         %% property check
         function check_and_fix_properties(A)
             % A.check_and_fix_properties()
@@ -387,7 +323,7 @@ classdef robot_arm_agent < multi_link_agent
             %% robotics toolbox model
             if isempty(A.robotics_toolbox_model)
                 A.vdisp('Making Robotics Toolbox model',5)
-                A.create_robotics_toolbox_model() ;
+                create_robotics_toolbox_model(A) ;
             end
         end
         
@@ -863,7 +799,7 @@ classdef robot_arm_agent < multi_link_agent
             if A.use_robotics_toolbox_model_for_dynamics_flag
                 % get joint accelerations
                 q = z(A.joint_state_indices) ;
-                qdd = A.robotics_toolbox_model.forwardDynamics(q,qd,u) ;
+                qdd = A.robotics_toolbox_model.forwardDynamics(q,qd) ;
             else
                 % assume the inputs are the joint accelerations
                 qdd = u(:) ;

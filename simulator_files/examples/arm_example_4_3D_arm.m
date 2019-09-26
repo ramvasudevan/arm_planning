@@ -3,7 +3,7 @@
 %
 % Author: Shreyas Kousik
 % Created: 22 Jul 2019
-% Updated: 21 Aug 2019
+% Updated: 1 Sept 2019
 %
 clear ; clf ; clc ;
 
@@ -21,7 +21,6 @@ t_total = 2 ;
 % create arm
 A = robot_arm_3D_2link_4DOF('verbose',10) ;
 A.integrator_time_discretization = 0.005 ;
-A.use_robotics_toolbox_model_for_dynamics_flag = true ;
 
 %% create reference trajectory and input
 % reference time and input:
@@ -69,5 +68,5 @@ xlabel('time')
 ylabel('rad/s')
 
 %% animate result
-figure(2) ; clf ; pause(0.1) ;
+figure(2) ; pause(0.1) ; 
 A.animate()
