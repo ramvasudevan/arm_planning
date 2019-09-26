@@ -43,7 +43,7 @@ classdef robot_arm_RTD_planner_3D_fetch < robot_arm_generic_planner
                pause; 
             end
             P.iter = P.iter + 1;
-            tic;
+            planning_time = tic;
 %             q_cur = agent_info.state(P.arm_joint_state_indices, end) ;
 %             q_goal = P.goal ;
 %             dir_des = q_goal - q_cur ;
@@ -126,10 +126,17 @@ classdef robot_arm_RTD_planner_3D_fetch < robot_arm_generic_planner
                 U = zeros(P.arm_n_inputs,N_T) ;
 %                 Z = P.generate_trajectory(T, q_0, q_dot_0, k_opt);
                 X = generate_trajectory_from_k(P.R, P.phi_dot_0, k_opt, P.FRS_options);
+                toc(planning_time);
                 Q = get_fetch_q_from_traj(X, q_0);
 %                 Q = zeros(6, length(T));
                 Q_dot = (diff(Q')./P.time_discretization)';
                 Q_dot(:, end+1) = Q_dot(:, end);
+                
+%                 figure(2); clf; hold on;
+%                 plot(X');
+%                 figure(3); clf; hold on;
+%                 plot(Q');
+%                 pause;
                 
                 Z = [];
                 for i = 1:size(Q, 1)
@@ -196,8 +203,9 @@ classdef robot_arm_RTD_planner_3D_fetch < robot_arm_generic_planner
                     P.q_dot_0_prev = nan;
                     P.k_opt_prev = nan;
                 end
+                toc(planning_time);
             end
-            toc;
+%             toc;
         end
         
         function [R, phi_dot_0] = get_RTD_IC(P, agent_info, q_0, q_dot_0)
@@ -253,6 +261,7 @@ classdef robot_arm_RTD_planner_3D_fetch < robot_arm_generic_planner
             
             initial_guess = (lb + ub)/2;
            
+%             options = optimoptions('fmincon','SpecifyConstraintGradient',true, 'Algorithm', 'interior-point');
             options = optimoptions('fmincon','SpecifyConstraintGradient',true);
             [k_opt, ~, exitflag, ~] = fmincon(cost_func, initial_guess, [], [], [], [], lb, ub, constraint_func, options) ;
             
