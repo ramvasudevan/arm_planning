@@ -113,24 +113,17 @@ classdef robot_arm_rotatotope_RTD_planner_3D_fetch < robot_arm_generic_planner
             constraint_func = @(k) P.eval_constraint(k);
             
             % generate upper and lower bounds
-%             lb = [];
-%             ub = [];
-%             for i = 1:size(k_lim{end}.V, 1)
-%                 lb = [lb; min(k_lim{end}.V(i, :))];
-%                 ub = [ub; max(k_lim{end}.V(i, :))];
-%             end
             lb = P.R.c_k - P.R.g_k;
             ub = P.R.c_k + P.R.g_k;
             
             initial_guess = (lb + ub)/2;
            
 %             options = optimoptions('fmincon','SpecifyConstraintGradient',true, 'Algorithm', 'interior-point');
-%             options = optimoptions('fmincon','SpecifyConstraintGradient',true);
-            options = optimoptions('fmincon');
+            options = optimoptions('fmincon','SpecifyConstraintGradient',true);
+%             options = optimoptions('fmincon');
             [k_opt, ~, exitflag, ~] = fmincon(cost_func, initial_guess, [], [], [], [], lb, ub, constraint_func, options) ;
             
             if exitflag <= 0
-%                 error('planner:trajOpt', 'Solver did not converge.');
                 trajopt_failed = true;
             else
                 trajopt_failed = false;
@@ -143,13 +136,13 @@ classdef robot_arm_rotatotope_RTD_planner_3D_fetch < robot_arm_generic_planner
            cost = sum((q_plan - q_des).^2);
         end
         
-        function [c, ceq] = eval_constraint(P, k_opt)
+        function [c, ceq, gradc, gradceq] = eval_constraint(P, k_opt)
             epsilon = 1e-3;
             ceq = [];
-%             gradceq = [];
+            gradceq = [];
             
             c = [];
-%             gradc = [];
+            gradc = [];
             %%% Obstacle constraint generation:
             for i = 1:length(P.R.A_con) % for each obstacle
                 for j = 1:length(P.R.A_con{i}) % for each link
@@ -160,7 +153,7 @@ classdef robot_arm_rotatotope_RTD_planner_3D_fetch < robot_arm_generic_planner
                     lambda = c_param + (k_param./g_param);
                     for k = 1:length(idx) % for each time step
                         lambdas = P.R.k_con{i}{j}{idx(k)}.*lambda;
-                        lambdas(~lambdas) = 1;
+                        lambdas(~P.R.k_con{i}{j}{idx(k)}) = 1;
                         lambdas = prod(lambdas, 1)';
                         
                         c_obs = P.R.A_con{i}{j}{idx(k)}*lambdas - P.R.b_con{i}{j}{idx(k)};
@@ -169,17 +162,29 @@ classdef robot_arm_rotatotope_RTD_planner_3D_fetch < robot_arm_generic_planner
                         c = [c; c_k];
                         
                         % specify gradients
-                        % PATRICK need to fill this out.
-%                         if nargout > 2
-%                             maxidx = find(c_obs == c_obs_max);
-%                             if length(maxidx) > 1
-% %                                 disp('ahhh');
-%                                 tempgradc = k_unsafe_A{i}{j}{idx(k)}(maxidx, :);
-%                                 gradc = [gradc, -max(tempgradc)'];
-%                             else
-%                                 gradc = [gradc, -k_unsafe_A{i}{j}{idx(k)}(maxidx, :)'];
-%                             end
-%                         end
+                        % this is going to be really gross... but basically
+                        % the gradient will depend on the row of A being
+                        % multiplied by lambda, as well as which k's the
+                        % lambdas depend on. 
+                        if nargout > 2
+                            maxidx = find(c_obs == c_obs_max);
+                            k_con_temp = P.R.k_con{i}{j}{idx(k)}';
+                            lambdas_grad = k_con_temp;
+                            cols = 1:length(k_param);
+                            for l = 1:length(k_param)
+                                lambdas_grad_temp = k_con_temp(:, l);
+                                lambdas_grad_temp = lambdas_grad_temp*k_param(l);
+                                lambdas_grad_temp(~k_con_temp(:, l)) = 1;
+                                lambdas_grad(:, cols ~= l) = lambdas_grad_temp.*lambdas_grad(:, cols ~= l);
+                            end
+                            if length(maxidx) > 1
+%                                 disp('ahhh');
+                                tempgradc = P.R.A_con{i}{j}{idx(k)}(maxidx, :)*lambdas_grad;
+                                gradc = [gradc, [-max(tempgradc)'; zeros(length(k_opt) - length(k_param), 1)]];
+                            else
+                                gradc = [gradc, [-(P.R.A_con{i}{j}{idx(k)}(maxidx, :)*lambdas_grad)'; zeros(length(k_opt) - length(k_param), 1)]];
+                            end
+                        end
                         
                     end
                 end

@@ -32,7 +32,7 @@ A.LLC.K_i = 1*A.LLC.K_i;
 A.LLC.K_d = 1*A.LLC.K_d;
 A.joint_input_limits = 1*A.joint_input_limits;
 
-W = arm_world_static('floor_normal_axis', floor_normal_axis, 'include_base_obstacle', 0, 'goal_radius', 0.1, 'N_obstacles',N_obstacles,'dimension',dimension,'workspace_goal_check', 1,...
+W = arm_world_static('floor_normal_axis', floor_normal_axis, 'include_base_obstacle', 0, 'goal_radius', 0.03, 'N_obstacles',N_obstacles,'dimension',dimension,'workspace_goal_check', 0,...
     'verbose',verbosity) ;
 
 FRS_options = struct();

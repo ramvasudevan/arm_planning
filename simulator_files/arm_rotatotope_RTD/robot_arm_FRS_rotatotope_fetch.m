@@ -1,10 +1,12 @@
 classdef robot_arm_FRS_rotatotope_fetch
-    %robot_arm_FRS_rotatotope_fetch Summary of this class goes here
-    %   Detailed explanation goes here
+    %robot_arm_FRS_rotatotope_fetch holds onto a cell of rotatotopes
+    %describing the FRS of each joint
+    %   this class is defined specifically for the fetch robot, and is
+    %   mostly a wrapper to facilitate working with the rotatotope.m class.
     
     properties
-        rot_axes = [3;2;1;2;1;2];
-        link_joints = {[1;2], [1;2;3;4], [1;2;3;4;5;6]};
+        rot_axes = [3;2;1;2;1;2]; % order of rotation axes on fetch
+        link_joints = {[1;2], [1;2;3;4], [1;2;3;4;5;6]}; % joints that each link depends on
         link_zonotopes = {zonotope([0.33/2, 0.33/2; 0, 0; 0, 0]); zonotope([0.33/2, 0.33/2; 0, 0; 0, 0]); zonotope([0.33/2, 0.33/2; 0, 0; 0, 0])};
         link_EE_zonotopes = {zonotope([0.33; 0; 0]); zonotope([0.33; 0; 0]); zonotope([0.33; 0; 0])};
         n_links = 3;
