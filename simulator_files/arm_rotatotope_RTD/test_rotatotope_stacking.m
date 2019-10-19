@@ -3,8 +3,9 @@
 clear all; clc;
 
 % q_0 = zeros(4, 1);
-q_0 = [0; 0; 0; 0; 0; 0];
-q_dot_0 = ones(6, 1)*0;
+% q_0 = [0; 0; 0; 0; 0; 0];
+q_0 = pi/6*ones(6, 1);
+q_dot_0 = ones(6, 1)*0.1;
 figure(2); clf; hold on; view(3); axis equal;
 
 slice_pt = pi/6-0.001;

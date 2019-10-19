@@ -49,6 +49,8 @@ classdef robot_arm_FRS_rotatotope_1link
             obj.FRS_options.combs = generate_combinations_upto(200);
             obj.FRS_options.maxcombs = 200;
             
+            obj.FRS_options.buffer_dist = 0; %% HACK
+            
             % all rotatotopes defined for same parameter set:
             obj.c_k = obj.link_rotatotopes{end}{end}.c_k;
             obj.g_k = obj.link_rotatotopes{end}{end}.g_k;
