@@ -36,6 +36,7 @@ Returns:
 */
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 	std::clock_t start_t, end_t; // timing
+
 	/*
 P0.	process the input
 	*/
@@ -86,7 +87,6 @@ P2.	stack the rotatotopes
 P3. handle the output, release the memory
 	*/
 	links.returnResults();
-
 	nlhs = 3;
 	
 	plhs[0] = mxCreateNumericMatrix(links.n_links * links.n_time_steps * links.Z_width, reduce_order, mxDOUBLE_CLASS, mxREAL);

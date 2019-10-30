@@ -1,3 +1,12 @@
+/*
+Author: Bohao Zhang
+Oct. 29 2019
+
+arm_planning mex
+
+a cuda array for a cluster of rotatotopes
+*/
+
 #ifndef ROTATOTOPE_ARRAY_CPP
 #define ROTATOTOPE_ARRAY_CPP
 
@@ -29,6 +38,7 @@ rotatotopeArray::rotatotopeArray(uint32_t n_links_input, uint32_t n_time_steps_i
 		cudaMalloc((void**)&dev_c_idx, n_links * n_time_steps * reduce_order * sizeof(bool));
 		cudaMemset(dev_c_idx, 0, n_links * n_time_steps * reduce_order * sizeof(bool));
 		cudaMalloc((void**)&dev_c_idx_new, n_links * n_time_steps * reduce_order * R_unit_length * sizeof(bool));
+		cudaMemset(dev_c_idx_new, 0, n_links * n_time_steps * reduce_order * R_unit_length * sizeof(bool));
 		cudaMalloc((void**)&dev_k_idx, n_links * (n_links + 1) * n_time_steps * reduce_order * sizeof(bool));
 		cudaMemset(dev_k_idx, 0, n_links * (n_links + 1) * n_time_steps * reduce_order * sizeof(bool));
 		cudaMalloc((void**)&dev_k_idx_new, n_links * (n_links + 1) * n_time_steps * reduce_order * R_unit_length * sizeof(bool));
@@ -73,11 +83,14 @@ void rotatotopeArray::stack(rotatotopeArray &EEs) {
 	bool *dev_c_idx_new, *dev_k_idx_new;
 	cudaMalloc((void**)&dev_c_idx_new, EEs.n_links * n_time_steps * (reduce_order * 2 - 1) * sizeof(bool));
 	cudaMalloc((void**)&dev_k_idx_new, EEs.n_links * (n_links + 1) * n_time_steps * (reduce_order * 2 - 1) * sizeof(bool));
+	cudaMemset(dev_k_idx_new, 0, EEs.n_links * (n_links + 1) * n_time_steps * (reduce_order * 2 - 1) * sizeof(bool));
 
 	for (int link = EEs.n_links; link > 0; link--) {
 		dim3 grid1(link, n_time_steps, 1);
-		dim3 block1();
+		dim3 block1(reduce_order, Z_width, 1);
 		add_kernel << < grid1, block1 >> > (n_links - link, dev_RZ, EEs.dev_RZ, dev_c_idx, EEs.dev_c_idx, dev_k_idx, EEs.dev_k_idx, dev_RZ_new, dev_c_idx_new, dev_k_idx_new);
+	
+		reduce_kernel << < grid1, (2 * reduce_order - 1) >> > (dev_RZ_new, dev_c_idx_new, dev_k_idx_new, n_links - link, dev_RZ, dev_c_idx, dev_k_idx);
 	}
 
 	cudaFree(dev_RZ_new);
@@ -113,7 +126,69 @@ __global__ void initialize_RZ_kernel(double* link_Z, uint32_t link_Z_length, dou
 }
 
 __global__ void add_kernel(uint32_t link_offset, double* link_RZ, double* EE_RZ, bool* link_c_idx, bool* EE_c_idx, bool* link_k_idx, bool* EE_k_idx, double* RZ_new, bool* c_idx_new, bool* k_idx_new) {
+	uint32_t link_id = blockIdx.x + link_offset;
+	uint32_t n_links = gridDim.x + link_offset;
+	uint32_t time_id = blockIdx.y;
+	uint32_t n_time_steps = gridDim.y;
+	uint32_t Z_id = threadIdx.x;
+	uint32_t z_id = threadIdx.y;
 
+	uint32_t add_link_Z = (link_id * n_time_steps + time_id) * reduce_order + Z_id;
+	uint32_t add_EE_Z = (blockIdx.x * n_time_steps + time_id) * reduce_order + Z_id;
+	uint32_t add_Z = (blockIdx.x * n_time_steps + time_id) * (2 * reduce_order - 1) + Z_id;
+
+	uint32_t EE_k_start = ((blockIdx.x * (blockIdx.x + 1)) * n_time_steps + time_id) * reduce_order + Z_id;
+	uint32_t EE_k_end = (((blockIdx.x + 1) * (blockIdx.x + 2)) * n_time_steps + time_id) * reduce_order + Z_id;
+	uint32_t link_k_start = ((link_id * (link_id + 1)) * n_time_steps + time_id) * reduce_order + Z_id;
+	uint32_t link_k_end = (((link_id + 1) * (link_id + 2)) * n_time_steps + time_id) * reduce_order + Z_id;
+	uint32_t k_step = n_time_steps * reduce_order;
+	uint32_t add_k_start = ((link_id * (link_id + 1)) * n_time_steps + time_id) * (2 * reduce_order - 1)+ Z_id;
+	uint32_t add_k_step = n_time_steps * (2 * reduce_order - 1);
+
+	if (Z_id == 0) { // add the center
+		RZ_new[add_Z * 3 + z_id] = link_RZ[add_link_Z * 3 + z_id] + EE_RZ[add_EE_Z * 3 + z_id];
+
+		if (z_id == 0) {
+			c_idx_new[add_Z] = true;
+
+			uint32_t add_k = add_k_start, EE_k = EE_k_start;
+			for (uint32_t link_k = link_k_start; link_k < link_k_end; link_k += k_step) {
+				if (EE_k < EE_k_end) {
+					k_idx_new[add_k] = link_k_idx[link_k] | EE_k_idx[EE_k];
+				}
+				else {
+					k_idx_new[add_k] = link_k_idx[link_k];
+				}
+
+				add_k += add_k_step;
+				EE_k += k_step;
+			}
+		}
+	}
+	else { // stack the generators
+		RZ_new[add_Z * 3 + z_id] = link_RZ[add_link_Z * 3 + z_id];
+		RZ_new[(add_Z + reduce_order - 1) * 3 + z_id] = EE_RZ[add_EE_Z * 3 + z_id];
+
+		if (z_id == 0) {
+			c_idx_new[add_Z] = link_c_idx[add_Z];
+			c_idx_new[add_Z + reduce_order - 1] = EE_c_idx[add_EE_Z];
+
+			uint32_t add_k = add_k_start, EE_k = EE_k_start;
+			for (uint32_t link_k = link_k_start; link_k < link_k_end; link_k += k_step) {
+				k_idx_new[add_k] = link_k_idx[link_k];
+
+				if (EE_k < EE_k_end) {
+					k_idx_new[add_k + reduce_order - 1] = EE_k_idx[EE_k];
+				}
+				else {
+					k_idx_new[add_k + reduce_order - 1] = false;
+				}
+
+				add_k += add_k_step;
+				EE_k += k_step;
+			}
+		}
+	}
 }
 
 __global__ void multiply_kernel(uint8_t* rot_axes, uint32_t link_offset, uint32_t joint_offset, double* RZ, double* R, bool* c_idx, bool* k_idx, double* RZ_new, bool* c_idx_new, bool* k_idx_new) {
@@ -194,7 +269,7 @@ __global__ void reduce_kernel(double* RZ_new, bool* c_idx_new, bool* k_idx_new, 
 
 	if (z_id == 0) {
 		// choose the vectors whose norm is among (reduce_order - 3) largest
-		uint32_t high = norm_size;
+		uint32_t high = norm_length;
 		uint32_t low = 1;
 		uint32_t k = reduce_order - 3;
 		uint32_t i, j;
