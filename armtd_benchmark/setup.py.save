@@ -1,0 +1,1 @@
+## ! DO NOT MANUALLY INVOKE THIS setup.py, USE CATKIN INSTEADfrom distutils.core import setupfrom catkin_pkg.python_setup import generate_distutils_setup# fetch values from package.xmlsetup_args = generate_distutils_setup(packages=['​<package_name>​'],package_dir={'': 'include'},)setup(**setup_args)
