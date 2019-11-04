@@ -29,15 +29,15 @@ classdef robot_arm_3D_fetch < robot_arm_agent
                           0 1 0 1 0 1;
                           1 0 0 0 0 0] ; % axes are in preceding link's frame
                       
-            joint_locations = [+0.00, +0.00, +0.33/2, +0.00, +0.33/2, +0.00 ; % predecessor x
+            joint_locations = [-0.03265, +0.00, +0.33/2, +0.00, +0.33/2, +0.00 ; % predecessor x
                                +0.00, +0.00, +0.00, +0.00, +0.00, +0.00 ; % predecessor y
-                               +0.00, +0.00, +0.00, +0.00, +0.00, +0.00 ; % predecessor z
+                               +0.72601, +0.00, +0.00, +0.00, +0.00, +0.00 ; % predecessor z
                                +0.00, -0.33/2, +0.00, -0.33/2, +0.00, -0.33/2 ; % successor x
                                +0.00, +0.00, +0.00, +0.00, +0.00, +0.00 ; % successor y
                                +0.00, +0.00, +0.00, +0.00, +0.00, +0.00 ];% successor z
                            
-            joint_state_limits = [-Inf, -Inf, -Inf, -Inf, -Inf, -Inf ;
-                            +Inf, +Inf, +Inf, +Inf, +Inf, +Inf ] ;
+            joint_state_limits = [-1.6056, -1.221, -Inf, -2.251, -Inf, -2.16;
+                                  1.6056, 1.518, Inf, 2.251, Inf, 2.16];
                         
             joint_speed_limits = (Inf).*repmat([-1;1],1,n_links_and_joints) ;
             

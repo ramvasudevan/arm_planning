@@ -937,6 +937,9 @@ classdef robot_arm_agent < multi_link_agent
                         case 3
                             lims = [-L,L,-L,L,0,L] ;
                     end
+                    
+                    % in case base of robot is not a [0;0;0]:
+                    lims = lims + [A.joint_locations(1, 1)*ones(1, 2), A.joint_locations(2, 1)*ones(1, 2), A.joint_locations(3, 1)*ones(1, 2)];
             end
         end
     end

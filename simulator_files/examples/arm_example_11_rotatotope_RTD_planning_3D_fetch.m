@@ -12,7 +12,7 @@
 clear ; clc ; figure(1); clf; view(3); grid on;
 
 %% user parameters
-N_obstacles = 2 ;
+N_obstacles = 10 ;
 dimension = 3 ;
 nLinks = 3 ;
 verbosity = 6 ;
@@ -61,6 +61,10 @@ A.state(A.joint_state_indices) = W.start ;
 
 % create simulator
 S = simulator(A,W,P,'allow_replan_errors',allow_replan_errors,'max_sim_time',1000,'max_sim_iterations',1000) ;
+
+% create .csv file
+write_fetch_scene_to_csv(W);
+
 
 %% run simulation
 S.run()
