@@ -21,6 +21,8 @@ a cuda array for a cluster of rotatotopes
 #define k_dim 2
 #define reduce_order 30
 #define norm_size 300
+#define max_buff_obstacle_size 40
+#define max_constraint_size 741
 
 class rotatotopeArray {
 public:

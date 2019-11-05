@@ -203,23 +203,23 @@ __global__ void multiply_kernel(uint8_t* rot_axes, uint32_t link_offset, uint32_
 
 	uint32_t mul_Z = (link_id * n_time_steps + time_id) * reduce_order + z_id;
 	uint32_t mul_R = (joint_id * n_time_steps + time_id) * R_unit_length + r_id;
-	uint32_t mul_RZ = (link_id * n_time_steps + time_id) * reduce_order * R_unit_length + (z_id * R_unit_length + r_id);
+	uint32_t mul_RZ = ((link_id * n_time_steps + time_id) * reduce_order + z_id) * R_unit_length + r_id;
 
 	uint8_t rot_axis = rot_axes[joint_id];
 	bool if_center = (r_id == 0); // true if center, false if not
 
 	if (rot_axis == 1) {
-		RZ_new[mul_RZ * 3] = if_center ? RZ[mul_Z * 3] : 0;
+		RZ_new[mul_RZ * 3    ] = if_center ? RZ[mul_Z * 3] : 0;
 		RZ_new[mul_RZ * 3 + 1] = R[mul_R * 5] * RZ[mul_Z * 3 + 1] - R[mul_R * 5 + 1] * RZ[mul_Z * 3 + 2];
 		RZ_new[mul_RZ * 3 + 2] = R[mul_R * 5 + 1] * RZ[mul_Z * 3 + 1] + R[mul_R * 5] * RZ[mul_Z * 3 + 2];
 	}
 	else if (rot_axis == 2) {
-		RZ_new[mul_RZ * 3] = R[mul_R * 5] * RZ[mul_Z * 3] + R[mul_R * 5 + 1] * RZ[mul_Z * 3 + 2];
+		RZ_new[mul_RZ * 3    ] = R[mul_R * 5] * RZ[mul_Z * 3] + R[mul_R * 5 + 1] * RZ[mul_Z * 3 + 2];
 		RZ_new[mul_RZ * 3 + 1] = if_center ? RZ[mul_Z * 3 + 1] : 0;
 		RZ_new[mul_RZ * 3 + 2] = R[mul_R * 5] * RZ[mul_Z * 3 + 2] - R[mul_R * 5 + 1] * RZ[mul_Z * 3];
 	}
 	else {
-		RZ_new[mul_RZ * 3] = R[mul_R * 5] * RZ[mul_Z * 3] - R[mul_R * 5 + 1] * RZ[mul_Z * 3 + 1];
+		RZ_new[mul_RZ * 3    ] = R[mul_R * 5] * RZ[mul_Z * 3] - R[mul_R * 5 + 1] * RZ[mul_Z * 3 + 1];
 		RZ_new[mul_RZ * 3 + 1] = R[mul_R * 5 + 1] * RZ[mul_Z * 3] + R[mul_R * 5] * RZ[mul_Z * 3 + 1];
 		RZ_new[mul_RZ * 3 + 2] = if_center ? RZ[mul_Z * 3 + 2] : 0;
 	}
@@ -255,8 +255,9 @@ __global__ void reduce_kernel(double* RZ_new, bool* c_idx_new, bool* k_idx_new, 
 	__shared__ double RZ_norm[norm_size];
 
 	RZ_norm[z_id] = 0;
+	double norm;
 	for (uint32_t i = 0; i < 3; i++) {
-		double norm = RZ_new[mul_Z * 3 + i];
+		norm = RZ_new[mul_Z * 3 + i];
 		RZ_norm[z_id] += norm * norm;
 	}
 
