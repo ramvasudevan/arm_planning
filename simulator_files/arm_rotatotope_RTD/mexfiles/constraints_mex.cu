@@ -73,9 +73,6 @@ P1.	buffer the obstacle by k-independent generators
 	k_con_num = new uint8_t[n_obstacles * n_links * n_time_steps];
 	cudaMalloc((void**)&dev_k_con_num, n_obstacles * n_links * n_time_steps * sizeof(uint8_t));
 
-	double* buff_obstacles;
-	buff_obstacles = new double[n_obstacles * n_links * n_time_steps * max_buff_obstacle_size * 3];
-
 	double* dev_buff_obstacles;
 	cudaMalloc((void**)&dev_buff_obstacles, n_obstacles * n_links * n_time_steps * max_buff_obstacle_size * 3 * sizeof(double));
 	cudaMemset(dev_buff_obstacles, 0, n_obstacles * n_links * n_time_steps * max_buff_obstacle_size * 3 * sizeof(double));
@@ -90,8 +87,6 @@ P1.	buffer the obstacle by k-independent generators
 	cudaMemcpy(k_con, dev_k_con, n_links * (n_links + 1) * n_time_steps * reduce_order * sizeof(bool), cudaMemcpyDeviceToHost);
 	cudaMemcpy(k_con_num, dev_k_con_num, n_links * n_time_steps * sizeof(uint8_t), cudaMemcpyDeviceToHost);
 
-	cudaMemcpy(buff_obstacles, dev_buff_obstacles, n_obstacles * n_links * n_time_steps * max_buff_obstacle_size * 3 * sizeof(double), cudaMemcpyDeviceToHost);
-
 	// find the maximum width of A_con for memory allocation
 	uint32_t max_k_con_num = 0;
 	for (uint32_t i = 0; i < n_links * n_time_steps; i++) {
@@ -104,68 +99,58 @@ P1.	buffer the obstacle by k-independent generators
 P2.	generate obstacles polynomials
 	*/
 	double *A_con, *dev_A_con;
-	A_con = new double[n_obstacles * n_links * n_time_steps * max_constraint_size * max_k_con_num];
-	cudaMalloc((void**)&dev_A_con, n_obstacles * n_links * n_time_steps * max_constraint_size * max_k_con_num * sizeof(double));
+	A_con = new double[n_obstacles * n_links * n_time_steps * max_constraint_size * 2 * max_k_con_num];
+	cudaMalloc((void**)&dev_A_con, n_obstacles * n_links * n_time_steps * max_constraint_size * 2 * max_k_con_num * sizeof(double));
 
 	double *b_con, *dev_b_con;
-	b_con = new double[n_obstacles * n_links * n_time_steps * max_constraint_size];
-	cudaMalloc((void**)&dev_b_con, n_obstacles * n_links * n_time_steps * max_constraint_size * sizeof(double));
+	b_con = new double[n_obstacles * n_links * n_time_steps * max_constraint_size * 2];
+	cudaMalloc((void**)&dev_b_con, n_obstacles * n_links * n_time_steps * max_constraint_size * 2 * sizeof(double));
 
 	dim3 grid2(n_obstacles, n_links, n_time_steps);
 	polytope << < grid2, max_constraint_size >> > (dev_buff_obstacles, dev_frs_k_dep_G, dev_k_con_num, max_k_con_num, dev_A_con, dev_b_con);
 
-	cudaMemcpy(A_con, dev_A_con, n_obstacles * n_links * n_time_steps * max_constraint_size * max_k_con_num * sizeof(double), cudaMemcpyDeviceToHost);
-	cudaMemcpy(b_con, dev_b_con, n_obstacles * n_links * n_time_steps * max_constraint_size * sizeof(double), cudaMemcpyDeviceToHost);
+	cudaMemcpy(A_con, dev_A_con, n_obstacles * n_links * n_time_steps * max_constraint_size * 2 * max_k_con_num * sizeof(double), cudaMemcpyDeviceToHost);
+	cudaMemcpy(b_con, dev_b_con, n_obstacles * n_links * n_time_steps * max_constraint_size * 2 * sizeof(double), cudaMemcpyDeviceToHost);
 
 	/*
 P3. handle the output, release the memory
 	*/
-	nlhs = 5;
-	plhs[0] = mxCreateNumericMatrix(n_obstacles * n_links * max_constraint_size, n_time_steps * max_k_con_num, mxDOUBLE_CLASS, mxREAL);
+	nlhs = 4;
+	plhs[0] = mxCreateNumericMatrix(n_obstacles * n_links * max_constraint_size * 2, n_time_steps * max_k_con_num, mxDOUBLE_CLASS, mxREAL);
 	double *output1 = mxGetPr(plhs[0]);
 	for (uint32_t j = 0; j < n_time_steps; j++) {
 		for (uint32_t k = 0; k < max_k_con_num; k++) {
 			for (uint32_t i = 0; i < n_obstacles * n_links; i++){
-				for (uint32_t p = 0; p < max_constraint_size; p++) {
-					output1[((j * max_k_con_num + k) * n_obstacles * n_links + i) * max_constraint_size + p] = A_con[((i * n_time_steps + j) * max_constraint_size + p) * max_k_con_num + k];
+				for (uint32_t p = 0; p < max_constraint_size * 2; p++) {
+					output1[((j * max_k_con_num + k) * n_obstacles * n_links + i) * max_constraint_size * 2 + p] = A_con[((i * n_time_steps + j) * max_constraint_size * 2 + p) * max_k_con_num + k];
 				}
 			}
 		}
 	}
 
-	plhs[1] = mxCreateNumericMatrix(n_obstacles * n_links * max_constraint_size, n_time_steps, mxDOUBLE_CLASS, mxREAL);
+	plhs[1] = mxCreateNumericMatrix(n_obstacles * n_links * max_constraint_size * 2, n_time_steps, mxDOUBLE_CLASS, mxREAL);
 	double *output2 = mxGetPr(plhs[1]);
 	for (uint32_t j = 0; j < n_time_steps; j++) {
 		for (uint32_t i = 0; i < n_obstacles * n_links; i++) {
-			for (uint32_t p = 0; p < max_constraint_size; p++) {
-				output2[(j * n_obstacles * n_links + i) * max_constraint_size + p] = b_con[(i * n_time_steps + j) * max_constraint_size + p];
+			for (uint32_t p = 0; p < max_constraint_size * 2; p++) {
+				output2[(j * n_obstacles * n_links + i) * max_constraint_size * 2 + p] = b_con[(i * n_time_steps + j) * max_constraint_size * 2 + p];
 			}
 		}
 	}
 
-	plhs[2] = mxCreateLogicalMatrix(n_obstacles * n_links * (n_links + 1) * n_time_steps, reduce_order);
+	plhs[2] = mxCreateLogicalMatrix(n_links * (n_links + 1) * n_time_steps, reduce_order);
 	bool *output3 = mxGetLogicals(plhs[2]);
-	for (uint32_t i = 0; i < n_obstacles * n_links * (n_links + 1) * n_time_steps; i++) {
+	for (uint32_t i = 0; i < n_links * (n_links + 1) * n_time_steps; i++) {
 		for (uint32_t j = 0; j < reduce_order; j++) {
 			output3[j * n_obstacles * n_links * (n_links + 1) * n_time_steps + i] = k_con[i * reduce_order + j];
 		}
 	}
 
-	plhs[3] = mxCreateNumericMatrix(n_obstacles * n_links, n_time_steps, mxDOUBLE_CLASS, mxREAL);
+	plhs[3] = mxCreateNumericMatrix(n_links, n_time_steps, mxDOUBLE_CLASS, mxREAL);
 	double *output4 = mxGetPr(plhs[3]);
-	for (uint32_t i = 0; i < n_obstacles * n_links; i++) {
+	for (uint32_t i = 0; i < n_links; i++) {
 		for (uint32_t j = 0; j < n_time_steps; j++) {
 			output4[j * n_obstacles * n_links + i] = k_con_num[i * n_time_steps + j];
-		}
-	}
-
-	plhs[4] = mxCreateNumericMatrix(n_obstacles * n_links * n_time_steps * 3, max_buff_obstacle_size, mxDOUBLE_CLASS, mxREAL);
-	double *output5 = mxGetPr(plhs[4]);
-	for (uint32_t i = 0; i < n_obstacles * n_links * n_time_steps; i++) {
-		for (uint32_t j = 0; j < max_buff_obstacle_size; j++) {
-			for (uint32_t k = 0; k < 3; k++) {
-				output5[(j * n_obstacles * n_links * n_time_steps + i) * 3 + k] = buff_obstacles[(i * max_buff_obstacle_size + j) * 3 + k];
-			}
 		}
 	}
 	
@@ -183,8 +168,6 @@ P3. handle the output, release the memory
 	cudaFree(dev_A_con);
 	delete[] b_con;
 	cudaFree(dev_b_con);
-
-	delete[] buff_obstacles;
 }
 
 /*
@@ -294,14 +277,14 @@ __global__ void polytope(double* buff_obstacles, double* frs_k_dep_G, uint8_t* k
 	uint32_t time_id = blockIdx.z;
 	uint32_t n_time_steps = gridDim.z;
 	uint32_t k_con_base = link_id * n_time_steps + time_id;
-	uint32_t k_dep_G_base = (link_id * n_time_steps + time_id) * reduce_order;
+	uint32_t k_dep_G_base = k_con_base * reduce_order;
 	uint32_t obs_base = ((obstacle_id * n_links + link_id) * n_time_steps + time_id) * max_buff_obstacle_size;
 	uint32_t c_id = threadIdx.x;
 	uint32_t first = (uint32_t)floor(38.5 - 0.5 * sqrt(5929.0 - 8.0 * ((double)c_id)));
 	uint32_t first_base = (obs_base + first + 1) * 3;
 	uint32_t second = c_id + 1 - ((75 - first) * first) / 2;
 	uint32_t second_base = (obs_base + second + 1) * 3;
-	uint32_t con_base = ((obstacle_id * n_links + link_id) * n_time_steps + time_id) * max_constraint_size + c_id;
+	uint32_t con_base = ((obstacle_id * n_links + link_id) * n_time_steps + time_id) * max_constraint_size * 2 + c_id;
 	
 	double A_1 = buff_obstacles[first_base + 1] * buff_obstacles[second_base + 2] - buff_obstacles[first_base + 2] * buff_obstacles[second_base + 1];
 	double A_2 = -buff_obstacles[first_base] * buff_obstacles[second_base + 2] - buff_obstacles[first_base + 2] * buff_obstacles[second_base];
@@ -319,6 +302,7 @@ __global__ void polytope(double* buff_obstacles, double* frs_k_dep_G, uint8_t* k
 
 	for (uint32_t i = 0; i < k_con_num[k_con_base]; i++) {
 		A_con[con_base * A_con_width + i] = A_1 * frs_k_dep_G[(k_dep_G_base + i) * 3] + A_2 * frs_k_dep_G[(k_dep_G_base + i) * 3 + 1] + A_3 * frs_k_dep_G[(k_dep_G_base + i) * 3 + 2];
+		A_con[(con_base + max_constraint_size) * A_con_width + i] = -A_con[con_base * A_con_width + i];
 	}
 
 	double d = A_1 * buff_obstacles[obs_base * 3] + A_2 * buff_obstacles[obs_base * 3 + 1] + A_3 * buff_obstacles[obs_base * 3 + 2];
@@ -329,4 +313,5 @@ __global__ void polytope(double* buff_obstacles, double* frs_k_dep_G, uint8_t* k
 	}
 
 	b_con[con_base] = d + deltaD;
+	b_con[con_base + max_constraint_size] = -d + deltaD;
 }
