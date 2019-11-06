@@ -68,10 +68,10 @@ P1.	buffer the obstacle by k-independent generators
 	*/
 	bool *k_con, *dev_k_con;
 	uint8_t *k_con_num, *dev_k_con_num; // size of each k con
-	k_con = new bool[n_obstacles * n_links * (n_links + 1) * n_time_steps * reduce_order];
-	cudaMalloc((void**)&dev_k_con, n_obstacles * n_links * (n_links + 1) * n_time_steps * reduce_order * sizeof(bool));
-	k_con_num = new uint8_t[n_obstacles * n_links * n_time_steps];
-	cudaMalloc((void**)&dev_k_con_num, n_obstacles * n_links * n_time_steps * sizeof(uint8_t));
+	k_con = new bool[n_links * (n_links + 1) * n_time_steps * reduce_order];
+	cudaMalloc((void**)&dev_k_con, n_links * (n_links + 1) * n_time_steps * reduce_order * sizeof(bool));
+	k_con_num = new uint8_t[n_links * n_time_steps];
+	cudaMalloc((void**)&dev_k_con_num, n_links * n_time_steps * sizeof(uint8_t));
 
 	double* dev_buff_obstacles;
 	cudaMalloc((void**)&dev_buff_obstacles, n_obstacles * n_links * n_time_steps * max_buff_obstacle_size * 3 * sizeof(double));
@@ -142,7 +142,7 @@ P3. handle the output, release the memory
 	bool *output3 = mxGetLogicals(plhs[2]);
 	for (uint32_t i = 0; i < n_links * (n_links + 1) * n_time_steps; i++) {
 		for (uint32_t j = 0; j < reduce_order; j++) {
-			output3[j * n_obstacles * n_links * (n_links + 1) * n_time_steps + i] = k_con[i * reduce_order + j];
+			output3[j * n_links * (n_links + 1) * n_time_steps + i] = k_con[i * reduce_order + j];
 		}
 	}
 
@@ -150,7 +150,7 @@ P3. handle the output, release the memory
 	double *output4 = mxGetPr(plhs[3]);
 	for (uint32_t i = 0; i < n_links; i++) {
 		for (uint32_t j = 0; j < n_time_steps; j++) {
-			output4[j * n_obstacles * n_links + i] = k_con_num[i * n_time_steps + j];
+			output4[j * n_links + i] = k_con_num[i * n_time_steps + j];
 		}
 	}
 	
@@ -198,7 +198,7 @@ __global__ void buff_obstacles_kernel(double* RZ, bool* c_idx, bool* k_idx, doub
 	uint32_t k_start = ((link_id * (link_id + 1)) * n_time_steps + time_id) * reduce_order;
 	uint32_t k_end = (((link_id + 1) * (link_id + 2)) * n_time_steps + time_id) * reduce_order;
 	uint32_t k_step = n_time_steps * reduce_order;
-	uint32_t k_con_num_base = (obstacle_id * n_links + link_id) * n_time_steps + time_id;
+	uint32_t k_con_num_base = link_id * n_time_steps + time_id;
 	uint32_t buff_base = ((obstacle_id * n_links + link_id) * n_time_steps + time_id) * max_buff_obstacle_size;
 	
 	// first, find kc_col
@@ -228,22 +228,24 @@ __global__ void buff_obstacles_kernel(double* RZ, bool* c_idx, bool* k_idx, doub
 		}
 	}
 	else if (z_id == 1) { // find k-dependent generators and complete k_con
-		uint8_t k_dep_num = 0;
-		for (uint32_t z = 1; z < reduce_order; z++) {
-			if (kc_info[z]) {
-				for (uint32_t j = k_start; j < k_end; j += k_step) {
-					k_con[obstacle_id * n_links + (j + k_dep_num)] = k_idx[j + z];
-				}
+		if (obstacle_id == 0) {
+			uint8_t k_dep_num = 0;
+			for (uint32_t z = 1; z < reduce_order; z++) {
+				if (kc_info[z]) {
+					for (uint32_t j = k_start; j < k_end; j += k_step) {
+						k_con[j + k_dep_num] = k_idx[j + z];
+					}
 
-				for (uint32_t i = 0; i < 3; i++) {
-					frs_k_dep_G[(c_base + k_dep_num) * 3 + i] = RZ[RZ_base + i * reduce_order + z];
-				}
+					for (uint32_t i = 0; i < 3; i++) {
+						frs_k_dep_G[(c_base + k_dep_num) * 3 + i] = RZ[RZ_base + i * reduce_order + z];
+					}
 
-				k_dep_num++;
+					k_dep_num++;
+				}
 			}
-		}
 
-		k_con_num[k_con_num_base] = k_dep_num;
+			k_con_num[k_con_num_base] = k_dep_num;
+		}
 	}
 	else if (z_id == 2) { // find k-independent generators and complete buff_obstacles
 		uint8_t k_indep_num = OZ_unit_length;
