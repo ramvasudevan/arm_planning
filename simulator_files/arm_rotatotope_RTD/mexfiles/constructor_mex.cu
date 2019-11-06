@@ -30,9 +30,13 @@ Requires:
 	4. link_zonotopes{i} . Z
 		--> the Z of link zonotopes
 			index: i \in 1 : n_links
+	5. EE_zonotopes{i} . Z
+		--> the Z of link zonotopes
+			index: i \in 1 : n_links
 Returns:
-	1. c_k
-	2. g_k
+	1. RZ
+	2. c_idx
+	3. k_idx
 */
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 	std::clock_t start_t, end_t; // timing
