@@ -287,8 +287,8 @@ __global__ void polytope(double* buff_obstacles, double* frs_k_dep_G, uint8_t* k
 	uint32_t con_base = ((obstacle_id * n_links + link_id) * n_time_steps + time_id) * max_constraint_size * 2 + c_id;
 	
 	double A_1 = buff_obstacles[first_base + 1] * buff_obstacles[second_base + 2] - buff_obstacles[first_base + 2] * buff_obstacles[second_base + 1];
-	double A_2 = -buff_obstacles[first_base] * buff_obstacles[second_base + 2] - buff_obstacles[first_base + 2] * buff_obstacles[second_base];
-	double A_3 = buff_obstacles[first_base] * buff_obstacles[second_base + 1] - buff_obstacles[first_base + 1] * buff_obstacles[second_base];
+	double A_2 = buff_obstacles[first_base + 2] * buff_obstacles[second_base]     - buff_obstacles[first_base]     * buff_obstacles[second_base + 2];
+	double A_3 = buff_obstacles[first_base] *     buff_obstacles[second_base + 1] - buff_obstacles[first_base + 1] * buff_obstacles[second_base];
 	double A_s_q = sqrt(A_1 * A_1 + A_2 * A_2 + A_3 * A_3);
 
 	if (A_s_q != 0) {
@@ -306,10 +306,10 @@ __global__ void polytope(double* buff_obstacles, double* frs_k_dep_G, uint8_t* k
 	}
 
 	double d = A_1 * buff_obstacles[obs_base * 3] + A_2 * buff_obstacles[obs_base * 3 + 1] + A_3 * buff_obstacles[obs_base * 3 + 2];
-
+	
 	double deltaD = 0;
 	for (uint32_t i = 1; i < max_buff_obstacle_size; i++) {
-		deltaD += A_1 * buff_obstacles[(obs_base + i) * 3] + A_2 * buff_obstacles[(obs_base + i) * 3 + 1] + A_3 * buff_obstacles[(obs_base + i) * 3 + 2];
+		deltaD += abs(A_1 * buff_obstacles[(obs_base + i) * 3] + A_2 * buff_obstacles[(obs_base + i) * 3 + 1] + A_3 * buff_obstacles[(obs_base + i) * 3 + 2]);
 	}
 
 	b_con[con_base] = d + deltaD;
