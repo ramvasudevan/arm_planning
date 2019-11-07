@@ -28,6 +28,16 @@ classdef robot_arm_FRS_rotatotope_1link
         
         c_k = [];
         g_k = [];
+        
+        % ===== mex properties =====
+        mex_RZ = [];
+        mex_c_idx = [];
+        mex_k_idx = [];
+        
+        mex_A_con = [];
+        mex_b_con = [];
+        mex_k_con = [];
+        % ===== mex properties =====
     end
     
     methods
@@ -82,9 +92,11 @@ classdef robot_arm_FRS_rotatotope_1link
             obj.n_time_steps = length(trig_FRS);
             
             % construct a bunch of rotatotopes
+            fprintf("ROTATOTOPE CONSTRUCT ORIGINAL TIME\n")
+            tic
             for i = 1:obj.n_links
                for j = 1:obj.n_time_steps
-                   obj.link_rotatotopes{i}{j} = rotatotope(obj.rot_axes(obj.link_joints{i}), trig_FRS{j}(obj.link_joints{i}), obj.link_zonotopes{i});
+                    obj.link_rotatotopes{i}{j} = rotatotope(obj.rot_axes(obj.link_joints{i}), trig_FRS{j}(obj.link_joints{i}), obj.link_zonotopes{i});              
                end
             end
             for i = 1:obj.n_links - 1
@@ -102,6 +114,31 @@ classdef robot_arm_FRS_rotatotope_1link
                     end
                 end
             end
+            toc
+            
+            % ===== mex constructor =====
+            fprintf("ROTATOTOPE CONSTRUCT MEX TIME\n")
+            tic
+            % SUOPPOSE ALL THE INPUT HAVE THE SAME SIZE !!!
+            mexin_R = [];
+            mexin_Z = [];
+            mexin_EE = [];
+            for i = 1:obj.n_links
+                mexin_Z = [mexin_Z, obj.link_zonotopes{i}.Z];
+            end
+            for i = 1:obj.n_links-1
+                mexin_EE = [mexin_EE, obj.link_EE_zonotopes{i}.Z];
+            end
+
+            for i = 1:length(obj.link_joints{end})
+                for j = 1:obj.n_time_steps
+                    mexin_R = [mexin_R, trig_FRS{j}{i}.Z(:,1:10)];
+                end
+            end
+            
+            [obj.mex_RZ, obj.mex_c_idx, obj.mex_k_idx] = constructor_mex(obj.n_links,obj.n_time_steps,mexin_R,mexin_Z,mexin_EE);
+            toc
+            % ===== mex constructor =====
         end
         
         function [] = plot(obj, rate, colors)
@@ -116,7 +153,6 @@ classdef robot_arm_FRS_rotatotope_1link
                     obj.link_FRS{i}{j}.plot(colors{i});
                 end
             end
-            
         end
         
         function [] = plot_slice(obj, k, rate, colors)
@@ -135,6 +171,8 @@ classdef robot_arm_FRS_rotatotope_1link
         end
         
         function [obj] = generate_constraints(obj, obstacles)
+            fprintf("GENERATE CONSTRAINTS ORIGINAL TIME\n");
+            tic;
             for i = 1:length(obstacles)
                 for j = 1:length(obj.link_FRS)
                     for k = 1:length(obj.link_FRS{j})
@@ -142,8 +180,40 @@ classdef robot_arm_FRS_rotatotope_1link
                     end
                 end
             end
+            toc;
+            
+            % ===== mex constraints generators =====
+            fprintf("GENERATE CONSTRAINTS MEX TIME\n");
+            tic;
+            % promise that the sizes of obstacles are the same, <= 10
+            mexin_OZ = [];
+            for i = 1:length(obstacles)
+                mexin_OZ = [mexin_OZ, obstacles{i}.zono.Z];
+            end
+            
+            [mex_A_con_res, mex_b_con_res, mex_k_con_res, mex_k_con_num_res] = constraints_mex(obj.n_links, obj.n_time_steps, obj.mex_RZ', obj.mex_c_idx', obj.mex_k_idx', length(obstacles), mexin_OZ);
+            
+            A_con_width = max(max(mex_k_con_num_res));
+            
+            for i = 1:length(obstacles)
+                for j = 1:obj.n_links
+                    for k = 1:obj.n_time_steps
+                        obj.mex_k_con{i}{j}{k} = mex_k_con_res(([((j-1)*j+1):(j*(j+1))]-1)*obj.n_time_steps+k, 1:mex_k_con_num_res(j,k));
+                        mex_A_con_seg = mex_A_con_res((((i-1)*obj.n_links+j-1)*741*2+1):((i-1)*obj.n_links+j)*741*2,(A_con_width*(k-1)+1):(A_con_width*(k-1)+mex_k_con_num_res(j,k)));
+                        mex_b_con_seg = mex_b_con_res((((i-1)*obj.n_links+j-1)*741*2+1):((i-1)*obj.n_links+j)*741*2,k);
+                        % delete zero rows
+%                         zero_rows = ~any(mex_A_con_seg,2);
+%                         mex_A_con_seg(zero_rows,:) = [];
+%                         mex_b_con_seg(zero_rows,:) = [];
+                        obj.mex_A_con{i}{j}{k} = mex_A_con_seg;
+                        obj.mex_b_con{i}{j}{k} = mex_b_con_seg;
+                    end
+                end
+            end
+            
+            toc;
+            % ===== mex constraints generators =====
         end
-        
     end
 end
 
