@@ -72,6 +72,7 @@ classdef arm_world_static < world
             if isempty(W.goal)
                 W.create_goal(I) ;
             end
+            W.goal_plot_patch_data = I.get_collision_check_volume(W.goal) ;
             
             W.vdisp('Arm world setup complete',2)
         end
@@ -140,7 +141,6 @@ classdef arm_world_static < world
                 W.goal = new_goal ;
             end
             
-            W.goal_plot_patch_data = I.get_collision_check_volume(W.goal) ;
         end
         
         %% make configurations
