@@ -68,6 +68,8 @@ P0.	process the input
 	uint32_t EE_Z_width = (uint32_t)mxGetM(prhs[4]);
 	uint32_t EE_Z_length = (uint32_t)mxGetN(prhs[4]);
 
+	start_t = clock();
+
 	/*
 P1.	generate all the rotatotopes
 	*/
@@ -91,6 +93,10 @@ P2.	stack the rotatotopes
 P3. handle the output, release the memory
 	*/
 	links.returnResults();
+
+	end_t = clock();
+	mexPrintf("MEX FUNCTION TIME: %.6f\n", (end_t - start_t) / (double)(CLOCKS_PER_SEC));
+
 	nlhs = 3;
 	
 	plhs[0] = mxCreateNumericMatrix(links.n_links * links.n_time_steps * links.Z_width, reduce_order, mxDOUBLE_CLASS, mxREAL);
@@ -118,8 +124,19 @@ P3. handle the output, release the memory
 			output3[j * links.n_links * (links.n_links + 1) * links.n_time_steps + i] = links.k_idx[i * reduce_order + j];
 		}
 	}
-
+	
+	plhs[3] = mxCreateLogicalMatrix(links.n_links * (links.n_links + 1) * links.n_time_steps, 2 * reduce_order - 1);
+	bool *output4 = mxGetLogicals(plhs[3]);
+	for (uint32_t i = 0; i < links.n_links * (links.n_links + 1) * links.n_time_steps; i++) {
+		for (uint32_t j = 0; j < (2 * reduce_order - 1); j++) {
+			output4[j * links.n_links * (links.n_links + 1) * links.n_time_steps + i] = links.k_idx_new[i * (2 * reduce_order - 1) + j];
+		}
+	}
+	
 	cudaFree(dev_R);
 	cudaFree(dev_rot_axes);
+
+
+	delete[] links.k_idx_new; // for debug
 }
 

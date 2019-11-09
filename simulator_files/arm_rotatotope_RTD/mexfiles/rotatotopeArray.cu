@@ -28,13 +28,11 @@ rotatotopeArray::rotatotopeArray(uint32_t n_links_input, uint32_t n_time_steps_i
 		cudaMemcpy(dev_Z, Z, Z_width * Z_length * sizeof(double), cudaMemcpyHostToDevice);
 
 		RZ = new double[n_links * n_time_steps * reduce_order * Z_width]; // compute RZ iteratively
-		double* dev_RZ_new;
 		cudaMalloc((void**)&dev_RZ, n_links * n_time_steps * reduce_order * Z_width * sizeof(double));
 		cudaMalloc((void**)&dev_RZ_new, n_links * n_time_steps * reduce_order * R_unit_length * Z_width * sizeof(double));
 
 		c_idx = new bool[n_links * n_time_steps * reduce_order]; // compute c_idx and k_idx iteratively
 		k_idx = new bool[n_links * (n_links + 1) * n_time_steps * reduce_order];
-		bool *dev_c_idx_new, *dev_k_idx_new;
 		cudaMalloc((void**)&dev_c_idx, n_links * n_time_steps * reduce_order * sizeof(bool));
 		cudaMemset(dev_c_idx, 0, n_links * n_time_steps * reduce_order * sizeof(bool));
 		cudaMalloc((void**)&dev_c_idx_new, n_links * n_time_steps * reduce_order * R_unit_length * sizeof(bool));
@@ -46,7 +44,7 @@ rotatotopeArray::rotatotopeArray(uint32_t n_links_input, uint32_t n_time_steps_i
 
 		dim3 grid1(n_links, n_time_steps, 1);
 		dim3 block1(reduce_order, Z_width, 1);
-		initialize_RZ_kernel << < grid1, block1 >> > (dev_Z, Z_length, dev_RZ, dev_c_idx);
+		initialize_RZ_kernel << < grid1, block1 >> > (dev_Z, Z_unit_length, dev_RZ, dev_c_idx);
 
 		for (int link = n_links; link > 0; link--) {
 			for (int joint_offset = 1; joint_offset >= 0; joint_offset--) {
@@ -79,11 +77,14 @@ rotatotopeArray::~rotatotopeArray() {
 
 void rotatotopeArray::stack(rotatotopeArray &EEs) {
 	double* dev_RZ_new;
-	cudaMalloc((void**)&dev_RZ_new, EEs.n_links * n_time_steps * (reduce_order * 2 - 1) * Z_width * sizeof(double));
+	cudaMalloc((void**)&dev_RZ_new, n_links * n_time_steps * (reduce_order * 2 - 1) * Z_width * sizeof(double));
+
+	k_idx_new = new bool[n_links * (n_links + 1) * n_time_steps * (reduce_order * 2 - 1) * sizeof(bool)];
+
 	bool *dev_c_idx_new, *dev_k_idx_new;
-	cudaMalloc((void**)&dev_c_idx_new, EEs.n_links * n_time_steps * (reduce_order * 2 - 1) * sizeof(bool));
-	cudaMalloc((void**)&dev_k_idx_new, EEs.n_links * (n_links + 1) * n_time_steps * (reduce_order * 2 - 1) * sizeof(bool));
-	cudaMemset(dev_k_idx_new, 0, EEs.n_links * (n_links + 1) * n_time_steps * (reduce_order * 2 - 1) * sizeof(bool));
+	cudaMalloc((void**)&dev_c_idx_new, n_links * n_time_steps * (reduce_order * 2 - 1) * sizeof(bool));
+	cudaMalloc((void**)&dev_k_idx_new, n_links * (n_links + 1) * n_time_steps * (reduce_order * 2 - 1) * sizeof(bool));
+	cudaMemset(dev_k_idx_new, 0, n_links * (n_links + 1) * n_time_steps * (reduce_order * 2 - 1) * sizeof(bool));
 
 	for (int link = EEs.n_links; link > 0; link--) {
 		dim3 grid1(link, n_time_steps, 1);
@@ -92,6 +93,8 @@ void rotatotopeArray::stack(rotatotopeArray &EEs) {
 	
 		reduce_kernel << < grid1, (2 * reduce_order - 1) >> > (dev_RZ_new, dev_c_idx_new, dev_k_idx_new, n_links - link, dev_RZ, dev_c_idx, dev_k_idx);
 	}
+
+	cudaMemcpy(k_idx_new, dev_k_idx_new, n_links * (n_links + 1) * n_time_steps * (reduce_order * 2 - 1) * sizeof(bool), cudaMemcpyDeviceToHost);
 
 	cudaFree(dev_RZ_new);
 	cudaFree(dev_c_idx_new);
@@ -111,12 +114,11 @@ __global__ void initialize_RZ_kernel(double* link_Z, uint32_t link_Z_length, dou
 	uint32_t time_id = blockIdx.y;
 	uint32_t n_time_steps = gridDim.y;
 	uint32_t z_id = threadIdx.x;
-	uint32_t link_Z_unit_length = blockDim.x;
 	uint32_t w_id = threadIdx.y;
 	uint32_t Z_width = blockDim.y;
 
 	if (z_id < link_Z_length) {
-		RZ[((link_id * n_time_steps + time_id) * reduce_order + z_id) * Z_width + w_id] = link_Z[(link_id * link_Z_unit_length + z_id) * Z_width + w_id];
+		RZ[((link_id * n_time_steps + time_id) * reduce_order + z_id) * Z_width + w_id] = link_Z[(link_id * link_Z_length + z_id) * Z_width + w_id];
 	}
 	else {
 		RZ[((link_id * n_time_steps + time_id) * reduce_order + z_id) * Z_width + w_id] = 0;
@@ -127,7 +129,6 @@ __global__ void initialize_RZ_kernel(double* link_Z, uint32_t link_Z_length, dou
 
 __global__ void add_kernel(uint32_t link_offset, double* link_RZ, double* EE_RZ, bool* link_c_idx, bool* EE_c_idx, bool* link_k_idx, bool* EE_k_idx, double* RZ_new, bool* c_idx_new, bool* k_idx_new) {
 	uint32_t link_id = blockIdx.x + link_offset;
-	uint32_t n_links = gridDim.x + link_offset;
 	uint32_t time_id = blockIdx.y;
 	uint32_t n_time_steps = gridDim.y;
 	uint32_t Z_id = threadIdx.x;
@@ -135,7 +136,7 @@ __global__ void add_kernel(uint32_t link_offset, double* link_RZ, double* EE_RZ,
 
 	uint32_t add_link_Z = (link_id * n_time_steps + time_id) * reduce_order + Z_id;
 	uint32_t add_EE_Z = (blockIdx.x * n_time_steps + time_id) * reduce_order + Z_id;
-	uint32_t add_Z = (blockIdx.x * n_time_steps + time_id) * (2 * reduce_order - 1) + Z_id;
+	uint32_t add_Z = (link_id * n_time_steps + time_id) * (2 * reduce_order - 1) + Z_id;
 
 	uint32_t EE_k_start = ((blockIdx.x * (blockIdx.x + 1)) * n_time_steps + time_id) * reduce_order + Z_id;
 	uint32_t EE_k_end = (((blockIdx.x + 1) * (blockIdx.x + 2)) * n_time_steps + time_id) * reduce_order + Z_id;
@@ -193,7 +194,6 @@ __global__ void add_kernel(uint32_t link_offset, double* link_RZ, double* EE_RZ,
 
 __global__ void multiply_kernel(uint8_t* rot_axes, uint32_t link_offset, uint32_t joint_offset, double* RZ, double* R, bool* c_idx, bool* k_idx, double* RZ_new, bool* c_idx_new, bool* k_idx_new) {
 	uint32_t link_id = blockIdx.x + link_offset;
-	uint32_t n_links = gridDim.x + link_offset;
 	uint32_t joint_id = blockIdx.x * 2 + joint_offset;
 	uint32_t time_id = blockIdx.y;
 	uint32_t n_time_steps = gridDim.y;
@@ -296,7 +296,7 @@ __global__ void reduce_kernel(double* RZ_new, bool* c_idx_new, bool* k_idx_new, 
 				high = j;
 		}
 	}
-
+	
 	// at this point, the first (reduce_order - 3) entries in RZ_new are the (reduce_order - 3) largest ones
 	// we choose them as entries for RZ after reduction.
 	// we compress the rest of the entries to a box with 3 generators
@@ -325,7 +325,7 @@ __global__ void reduce_kernel(double* RZ_new, bool* c_idx_new, bool* k_idx_new, 
 	else if (reduce_order - 3 <= z_id && z_id < reduce_order) { // construct a 3-d box for the rest of the generators
 		uint32_t box_id = (z_id + 3) - reduce_order;
 		double entry_sum = 0;
-		for (uint32_t h = (base + reduce_order - 3) * 3 + box_id; h < (base + norm_size) * 3 + box_id; h += 3) {
+		for (uint32_t h = (base + reduce_order - 3) * 3 + box_id; h < (base + norm_length) * 3 + box_id; h += 3) {
 			entry_sum += RZ_new[h];
 		}
 		for (uint32_t h = 0; h < 3; h++) {

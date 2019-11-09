@@ -42,6 +42,7 @@ Returns:
 */
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 	std::clock_t start_t, end_t; // timing
+	start_t = clock();
 	/*
 P0.	process the input
 	*/
@@ -88,6 +89,8 @@ P0.	process the input
 	double* dev_OZ;
 	cudaMalloc((void**)&dev_OZ, OZ_length * OZ_width * sizeof(double));
 	cudaMemcpy(dev_OZ, OZ, OZ_length * OZ_width * sizeof(double), cudaMemcpyHostToDevice);
+
+	
 
 	/*
 P1.	buffer the obstacle by k-independent generators
@@ -137,6 +140,9 @@ P2.	generate obstacles polynomials
 
 	cudaMemcpy(A_con, dev_A_con, n_obstacles * n_links * n_time_steps * max_constraint_size * 2 * max_k_con_num * sizeof(double), cudaMemcpyDeviceToHost);
 	cudaMemcpy(b_con, dev_b_con, n_obstacles * n_links * n_time_steps * max_constraint_size * 2 * sizeof(double), cudaMemcpyDeviceToHost);
+
+	end_t = clock();
+	mexPrintf("MEX FUNCTION TIME: %.6f\n", (end_t - start_t) / (double)(CLOCKS_PER_SEC));
 
 	/*
 P3. handle the output, release the memory
@@ -313,10 +319,10 @@ __global__ void polytope(double* buff_obstacles, double* frs_k_dep_G, uint8_t* k
 	uint32_t second = c_id + 1 - ((75 - first) * first) / 2;
 	uint32_t second_base = (obs_base + second + 1) * 3;
 	uint32_t con_base = ((obstacle_id * n_links + link_id) * n_time_steps + time_id) * max_constraint_size * 2 + c_id;
-	
+
 	double A_1 = buff_obstacles[first_base + 1] * buff_obstacles[second_base + 2] - buff_obstacles[first_base + 2] * buff_obstacles[second_base + 1];
-	double A_2 = buff_obstacles[first_base + 2] * buff_obstacles[second_base]     - buff_obstacles[first_base]     * buff_obstacles[second_base + 2];
-	double A_3 = buff_obstacles[first_base] *     buff_obstacles[second_base + 1] - buff_obstacles[first_base + 1] * buff_obstacles[second_base];
+	double A_2 = buff_obstacles[first_base + 2] * buff_obstacles[second_base] - buff_obstacles[first_base] * buff_obstacles[second_base + 2];
+	double A_3 = buff_obstacles[first_base] * buff_obstacles[second_base + 1] - buff_obstacles[first_base + 1] * buff_obstacles[second_base];
 	double A_s_q = sqrt(A_1 * A_1 + A_2 * A_2 + A_3 * A_3);
 
 	if (A_s_q != 0) {

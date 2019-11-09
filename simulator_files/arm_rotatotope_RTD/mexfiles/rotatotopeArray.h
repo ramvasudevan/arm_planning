@@ -82,14 +82,19 @@ public:
 	// the resulting array of rotatotopes
 	double* RZ;
 	double* dev_RZ;
+	double* RZ_new; // for debug
+	double* dev_RZ_new;
 
 	// keep track of the center
 	bool* c_idx;
 	bool* dev_c_idx;
+	bool *dev_c_idx_new; 
 
 	// keep track of k-dependent generators
 	bool* k_idx;
 	bool* dev_k_idx;
+	bool* k_idx_new; // for debug
+	bool *dev_k_idx_new;
 };
 
 /*
