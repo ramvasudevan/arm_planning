@@ -60,6 +60,17 @@ rotatotopeArray::rotatotopeArray(uint32_t n_links_input, uint32_t n_time_steps_i
 		cudaFree(dev_c_idx_new);
 		cudaFree(dev_k_idx_new);
 	}
+
+	n_obstacles = 0;
+	A_con = nullptr;
+	dev_A_con = nullptr;
+	b_con = nullptr;
+	dev_b_con = nullptr;
+	k_con = nullptr;
+	dev_k_con = nullptr;
+	k_con_num = nullptr;
+	dev_k_con_num = nullptr;
+	max_k_con_num = 0;
 }
 
 rotatotopeArray::~rotatotopeArray() {
@@ -73,13 +84,24 @@ rotatotopeArray::~rotatotopeArray() {
 		delete[] k_idx;
 		cudaFree(dev_k_idx);
 	}
+
+	if (k_con != nullptr) {
+		delete[] k_con;
+		cudaFree(dev_k_con);
+		delete[] k_con_num;
+		cudaFree(dev_k_con_num);
+		delete[] A_con;
+		cudaFree(dev_A_con);
+		delete[] b_con;
+		cudaFree(dev_b_con);
+	}
 }
 
 void rotatotopeArray::stack(rotatotopeArray &EEs) {
 	double* dev_RZ_new;
 	cudaMalloc((void**)&dev_RZ_new, n_links * n_time_steps * (reduce_order * 2 - 1) * Z_width * sizeof(double));
 
-	k_idx_new = new bool[n_links * (n_links + 1) * n_time_steps * (reduce_order * 2 - 1) * sizeof(bool)];
+	//k_idx_new = new bool[n_links * (n_links + 1) * n_time_steps * (reduce_order * 2 - 1) * sizeof(bool)];
 
 	bool *dev_c_idx_new, *dev_k_idx_new;
 	cudaMalloc((void**)&dev_c_idx_new, n_links * n_time_steps * (reduce_order * 2 - 1) * sizeof(bool));
@@ -94,19 +116,65 @@ void rotatotopeArray::stack(rotatotopeArray &EEs) {
 		reduce_kernel << < grid1, (2 * reduce_order - 1) >> > (dev_RZ_new, dev_c_idx_new, dev_k_idx_new, n_links - link, dev_RZ, dev_c_idx, dev_k_idx);
 	}
 
-	cudaMemcpy(k_idx_new, dev_k_idx_new, n_links * (n_links + 1) * n_time_steps * (reduce_order * 2 - 1) * sizeof(bool), cudaMemcpyDeviceToHost);
+	//cudaMemcpy(k_idx_new, dev_k_idx_new, n_links * (n_links + 1) * n_time_steps * (reduce_order * 2 - 1) * sizeof(bool), cudaMemcpyDeviceToHost);
 
 	cudaFree(dev_RZ_new);
 	cudaFree(dev_c_idx_new);
 	cudaFree(dev_k_idx_new);
 }
 
-void rotatotopeArray::returnResults() {
-	if (n_links > 0) {
-		cudaMemcpy(RZ, dev_RZ, n_links * n_time_steps * reduce_order * Z_width * sizeof(double), cudaMemcpyDeviceToHost);
-		cudaMemcpy(c_idx, dev_c_idx, n_links * n_time_steps * reduce_order * sizeof(bool), cudaMemcpyDeviceToHost);
-		cudaMemcpy(k_idx, dev_k_idx, n_links * (n_links + 1) * n_time_steps * reduce_order * sizeof(bool), cudaMemcpyDeviceToHost);
+void rotatotopeArray::generate_constraints(uint32_t n_obstacles_in, double* OZ, uint32_t OZ_width, uint32_t OZ_length) {
+	n_obstacles = n_obstacles_in;
+	uint32_t OZ_unit_length = OZ_length / n_obstacles;
+
+	double* dev_OZ;
+	cudaMalloc((void**)&dev_OZ, OZ_length * OZ_width * sizeof(double));
+	cudaMemcpy(dev_OZ, OZ, OZ_length * OZ_width * sizeof(double), cudaMemcpyHostToDevice);
+
+	//buffer the obstacle by k-independent generators
+	k_con = new bool[n_links * (n_links + 1) * n_time_steps * reduce_order];
+	cudaMalloc((void**)&dev_k_con, n_links * (n_links + 1) * n_time_steps * reduce_order * sizeof(bool));
+	k_con_num = new uint8_t[n_links * n_time_steps];
+	cudaMalloc((void**)&dev_k_con_num, n_links * n_time_steps * sizeof(uint8_t));
+
+	double* dev_buff_obstacles;
+	cudaMalloc((void**)&dev_buff_obstacles, n_obstacles * n_links * n_time_steps * max_buff_obstacle_size * 3 * sizeof(double));
+	cudaMemset(dev_buff_obstacles, 0, n_obstacles * n_links * n_time_steps * max_buff_obstacle_size * 3 * sizeof(double));
+
+	double* dev_frs_k_dep_G;
+	cudaMalloc((void**)&dev_frs_k_dep_G, n_links * n_time_steps * reduce_order * 3 * sizeof(double));
+	cudaMemset(dev_frs_k_dep_G, 0, n_links * n_time_steps * reduce_order * 3 * sizeof(double));
+
+	dim3 grid1(n_obstacles, n_links, n_time_steps);
+	buff_obstacles_kernel << < grid1, reduce_order >> > (dev_RZ, dev_c_idx, dev_k_idx, dev_OZ, OZ_unit_length, dev_buff_obstacles, dev_frs_k_dep_G, dev_k_con, dev_k_con_num);
+
+	cudaMemcpy(k_con, dev_k_con, n_links * (n_links + 1) * n_time_steps * reduce_order * sizeof(bool), cudaMemcpyDeviceToHost);
+	cudaMemcpy(k_con_num, dev_k_con_num, n_links * n_time_steps * sizeof(uint8_t), cudaMemcpyDeviceToHost);
+
+	// find the maximum width of A_con for memory allocation
+	max_k_con_num = 0;
+	for (uint32_t i = 0; i < n_links * n_time_steps; i++) {
+		if (k_con_num[i] > max_k_con_num) {
+			max_k_con_num = k_con_num[i];
+		}
 	}
+
+	//generate obstacles polynomials
+	A_con = new double[n_obstacles * n_links * n_time_steps * max_constraint_size * 2 * max_k_con_num];
+	cudaMalloc((void**)&dev_A_con, n_obstacles * n_links * n_time_steps * max_constraint_size * 2 * max_k_con_num * sizeof(double));
+
+	b_con = new double[n_obstacles * n_links * n_time_steps * max_constraint_size * 2];
+	cudaMalloc((void**)&dev_b_con, n_obstacles * n_links * n_time_steps * max_constraint_size * 2 * sizeof(double));
+
+	dim3 grid2(n_obstacles, n_links, n_time_steps);
+	polytope << < grid2, max_constraint_size >> > (dev_buff_obstacles, dev_frs_k_dep_G, dev_k_con_num, max_k_con_num, dev_A_con, dev_b_con);
+	
+	cudaMemcpy(A_con, dev_A_con, n_obstacles * n_links * n_time_steps * max_constraint_size * 2 * max_k_con_num * sizeof(double), cudaMemcpyDeviceToHost);
+	cudaMemcpy(b_con, dev_b_con, n_obstacles * n_links * n_time_steps * max_constraint_size * 2 * sizeof(double), cudaMemcpyDeviceToHost);
+
+	cudaFree(dev_OZ);
+	cudaFree(dev_buff_obstacles);
+	cudaFree(dev_frs_k_dep_G);
 }
 
 __global__ void initialize_RZ_kernel(double* link_Z, uint32_t link_Z_length, double* RZ, bool* c_idx) {
@@ -369,6 +437,127 @@ __device__ void swap(double* RZ_norm, double* RZ_new, bool* c_idx_new, bool* k_i
 		k_idx_new[swap_j] = k_idx_new[swap_i];
 		k_idx_new[swap_i] = temp_bool;
 	}
+}
+
+__global__ void buff_obstacles_kernel(double* RZ, bool* c_idx, bool* k_idx, double* OZ, uint32_t OZ_unit_length, double* buff_obstacles, double* frs_k_dep_G, bool* k_con, uint8_t* k_con_num) {
+	uint32_t obstacle_id = blockIdx.x;
+	uint32_t obstacle_base = obstacle_id * OZ_unit_length;
+	uint32_t link_id = blockIdx.y;
+	uint32_t n_links = gridDim.y;
+	uint32_t time_id = blockIdx.z;
+	uint32_t n_time_steps = gridDim.z;
+	uint32_t z_id = threadIdx.x;
+	uint32_t c_base = (link_id * n_time_steps + time_id) * reduce_order;
+	uint32_t RZ_base = (link_id * n_time_steps + time_id) * reduce_order;
+	uint32_t k_start = ((link_id * (link_id + 1)) * n_time_steps + time_id) * reduce_order;
+	uint32_t k_end = (((link_id + 1) * (link_id + 2)) * n_time_steps + time_id) * reduce_order;
+	uint32_t k_step = n_time_steps * reduce_order;
+	uint32_t k_con_num_base = link_id * n_time_steps + time_id;
+	uint32_t buff_base = ((obstacle_id * n_links + link_id) * n_time_steps + time_id) * max_buff_obstacle_size;
+
+	// first, find kc_col
+	__shared__ bool kc_info[reduce_order];
+
+	kc_info[z_id] = false;
+	for (uint32_t i = k_start; i < k_end; i += k_step) {
+		if (k_idx[i + z_id] == true) {
+			kc_info[z_id] = true;
+			break;
+		}
+	}
+
+	kc_info[z_id] &= c_idx[c_base + z_id];
+
+	__syncthreads();
+
+	if (z_id == 0) { // process the original obstacle zonotope
+		for (uint32_t i = 0; i < 3; i++) {
+			buff_obstacles[buff_base * 3 + i] = OZ[obstacle_base * 3 + i] - RZ[RZ_base * 3 + i];
+		}
+
+		for (uint32_t obs_g = 1; obs_g < OZ_unit_length; obs_g++) {
+			for (uint32_t i = 0; i < 3; i++) {
+				buff_obstacles[(buff_base + obs_g) * 3 + i] = OZ[(obstacle_base + obs_g) * 3 + i];
+			}
+		}
+	}
+	else if (z_id == 1) { // find k-dependent generators and complete k_con
+		if (obstacle_id == 0) {
+			uint8_t k_dep_num = 0;
+			for (uint32_t z = 1; z < reduce_order; z++) {
+				if (kc_info[z]) {
+					for (uint32_t j = k_start; j < k_end; j += k_step) {
+						k_con[j + k_dep_num] = k_idx[j + z];
+					}
+
+					for (uint32_t i = 0; i < 3; i++) {
+						frs_k_dep_G[(c_base + k_dep_num) * 3 + i] = RZ[(RZ_base + z) * 3 + i];
+					}
+
+					k_dep_num++;
+				}
+			}
+
+			k_con_num[k_con_num_base] = k_dep_num;
+		}
+	}
+	else if (z_id == 2) { // find k-independent generators and complete buff_obstacles
+		uint8_t k_indep_num = OZ_unit_length;
+		for (uint32_t z = 1; z < reduce_order; z++) {
+			if (!kc_info[z]) {
+				for (uint32_t i = 0; i < 3; i++) {
+					buff_obstacles[(buff_base + k_indep_num) * 3 + i] = RZ[(RZ_base + z) * 3 + i];
+				}
+				k_indep_num++;
+			}
+		}
+	}
+}
+
+__global__ void polytope(double* buff_obstacles, double* frs_k_dep_G, uint8_t* k_con_num, uint32_t A_con_width, double* A_con, double* b_con) {
+	uint32_t obstacle_id = blockIdx.x;
+	uint32_t link_id = blockIdx.y;
+	uint32_t n_links = gridDim.y;
+	uint32_t time_id = blockIdx.z;
+	uint32_t n_time_steps = gridDim.z;
+	uint32_t k_con_base = link_id * n_time_steps + time_id;
+	uint32_t k_dep_G_base = k_con_base * reduce_order;
+	uint32_t obs_base = ((obstacle_id * n_links + link_id) * n_time_steps + time_id) * max_buff_obstacle_size;
+	uint32_t c_id = threadIdx.x;
+	uint32_t first = (uint32_t)floor(38.5 - 0.5 * sqrt(5929.0 - 8.0 * ((double)c_id)));
+	uint32_t first_base = (obs_base + first + 1) * 3;
+	uint32_t second = c_id + 1 - ((75 - first) * first) / 2;
+	uint32_t second_base = (obs_base + second + 1) * 3;
+	uint32_t con_base = ((obstacle_id * n_links + link_id) * n_time_steps + time_id) * max_constraint_size * 2 + c_id;
+
+	double A_1 = buff_obstacles[first_base + 1] * buff_obstacles[second_base + 2] - buff_obstacles[first_base + 2] * buff_obstacles[second_base + 1];
+	double A_2 = buff_obstacles[first_base + 2] * buff_obstacles[second_base] - buff_obstacles[first_base] * buff_obstacles[second_base + 2];
+	double A_3 = buff_obstacles[first_base] * buff_obstacles[second_base + 1] - buff_obstacles[first_base + 1] * buff_obstacles[second_base];
+	double A_s_q = sqrt(A_1 * A_1 + A_2 * A_2 + A_3 * A_3);
+
+	if (A_s_q != 0) {
+		A_1 /= A_s_q;
+		A_2 /= A_s_q;
+		A_3 /= A_s_q;
+	}
+	else {
+		A_1 = A_2 = A_3 = 0;
+	}
+
+	for (uint32_t i = 0; i < k_con_num[k_con_base]; i++) {
+		A_con[con_base * A_con_width + i] = A_1 * frs_k_dep_G[(k_dep_G_base + i) * 3] + A_2 * frs_k_dep_G[(k_dep_G_base + i) * 3 + 1] + A_3 * frs_k_dep_G[(k_dep_G_base + i) * 3 + 2];
+		A_con[(con_base + max_constraint_size) * A_con_width + i] = -A_con[con_base * A_con_width + i];
+	}
+
+	double d = A_1 * buff_obstacles[obs_base * 3] + A_2 * buff_obstacles[obs_base * 3 + 1] + A_3 * buff_obstacles[obs_base * 3 + 2];
+
+	double deltaD = 0;
+	for (uint32_t i = 1; i < max_buff_obstacle_size; i++) {
+		deltaD += abs(A_1 * buff_obstacles[(obs_base + i) * 3] + A_2 * buff_obstacles[(obs_base + i) * 3 + 1] + A_3 * buff_obstacles[(obs_base + i) * 3 + 2]);
+	}
+
+	b_con[con_base] = d + deltaD;
+	b_con[con_base + max_constraint_size] = -d + deltaD;
 }
 
 #endif // !ROTATOTOPE_ARRAY_CPPs

@@ -10,6 +10,7 @@ a cuda array for a cluster of rotatotopes
 #ifndef ROTATOTOPE_ARRAY_H
 #define ROTATOTOPE_ARRAY_H
 
+#include "mex.h"
 #include "cuda_runtime.h"
 #include "device_launch_parameters.h"
 #include <cmath>
@@ -57,9 +58,14 @@ public:
 
 	/*
 	Instruction:
-		copy results from gpu to memory
+		generate the constraints using input obstacles
+	Requires:
+		1. number of obstacles
+		2. zonotope array of obstacles
+		3. width of the array above
+		4. length of the array above
 	*/
-	void returnResults();
+	void generate_constraints(uint32_t n_obstacles, double* OZ, uint32_t OZ_width, uint32_t OZ_length);
 
 	// number of different zonotopes
 	uint32_t n_links;
@@ -95,6 +101,25 @@ public:
 	bool* dev_k_idx;
 	bool* k_idx_new; // for debug
 	bool *dev_k_idx_new;
+
+	// number of obstacles
+	uint32_t n_obstacles;
+
+	// constraint polynomials
+	double* A_con;
+	double* dev_A_con;
+
+	double* b_con;
+	double* dev_b_con;
+
+	bool* k_con;
+	bool* dev_k_con;
+
+	uint8_t* k_con_num; // size of each k con
+	uint8_t* dev_k_con_num; 
+
+	// maximum of k_con in rotatotopes
+	uint32_t max_k_con_num;
 };
 
 /*
@@ -202,5 +227,37 @@ Modifies:
 	4. k_idx_new
 */
 __device__ void swap(double* RZ_norm, double* RZ, bool* c_idx, bool* k_idx, uint32_t base, uint32_t k_start, uint32_t k_end, uint32_t k_step, uint32_t i, uint32_t j);
+
+/*
+Instruction:
+	buffer the obstacle by k-independent generators
+Requires:
+	1. RZ
+	2. c_idx
+	3. k_idx
+	4. OZ
+	5. OZ_unit_length
+Modifies:
+	1. buff_obstacles
+	2. frs_k_dep_G
+	3. k_con
+	4. k_con_num
+*/
+__global__ void buff_obstacles_kernel(double* RZ, bool* c_idx, bool* k_idx, double* OZ, uint32_t OZ_unit_length, double* buff_obstacles, double* frs_k_dep_G, bool* k_con, uint8_t* k_con_num);
+
+/*
+Instruction:
+	generate the polytopes of constraints
+Requires:
+	1. buff_obstacles
+	2. frs_k_dep_G
+	3. k_con_num
+	4. A_con_width = max_k_con_num
+Modifies:
+	1. A_con
+	2. b_con
+*/
+__global__ void polytope(double* buff_obstacles, double* frs_k_dep_G, uint8_t* k_con_num, uint32_t A_con_width, double* A_con, double* b_con);
+
 
 #endif // !ROTATOTOPE_ARRAY_H
