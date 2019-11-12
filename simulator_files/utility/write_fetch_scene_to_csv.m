@@ -1,4 +1,4 @@
-function [ ] = write_fetch_scene_to_csv(W)
+function [ ] = write_fetch_scene_to_csv(W, filename)
 % takes in an example world
 % writes .csv to be used in MoveIt
 
@@ -13,7 +13,9 @@ for i = 1:W.N_obstacles
    M(3 + i, :) =  [W.obstacles{i}.center', W.obstacles{i}.side_lengths];
 end
 
-filename = ('scene_1.csv');
+if ~exist('filename', 'var')
+    filename = ('scene_1.csv');
+end
 csvwrite(filename, M);
  
 end

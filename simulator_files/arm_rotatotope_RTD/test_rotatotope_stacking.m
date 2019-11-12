@@ -14,8 +14,8 @@ slice_pt = pi/6-0.001;
 tic
 FRS = robot_arm_FRS_rotatotope_fetch(q_0, q_dot_0);
 toc
-% FRS.plot(10)
-FRS.plot_slice(ones(6,1)*slice_pt, 10)
+FRS.plot(10)
+% FRS.plot_slice(ones(6,1)*slice_pt, 10)
 
 pause(0.05);
 

@@ -191,7 +191,8 @@ classdef arm_world_static < world
         function O = create_random_obstacle(W)
             % create center
             B = W.bounds ;
-            center = [rand_range(B(1),B(2)) ; rand_range(B(3),B(4))] ;
+%             center = [rand_range(B(1),B(2)) ; rand_range(B(3),B(4))] ;
+            center = [rand_range(0,B(2)) ; rand_range(B(3),B(4))] ;
             
             if W.dimension == 3
                 center = [center ; rand_range(B(5),B(6))] ;
