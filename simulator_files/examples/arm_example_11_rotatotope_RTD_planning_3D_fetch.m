@@ -32,10 +32,10 @@ A.LLC.K_i = 1*A.LLC.K_i;
 A.LLC.K_d = 1*A.LLC.K_d;
 A.joint_input_limits = 1*A.joint_input_limits;
 
-% W = arm_world_static('floor_normal_axis', floor_normal_axis, 'include_base_obstacle', 0, 'goal_radius', 0.03, 'N_obstacles',N_obstacles,'dimension',dimension,'workspace_goal_check', 0,...
-%     'verbose',verbosity) ;
 W = arm_world_static('floor_normal_axis', floor_normal_axis, 'include_base_obstacle', 0, 'goal_radius', 0.03, 'N_obstacles',N_obstacles,'dimension',dimension,'workspace_goal_check', 0,...
-    'verbose',verbosity, 'start', [0;0;0;0;0;0], 'goal', [pi/2;0;0;0;0;0]) ;
+    'verbose',verbosity) ;
+% W = arm_world_static('floor_normal_axis', floor_normal_axis, 'include_base_obstacle', 0, 'goal_radius', 0.03, 'N_obstacles',N_obstacles,'dimension',dimension,'workspace_goal_check', 0,...
+%     'verbose',verbosity, 'start', [0;0;0;0;0;0], 'goal', [pi/2;0;0;0;0;0]) ;
 
 FRS_options = struct();
 % FRS_options.position_dimensions = [1;2;3];
@@ -46,6 +46,7 @@ FRS_options = struct();
 % FRS_options.time_discretization = 0.01;
 
 FRS_options.t_plan = t_plan;
+FRS_options.origin_shift = A.joint_locations(1:3, 1);
 FRS_options.T = T;
 FRS_options.L = 0.33;
 FRS_options.buffer_dist = A.buffer_dist;

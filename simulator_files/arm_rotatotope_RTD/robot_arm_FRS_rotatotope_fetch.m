@@ -46,16 +46,17 @@ classdef robot_arm_FRS_rotatotope_fetch
             
             FRSkeytmp = load([obj.FRS_path, '0key.mat']); % fix this
             obj.FRS_key = FRSkeytmp.c_IC;
-            
-            obj = obj.create_FRS();
-            
+                        
             if ~exist('FRS_options', 'var')
                 obj.FRS_options.combs = generate_combinations_upto(200);
                 obj.FRS_options.maxcombs = 200;
                 obj.FRS_options.buffer_dist = 0;
+                obj.FRS_options.origin_shift = zeros(3, 1);
             else
                 obj.FRS_options = FRS_options;
             end
+            
+            obj = obj.create_FRS();
             
             % all rotatotopes defined for same parameter set:
             obj.c_k = obj.link_rotatotopes{end}{end}.c_k;
@@ -106,6 +107,14 @@ classdef robot_arm_FRS_rotatotope_fetch
                     for k = 1:i-1
                         obj.link_FRS{i}{j} = obj.link_FRS{i}{j}.stack(obj.link_EE_rotatotopes{k}{j});
                     end
+                end
+            end
+            
+            % SHIFT ORIGINS:
+            for i = 1:obj.n_links
+                for j = 1:obj.n_time_steps
+                    obj.link_FRS{i}{j}.Rc = obj.link_FRS{i}{j}.Rc + obj.FRS_options.origin_shift;
+                    obj.link_FRS{i}{j}.RZ(:, 1) = obj.link_FRS{i}{j}.RZ(:, 1) + obj.FRS_options.origin_shift;
                 end
             end
         end
