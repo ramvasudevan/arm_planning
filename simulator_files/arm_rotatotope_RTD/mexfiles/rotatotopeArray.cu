@@ -162,6 +162,7 @@ __global__ void reduce_kernel(double* RZ_new, bool* c_idx_new, bool* k_idx_new, 
 	uint32_t norm_length = blockDim.x;
 	uint32_t mul_Z = (link_id * n_time_steps + time_id) * norm_length + z_id; // we never reduce the center
 	__shared__ double RZ_norm[norm_size];
+	__shared__ uint32_t RZ_id[norm_size];
 
 	RZ_norm[z_id] = 0;
 	double norm;
@@ -169,6 +170,8 @@ __global__ void reduce_kernel(double* RZ_new, bool* c_idx_new, bool* k_idx_new, 
 		norm = RZ_new[mul_Z * 3 + i];
 		RZ_norm[z_id] += norm * norm;
 	}
+
+	RZ_id[z_id] = z_id;
 
 	__syncthreads();
 
@@ -192,10 +195,23 @@ __global__ void reduce_kernel(double* RZ_new, bool* c_idx_new, bool* k_idx_new, 
 					i++;
 				while (i <= j && RZ_norm[j] < pivot)
 					j--;
-				if (i < j)
-					swap(RZ_norm, RZ_new, c_idx_new, k_idx_new, base, k_start, k_end, k_step, (i++), (j--));
+				if (i < j) {
+					double temp_double = RZ_norm[i];
+					RZ_norm[i] = RZ_norm[j];
+					RZ_norm[j] = temp_double;
+					uint32_t temp = RZ_id[i];
+					RZ_id[i] = RZ_id[j];
+					RZ_id[j] = temp;
+					i++;
+					j--;
+				}
 			}
-			swap(RZ_norm, RZ_new, c_idx_new, k_idx_new, base, k_start, k_end, k_step, low, j);
+			double temp_double = RZ_norm[low];
+			RZ_norm[low] = RZ_norm[j];
+			RZ_norm[j] = temp_double;
+			uint32_t temp = RZ_id[low];
+			RZ_id[low] = RZ_id[j];
+			RZ_id[j] = temp;
 
 			if (j == k - 1)
 				break;
@@ -206,11 +222,11 @@ __global__ void reduce_kernel(double* RZ_new, bool* c_idx_new, bool* k_idx_new, 
 		}
 	}
 
+	__syncthreads();
+
 	// at this point, the first (reduce_order - 3) entries in RZ_new are the (reduce_order - 3) largest ones
 	// we choose them as entries for RZ after reduction.
 	// we compress the rest of the entries to a box with 3 generators
-
-	__syncthreads();
 
 	uint32_t base_ori = (link_id * n_time_steps + time_id) * reduce_order; // indeces offset for RZ
 	uint32_t k_start_ori = ((link_id * (link_id + 1)) * n_time_steps + time_id) * reduce_order;
@@ -218,15 +234,16 @@ __global__ void reduce_kernel(double* RZ_new, bool* c_idx_new, bool* k_idx_new, 
 	uint32_t k_step_ori = n_time_steps * reduce_order;
 
 	if (z_id < reduce_order - 3) { // copy these generators to RZ
-		c_idx[base_ori + z_id] = c_idx_new[base + z_id];
+		uint32_t sorted_id = RZ_id[z_id];
+		c_idx[base_ori + z_id] = c_idx_new[base + sorted_id];
 
 		for (uint32_t h = 0; h < 3; h++) {
-			RZ[(base_ori + z_id) * 3 + h] = RZ_new[(base + z_id) * 3 + h];
+			RZ[(base_ori + z_id) * 3 + h] = RZ_new[(base + sorted_id) * 3 + h];
 		}
 
 		uint32_t k_pivot = k_start, k_pivot_ori = k_start_ori;
 		while (k_pivot != k_end && k_pivot_ori != k_end_ori) {
-			k_idx[k_pivot_ori + z_id] = k_idx_new[k_pivot + z_id];
+			k_idx[k_pivot_ori + z_id] = k_idx_new[k_pivot + sorted_id];
 			k_pivot += k_step;
 			k_pivot_ori += k_step_ori;
 		}
@@ -234,8 +251,9 @@ __global__ void reduce_kernel(double* RZ_new, bool* c_idx_new, bool* k_idx_new, 
 	else if (reduce_order - 3 <= z_id && z_id < reduce_order) { // construct a 3-d box for the rest of the generators
 		uint32_t box_id = (z_id + 3) - reduce_order;
 		double entry_sum = 0;
-		for (uint32_t h = (base + reduce_order - 3) * 3 + box_id; h < (base + norm_length) * 3 + box_id; h += 3) {
-			entry_sum += abs(RZ_new[h]);
+		for (uint32_t h = reduce_order - 3; h < norm_length; h++) {
+			uint32_t sorted_id = RZ_id[h];
+			entry_sum += abs(RZ_new[(base + sorted_id) * 3 + box_id]);
 		}
 
 		for (uint32_t h = 0; h < 3; h++) {
@@ -251,33 +269,6 @@ __global__ void reduce_kernel(double* RZ_new, bool* c_idx_new, bool* k_idx_new, 
 		for (uint32_t h = k_start_ori; h < k_end_ori; h += k_step_ori) {
 			k_idx[h + z_id] = false;
 		}
-	}
-}
-
-__device__ void swap(double* RZ_norm, double* RZ_new, bool* c_idx_new, bool* k_idx_new, uint32_t base, uint32_t k_start, uint32_t k_end, uint32_t k_step, uint32_t i, uint32_t j) {
-	uint32_t swap_i = base + i;
-	uint32_t swap_j = base + j;
-
-	double temp_double = RZ_norm[j];
-	RZ_norm[j] = RZ_norm[i];
-	RZ_norm[i] = temp_double;
-
-	bool temp_bool = c_idx_new[swap_j];
-	c_idx_new[swap_j] = c_idx_new[swap_i];
-	c_idx_new[swap_i] = temp_bool;
-
-	for (uint32_t h = 0; h < 3; h++) {
-		temp_double = RZ_new[3 * swap_j + h];
-		RZ_new[3 * swap_j + h] = RZ_new[3 * swap_i + h];
-		RZ_new[3 * swap_i + h] = temp_double;
-	}
-
-	for (uint32_t h = k_start; h < k_end; h += k_step) {
-		swap_i = h + i;
-		swap_j = h + j;
-		temp_bool = k_idx_new[swap_j];
-		k_idx_new[swap_j] = k_idx_new[swap_i];
-		k_idx_new[swap_i] = temp_bool;
 	}
 }
 

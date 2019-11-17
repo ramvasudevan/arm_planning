@@ -184,31 +184,6 @@ __global__ void reduce_kernel(double* RZ_new, bool* c_idx_new, bool* k_idx_new, 
 
 /*
 Instruction:
-	swap operations of all related data for reduce()
-Requires:
-	1. RZ_norm
-	2. RZ_new
-	3. c_idx_new
-	4. k_idx_new
-	5. base
-		--> base index for swap in RZ_norm, RZ_new, c_idx_new
-	6. k_start
-	7. k_end
-	8. k_step
-		-->  index for swap in k_idx_new
-	9. i
-	10. j
-		--> indeces in array to swap
-Modifies:
-	1. RZ_norm
-	2. RZ_new
-	3. c_idx_new
-	4. k_idx_new
-*/
-__device__ void swap(double* RZ_norm, double* RZ, bool* c_idx, bool* k_idx, uint32_t base, uint32_t k_start, uint32_t k_end, uint32_t k_step, uint32_t i, uint32_t j);
-
-/*
-Instruction:
 	copy one rotatotope to another array, used in stacking
 Requires:
 	1. link_id
