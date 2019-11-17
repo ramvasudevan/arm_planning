@@ -20,10 +20,9 @@ a cuda array for a cluster of rotatotopes
 #include <ctime>
 
 #define k_dim 2
-#define reduce_order 30
-#define norm_size 300
-#define max_buff_obstacle_size 40
-#define max_constraint_size 741
+#define reduce_order 31
+#define norm_size 310
+#define max_RZ_length 130
 
 class rotatotopeArray {
 public:
@@ -85,41 +84,45 @@ public:
 	double* dev_Z;
 	uint32_t Z_length, Z_width, Z_unit_length;
 
-	// the resulting array of rotatotopes
-	double* RZ;
+	// the resulting array of rotatotopes without stacking
 	double* dev_RZ;
-	double* RZ_new; // for debug
-	double* dev_RZ_new;
 
 	// keep track of the center
-	bool* c_idx;
 	bool* dev_c_idx;
-	bool *dev_c_idx_new; 
 
 	// keep track of k-dependent generators
-	bool* k_idx;
 	bool* dev_k_idx;
-	bool* k_idx_new; // for debug
-	bool *dev_k_idx_new;
+
+	// stacking results
+	double** dev_RZ_stack;
+	bool** dev_c_idx_stack;
+	bool** dev_k_idx_stack;
+
+	double* debug_RZ = nullptr;
+	bool* debug_c_idx = nullptr;
+	bool* debug_k_idx = nullptr;
 
 	// number of obstacles
 	uint32_t n_obstacles;
 
 	// constraint polynomials
-	double* A_con;
-	double* dev_A_con;
+	double** A_con;
+	double** dev_A_con;
 
-	double* b_con;
-	double* dev_b_con;
+	double** b_con;
+	double** dev_b_con;
 
-	bool* k_con;
-	bool* dev_k_con;
+	bool** k_con;
+	bool** dev_k_con;
 
-	uint8_t* k_con_num; // size of each k con
-	uint8_t* dev_k_con_num; 
+	uint8_t** k_con_num; // size of each k con
+	uint8_t** dev_k_con_num; 
 
 	// maximum of k_con in rotatotopes
-	uint32_t max_k_con_num;
+	uint32_t* max_k_con_num;
+
+	// timing
+	std::clock_t start_t, end_t; 
 };
 
 /*
@@ -133,30 +136,6 @@ Modifies:
 	2. c_idx
 */
 __global__ void initialize_RZ_kernel(double* link_Z, uint32_t link_Z_length, double* RZ, bool* c_idx);
-
-/*
-Instruction:
-	add two rotatotopes together
-Requires:
-	1. link_offset
-		--> which link should be rotated
-	2. link RZ
-		--> the Z of zonotopes of links
-	3. EE_RZ
-		--> the Z of zonotopes of EEs
-	4. link_c_idx
-	5. EE_c_idx
-	6. link_k_idx
-	7. EE_k_idx
-	8. RZ_new
-	9. c_idx_new
-	10. k_idx_new
-Modifies:
-	1. RZ_new
-	2. c_idx_new
-	3. k_idx_new
-*/
-__global__ void add_kernel(uint32_t link_offset, double* link_RZ, double* EE_RZ, bool* link_c_idx, bool* EE_c_idx,  bool* link_k_idx, bool* EE_k_idx, double* RZ_new, bool* c_idx_new, bool* k_idx_new);
 
 /*
 Instruction:
@@ -230,34 +209,81 @@ __device__ void swap(double* RZ_norm, double* RZ, bool* c_idx, bool* k_idx, uint
 
 /*
 Instruction:
+	copy one rotatotope to another array, used in stacking
+Requires:
+	1. link_id
+		--> which link should be copied
+	2. link_RZ
+		--> the Z of zonotopes of links
+	3. link_c_idx
+	4. link_k_idx
+	5. RZ_stack
+		--> for stacking
+	6. c_idx_stack
+	7. k_idx_stack
+Modifies:
+	1. RZ_stack
+	2. c_idx_stack
+	3. k_idx_stack
+*/
+__global__ void copy_kernel(uint32_t link_id, double* RZ, bool* c_idx, bool* k_idx, double* RZ_stack, bool* c_idx_stack, bool* k_idx_stack);
+
+/*
+Instruction:
+	stack two rotatotopes together
+Requires:
+	1. link_id
+		--> which in links should be stacked
+	2. EE_id
+		--> which in EE should be stacked
+	3. RZ_stack
+		--> the Z of zonotopes of links
+	4. EE_RZ
+	5. c_idx_stack
+	6. EE_c_idx
+	7. k_idx_stack
+	8. EE_k_idx
+Modifies:
+	1. RZ_stack
+	2. c_idx_stack
+	3. k_idx_stack
+*/
+__global__ void stack_kernel(uint32_t link_id, uint32_t EE_id, double* RZ_stack, double* EE_RZ, bool* c_idx_stack, bool* EE_c_idx, bool* k_idx_stack, bool* EE_k_idx);
+
+/*
+Instruction:
 	buffer the obstacle by k-independent generators
 Requires:
-	1. RZ
-	2. c_idx
-	3. k_idx
-	4. OZ
-	5. OZ_unit_length
+	1. link_id
+		--> which link is in operation
+	2. RZ
+	3. c_idx
+	4. k_idx
+	5. OZ
+	6. OZ_unit_length
 Modifies:
 	1. buff_obstacles
 	2. frs_k_dep_G
 	3. k_con
 	4. k_con_num
 */
-__global__ void buff_obstacles_kernel(double* RZ, bool* c_idx, bool* k_idx, double* OZ, uint32_t OZ_unit_length, double* buff_obstacles, double* frs_k_dep_G, bool* k_con, uint8_t* k_con_num);
+__global__ void buff_obstacles_kernel(uint32_t link_id, double* RZ, bool* c_idx, bool* k_idx, double* OZ, uint32_t OZ_unit_length, double* buff_obstacles, double* frs_k_dep_G, bool* k_con, uint8_t* k_con_num);
 
 /*
 Instruction:
 	generate the polytopes of constraints
 Requires:
-	1. buff_obstacles
-	2. frs_k_dep_G
-	3. k_con_num
-	4. A_con_width = max_k_con_num
+	1. link_id
+		--> which link is in operation
+	2. buff_obstacles
+	3. frs_k_dep_G
+	4. k_con_num
+	5. A_con_width = max_k_con_num
 Modifies:
 	1. A_con
 	2. b_con
 */
-__global__ void polytope(double* buff_obstacles, double* frs_k_dep_G, uint8_t* k_con_num, uint32_t A_con_width, double* A_con, double* b_con);
+__global__ void polytope(uint32_t link_id, double* buff_obstacles, double* frs_k_dep_G, uint8_t* k_con_num, uint32_t A_con_width, double* A_con, double* b_con);
 
 
 #endif // !ROTATOTOPE_ARRAY_H
