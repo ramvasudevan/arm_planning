@@ -28,8 +28,6 @@ O{4} = box_obstacle_zonotope('center', obs_center(:), 'side_lengths', [obs_width
 obs_center = [-0.5; -0.3; 0.4];
 obs_width = [0.1];
 O{5} = box_obstacle_zonotope('center', obs_center(:), 'side_lengths', [obs_width, obs_width, obs_width]);
-% plot(O{1});
-% plot(O{2});
 
 % get current state of robot
 q_0 = 0*ones(6, 1) ;
@@ -47,58 +45,10 @@ R = robot_arm_FRS_rotatotope_fetch(q_0, q_dot_0, O, FRS_options);
 % map obstacles to trajectory parameter space
 R = R.generate_constraints(O);
 
-% l_id = 3;
-% for t_id = 35:35
-% range = 2:31;
-% RZ = R.link_FRS{l_id}{t_id}.RZ(:,range);
-% total = [RZ;R.link_FRS{l_id}{t_id}.c_idx(:,range-1);R.link_FRS{l_id}{t_id}.k_idx(:,range-1)];
-% [obj,idx] = sort(vnorm(RZ),'descend');
-% sort_total = total(:,idx);
-% 
-% mex_RZ = R.deb_RZ((3*t_id-2):(3*t_id),range);
-% mex_total = [mex_RZ;R.deb_c_idx(t_id,range);R.deb_k_idx((0:(2*l_id-1))*100+t_id,range)];
-% [obj,idx] = sort(vnorm(mex_RZ),'descend');
-% sort_mex_total = mex_total(:,idx);
-% 
-% diff = abs(total - mex_total);
-% disp(mean(mean(diff)));
-% disp(max(max(diff)));
-% end
-% 
-% for l_id = 1:3
-%     for t_id = 1:100
-%         if size(R.mex_A_con{1}{l_id}{t_id},2) ~= size(R.A_con{1}{l_id}{t_id},2)
-%             fprintf('FUCK %d %d\n', l_id, t_id);
-%         end
-%     end
-% end
-% 
-% find(any(sort_total(5:10,:))&sort_total(4,:))
-% find(any(sort_mex_total(5:10,:))&sort_mex_total(4,:))
-
-% good_idx = 887;
-% good_mex_idx = 180;
-% t_id = 96;
-% con_sum = R.A_con{2}{1}{t_id};
-% [obj,idx] = sort(vnorm(con_sum,2), 'descend');
-% con_sum = con_sum(idx,:);
-% mex_con_sum = R.mex_A_con{2}{1}{t_id};
-% [obj,idx] = sort(vnorm(mex_con_sum(:,1:3),2), 'descend');
-% mex_con_sum = mex_con_sum(idx,:);
-% plot(1:size(mex_con_sum),vnorm(mex_con_sum,2),'r.',1:size(con_sum),vnorm(con_sum,2)+0.01,'b.')
-
-% frs_k_dep_G=load('frs_k_dep_G.mat');
-% frs_k_dep_G=frs_k_dep_G.frs_k_dep_G;
-% buff_obstacle=load('buff_obstacle.mat');
-% buff_obstacle=buff_obstacle.buff_obstacle;
-% [obj,idx_1] = sort(vnorm(R.debug(300+((t_id*3-2):(t_id*3)),:)),'descend');
-% R.debug(300+((t_id*3-2):(t_id*3)),idx_1)
-% [obj,idx_2] = sort(vnorm(buff_obstacle),'descend');
-% buff_obstacle(:,idx_2)
-
 % test one particular set of constraints
 % default 1, 3, 97
 
+savefig_path = ''; % specify the path where you want to save your figures
 for obstacle_id = 1:5
     figure(1); clf;
     good_diff = [];
@@ -172,7 +122,7 @@ for obstacle_id = 1:5
     %     disp(max(bad_diff{link_id}))
     end
     suptitle(['difference for obstacle ',int2str(obstacle_id)]);
-    saveas(gcf,['C:\Users\Bohao Zhang\OneDrive\Desktop\img\obs_',int2str(obstacle_id),'.png']);
+    saveas(gcf,[savefig_path,int2str(obstacle_id),'.png']);
 end
 
 
