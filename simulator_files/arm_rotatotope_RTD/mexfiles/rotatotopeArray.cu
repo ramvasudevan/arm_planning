@@ -296,7 +296,7 @@ void rotatotopeArray::stack(rotatotopeArray &EEs) {
 			stack_kernel << < grid2, block2 >> > (link_id, EE_id, dev_RZ_stack[link_id], EEs.dev_RZ, dev_c_idx_stack[link_id], EEs.dev_c_idx, dev_k_idx_stack[link_id], EEs.dev_k_idx);
 		}
 
-		if (link_id == 0) {
+		if (link_id == 2) {
 			debug_RZ = new double[n_time_steps * RZ_length * Z_width];
 			cudaMemcpy(debug_RZ, dev_RZ_stack[link_id], n_time_steps * RZ_length * Z_width * sizeof(double), cudaMemcpyDeviceToHost);
 
@@ -437,6 +437,16 @@ void rotatotopeArray::generate_constraints(uint32_t n_obstacles_in, double* OZ, 
 		cudaMemcpy(k_con[link_id], dev_k_con[link_id], 2 * (link_id + 1) * n_time_steps * RZ_length * sizeof(bool), cudaMemcpyDeviceToHost);
 		cudaMemcpy(k_con_num[link_id], dev_k_con_num[link_id], n_time_steps * sizeof(uint8_t), cudaMemcpyDeviceToHost);
 
+		/*
+		if (link_id == 0) {
+			debug = new double[n_obstacles * n_time_steps * buff_obstacle_length * 3];
+			cudaMemcpy(debug, dev_buff_obstacles, n_obstacles * n_time_steps * buff_obstacle_length * 3 * sizeof(double), cudaMemcpyDeviceToHost);
+
+			debug_2 = new double[n_time_steps * RZ_length * 3];
+			cudaMemcpy(debug_2, dev_frs_k_dep_G, n_time_steps * RZ_length * 3 * sizeof(double), cudaMemcpyDeviceToHost);
+		}
+		*/
+
 		// find the maximum width of A_con for memory allocation
 		max_k_con_num[link_id] = 0;
 		for (uint32_t i = 0; i < n_time_steps; i++) {
@@ -551,7 +561,7 @@ __global__ void polytope(uint32_t link_id, double* buff_obstacles, double* frs_k
 	uint32_t k_dep_G_base = k_con_base * RZ_length;
 	uint32_t obs_base = (obstacle_id * n_time_steps + time_id) * buff_obstacle_length;
 	uint32_t c_id = blockIdx.y;
-	uint32_t first = (uint32_t)floor(-0.5*sqrt(4 * buff_obstacle_size * buff_obstacle_size - 4 * buff_obstacle_size - 8 * ((double)c_id) + 1) + buff_obstacle_size - 0.5);
+	uint32_t first = (uint32_t)floor(-0.5*sqrt(4 * buff_obstacle_size * buff_obstacle_size - 4 * buff_obstacle_size - 8.0 * ((double)c_id) + 1.0) + buff_obstacle_size - 0.5);
 	uint32_t first_base = (obs_base + first + 1) * 3;
 	uint32_t second = c_id + 1 - ((2 * (buff_obstacle_length - 1) - 3 - first) * first) / 2;
 	uint32_t second_base = (obs_base + second + 1) * 3;
@@ -560,21 +570,28 @@ __global__ void polytope(uint32_t link_id, double* buff_obstacles, double* frs_k
 	double A_1 = buff_obstacles[first_base + 1] * buff_obstacles[second_base + 2] - buff_obstacles[first_base + 2] * buff_obstacles[second_base + 1];
 	double A_2 = buff_obstacles[first_base + 2] * buff_obstacles[second_base] - buff_obstacles[first_base] * buff_obstacles[second_base + 2];
 	double A_3 = buff_obstacles[first_base] * buff_obstacles[second_base + 1] - buff_obstacles[first_base + 1] * buff_obstacles[second_base];
-	double A_s_q = sqrt(A_1 * A_1 + A_2 * A_2 + A_3 * A_3);
-
-	if (A_s_q != 0) {
+	
+	if (A_1 != 0 || A_2 != 0 || A_3 != 0) {
+		double A_s_q = sqrt(A_1 * A_1 + A_2 * A_2 + A_3 * A_3);
 		A_1 /= A_s_q;
 		A_2 /= A_s_q;
 		A_3 /= A_s_q;
-	}
-	else {
-		A_1 = A_2 = A_3 = 0;
 	}
 
 	for (uint32_t i = 0; i < k_con_num[k_con_base]; i++) {
 		A_con[con_base * A_con_width + i] = A_1 * frs_k_dep_G[(k_dep_G_base + i) * 3] + A_2 * frs_k_dep_G[(k_dep_G_base + i) * 3 + 1] + A_3 * frs_k_dep_G[(k_dep_G_base + i) * 3 + 2];
 		A_con[(con_base + constraint_length) * A_con_width + i] = -A_con[con_base * A_con_width + i];
 	}
+
+	/*
+	A_con[con_base * A_con_width] = A_1;
+	A_con[con_base * A_con_width + 1] = A_2;
+	A_con[con_base * A_con_width + 2] = A_3;
+
+	A_con[(con_base + constraint_length) * A_con_width] = -A_1;
+	A_con[(con_base + constraint_length) * A_con_width + 1] = -A_2;
+	A_con[(con_base + constraint_length) * A_con_width + 2] = -A_3;
+	*/
 
 	double d = A_1 * buff_obstacles[obs_base * 3] + A_2 * buff_obstacles[obs_base * 3 + 1] + A_3 * buff_obstacles[obs_base * 3 + 2];
 
@@ -681,6 +698,11 @@ rotatotopeArray::~rotatotopeArray() {
 		delete[] debug_RZ;
 		delete[] debug_c_idx;
 		delete[] debug_k_idx;
+	}
+
+	if (debug != nullptr) {
+		delete[] debug;
+		delete[] debug_2;
 	}
 }
 

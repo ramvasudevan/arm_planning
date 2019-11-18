@@ -186,9 +186,10 @@ P4. handle the output, release the memory
 	}
 	plhs[2] = output3;
 
-
-	uint32_t link_id = 0;
+	/*
+	uint32_t link_id = 2;
 	uint32_t RZ_length = ((reduce_order - 1) * (link_id + 1) + 1);
+	uint32_t buff_obstacle_length = RZ_length + 3;
 
 	plhs[3] = mxCreateNumericMatrix(n_time_steps * links.Z_width, RZ_length, mxDOUBLE_CLASS, mxREAL);
 	double *output4 = mxGetPr(plhs[3]);
@@ -215,8 +216,28 @@ P4. handle the output, release the memory
 			output6[k * 2 * (link_id + 1) * n_time_steps + j] = links.debug_k_idx[j * RZ_length + k];
 		}
 	}
+	*/
+	/*
+	plhs[3] = mxCreateNumericMatrix(n_obstacles * n_time_steps * 3, buff_obstacle_length, mxDOUBLE_CLASS, mxREAL);
+	double *output4 = mxGetPr(plhs[3]);
+	for (uint32_t j = 0; j < n_obstacles * n_time_steps; j++) {
+		for (uint32_t k = 0; k < buff_obstacle_length; k++) {
+			for (uint32_t p = 0; p < 3; p++) {
+				output4[(k * n_obstacles * n_time_steps + j) * 3 + p] = links.debug[(j * buff_obstacle_length + k) * 3 + p];
+			}
+		}
+	}
 
-
+	plhs[4] = mxCreateNumericMatrix(n_time_steps * 3, RZ_length, mxDOUBLE_CLASS, mxREAL);
+	double *output5 = mxGetPr(plhs[4]);
+	for (uint32_t j = 0; j < n_time_steps; j++) {
+		for (uint32_t k = 0; k < RZ_length; k++) {
+			for (uint32_t p = 0; p < 3; p++) {
+				output5[(k * n_time_steps + j) * 3 + p] = links.debug_2[(j * RZ_length + k) * 3 + p];
+			}
+		}
+	}
+	*/
 	
 	cudaFree(dev_R);
 	cudaFree(dev_rot_axes);

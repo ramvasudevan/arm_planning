@@ -123,6 +123,9 @@ public:
 
 	// timing
 	std::clock_t start_t, end_t; 
+
+	double* debug = nullptr;
+	double* debug_2 = nullptr;
 };
 
 /*
