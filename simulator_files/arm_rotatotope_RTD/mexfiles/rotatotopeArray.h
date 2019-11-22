@@ -23,6 +23,7 @@ a cuda array for a cluster of rotatotopes
 #define reduce_order 31
 #define norm_size 310
 #define max_RZ_length 130
+#define A_BIG_NUMBER 1000000
 
 class rotatotopeArray {
 public:

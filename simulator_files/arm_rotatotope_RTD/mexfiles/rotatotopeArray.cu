@@ -583,16 +583,6 @@ __global__ void polytope(uint32_t link_id, double* buff_obstacles, double* frs_k
 		A_con[(con_base + constraint_length) * A_con_width + i] = -A_con[con_base * A_con_width + i];
 	}
 
-	/*
-	A_con[con_base * A_con_width] = A_1;
-	A_con[con_base * A_con_width + 1] = A_2;
-	A_con[con_base * A_con_width + 2] = A_3;
-
-	A_con[(con_base + constraint_length) * A_con_width] = -A_1;
-	A_con[(con_base + constraint_length) * A_con_width + 1] = -A_2;
-	A_con[(con_base + constraint_length) * A_con_width + 2] = -A_3;
-	*/
-
 	double d = A_1 * buff_obstacles[obs_base * 3] + A_2 * buff_obstacles[obs_base * 3 + 1] + A_3 * buff_obstacles[obs_base * 3 + 2];
 
 	double deltaD = 0;
@@ -600,8 +590,14 @@ __global__ void polytope(uint32_t link_id, double* buff_obstacles, double* frs_k
 		deltaD += abs(A_1 * buff_obstacles[(obs_base + i) * 3] + A_2 * buff_obstacles[(obs_base + i) * 3 + 1] + A_3 * buff_obstacles[(obs_base + i) * 3 + 2]);
 	}
 
-	b_con[con_base] = d + deltaD;
-	b_con[con_base + constraint_length] = -d + deltaD;
+	if (A_1 != 0 || A_2 != 0 || A_3 != 0) {
+		b_con[con_base] = d + deltaD;
+		b_con[con_base + constraint_length] = -d + deltaD;
+	}
+	else {
+		b_con[con_base] = A_BIG_NUMBER;
+		b_con[con_base + constraint_length] = A_BIG_NUMBER;
+	}
 }
 
 rotatotopeArray::~rotatotopeArray() {
