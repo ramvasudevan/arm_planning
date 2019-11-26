@@ -12,7 +12,7 @@ a cuda array for a cluster of rotatotopes
 
 #include "rotatotopeArray.h"
 
-rotatotopeArray::rotatotopeArray(uint32_t n_links_input, uint32_t n_time_steps_input, double* &dev_R_input, uint32_t R_unit_length_input, uint8_t* &dev_rot_axes_input, double* &Z_input, uint32_t Z_width_input, uint32_t Z_length_input) {
+rotatotopeArray::rotatotopeArray(uint32_t n_links_input, uint32_t n_time_steps_input, double* &R_input, double* &dev_R_input, uint32_t R_unit_length_input, uint8_t* &dev_rot_axes_input, double* &Z_input, uint32_t Z_width_input, uint32_t Z_length_input) {
 	n_links = n_links_input;
 	n_time_steps = n_time_steps_input;
 	dev_R = dev_R_input;
@@ -26,6 +26,20 @@ rotatotopeArray::rotatotopeArray(uint32_t n_links_input, uint32_t n_time_steps_i
 		Z_unit_length = Z_length / n_links;
 		cudaMalloc((void**)&dev_Z, Z_width * Z_length * sizeof(double));
 		cudaMemcpy(dev_Z, Z, Z_width * Z_length * sizeof(double), cudaMemcpyHostToDevice);
+
+		c_k = new double[n_links * 2];
+		g_k = new double[n_links * 2];
+
+		for (uint32_t joint_id = 0; joint_id < n_links * 2; joint_id++) {
+			uint32_t R_id_start = ((joint_id + 1) * n_time_steps - 1) * R_unit_length;
+			c_k[joint_id] = R_input[R_id_start * 5 + k_dim];
+			for (uint32_t R_id = R_id_start + 1; R_id < R_id_start + R_unit_length; R_id++) {
+				if (R_input[R_id * 5 + k_dim] != 0) {
+					g_k[joint_id] = R_input[R_id * 5 + k_dim];
+					break;
+				}
+			}
+		}
 
 		double* dev_RZ_new;
 		cudaMalloc((void**)&dev_RZ, n_links * n_time_steps * reduce_order * Z_width * sizeof(double));
@@ -60,6 +74,8 @@ rotatotopeArray::rotatotopeArray(uint32_t n_links_input, uint32_t n_time_steps_i
 		cudaFree(dev_k_idx_new);
 	}
 	else {
+		c_k = nullptr;
+		g_k = nullptr;
 		Z = nullptr;
 		dev_Z = nullptr;
 		dev_RZ = nullptr;
@@ -318,7 +334,7 @@ __global__ void copy_kernel(uint32_t link_id, double* RZ, bool* c_idx, bool* k_i
 	uint32_t RZ_length = ((reduce_order - 1) * (link_id + 1) + 1);
 	uint32_t copy_Z = time_id * RZ_length + Z_id;
 	uint32_t copy_k_start = time_id * RZ_length + Z_id;
-	uint32_t copy_k_end = (2 * (link_id + 1) * n_time_steps + time_id) * RZ_length + Z_id;
+	//uint32_t copy_k_end = (2 * (link_id + 1) * n_time_steps + time_id) * RZ_length + Z_id;
 	uint32_t copy_k_step = n_time_steps * RZ_length;
 	uint32_t link_Z = (link_id * n_time_steps + time_id) * reduce_order + Z_id;
 	uint32_t link_k_start = ((link_id * (link_id + 1)) * n_time_steps + time_id) * reduce_order + Z_id;
@@ -434,18 +450,8 @@ void rotatotopeArray::generate_constraints(uint32_t n_obstacles_in, double* OZ, 
 		dim3 grid1(n_obstacles, n_time_steps, 1);
 		buff_obstacles_kernel << < grid1, RZ_length >> > (link_id, dev_RZ_stack[link_id], dev_c_idx_stack[link_id], dev_k_idx_stack[link_id], dev_OZ, OZ_unit_length, dev_buff_obstacles, dev_frs_k_dep_G, dev_k_con[link_id], dev_k_con_num[link_id]);
 
-		cudaMemcpy(k_con[link_id], dev_k_con[link_id], 2 * (link_id + 1) * n_time_steps * RZ_length * sizeof(bool), cudaMemcpyDeviceToHost);
+		//cudaMemcpy(k_con[link_id], dev_k_con[link_id], 2 * (link_id + 1) * n_time_steps * RZ_length * sizeof(bool), cudaMemcpyDeviceToHost);
 		cudaMemcpy(k_con_num[link_id], dev_k_con_num[link_id], n_time_steps * sizeof(uint8_t), cudaMemcpyDeviceToHost);
-
-		/*
-		if (link_id == 0) {
-			debug = new double[n_obstacles * n_time_steps * buff_obstacle_length * 3];
-			cudaMemcpy(debug, dev_buff_obstacles, n_obstacles * n_time_steps * buff_obstacle_length * 3 * sizeof(double), cudaMemcpyDeviceToHost);
-
-			debug_2 = new double[n_time_steps * RZ_length * 3];
-			cudaMemcpy(debug_2, dev_frs_k_dep_G, n_time_steps * RZ_length * 3 * sizeof(double), cudaMemcpyDeviceToHost);
-		}
-		*/
 
 		// find the maximum width of A_con for memory allocation
 		max_k_con_num[link_id] = 0;
@@ -465,8 +471,8 @@ void rotatotopeArray::generate_constraints(uint32_t n_obstacles_in, double* OZ, 
 		dim3 grid2(n_obstacles, constraint_length, 1);
 		polytope << < grid2, n_time_steps >> > (link_id, dev_buff_obstacles, dev_frs_k_dep_G, dev_k_con_num[link_id], max_k_con_num[link_id], dev_A_con[link_id], dev_b_con[link_id]);
 
-		cudaMemcpy(A_con[link_id], dev_A_con[link_id], n_obstacles * n_time_steps * constraint_length * 2 * max_k_con_num[link_id] * sizeof(double), cudaMemcpyDeviceToHost);
-		cudaMemcpy(b_con[link_id], dev_b_con[link_id], n_obstacles * n_time_steps * constraint_length * 2 * sizeof(double), cudaMemcpyDeviceToHost);
+		//cudaMemcpy(A_con[link_id], dev_A_con[link_id], n_obstacles * n_time_steps * constraint_length * 2 * max_k_con_num[link_id] * sizeof(double), cudaMemcpyDeviceToHost);
+		//cudaMemcpy(b_con[link_id], dev_b_con[link_id], n_obstacles * n_time_steps * constraint_length * 2 * sizeof(double), cudaMemcpyDeviceToHost);
 
 		cudaFree(dev_buff_obstacles);
 		cudaFree(dev_frs_k_dep_G);
@@ -586,7 +592,7 @@ __global__ void polytope(uint32_t link_id, double* buff_obstacles, double* frs_k
 	double d = A_1 * buff_obstacles[obs_base * 3] + A_2 * buff_obstacles[obs_base * 3 + 1] + A_3 * buff_obstacles[obs_base * 3 + 2];
 
 	double deltaD = 0;
-	for (uint32_t i = 1; i < buff_obstacle_length; i++) {
+	for (uint32_t i = 1; i < buff_obstacle_length - k_con_num[k_con_base]; i++) {
 		deltaD += abs(A_1 * buff_obstacles[(obs_base + i) * 3] + A_2 * buff_obstacles[(obs_base + i) * 3 + 1] + A_3 * buff_obstacles[(obs_base + i) * 3 + 2]);
 	}
 
@@ -600,6 +606,92 @@ __global__ void polytope(uint32_t link_id, double* buff_obstacles, double* frs_k
 	}
 }
 
+void rotatotopeArray::evaluate_constraints(double* k_opt, double* &con, double* &grad_con) {
+	con = new double [n_links * n_obstacles * n_time_steps];
+	double* dev_con;
+	cudaMalloc((void**)&dev_con, n_links * n_obstacles * n_time_steps * sizeof(double));
+
+	double* lambda = new double[n_links * 2];
+	for (uint32_t joint_id = 0; joint_id < n_links * 2; joint_id++) {
+		lambda[joint_id] = c_k[joint_id] + k_opt[joint_id] / g_k[joint_id];
+	}
+
+	double* dev_lambda;
+	cudaMalloc((void**)&dev_lambda, n_links * 2 * sizeof(double));
+	cudaMemcpy(dev_lambda, lambda, n_links * 2 * sizeof(double), cudaMemcpyHostToDevice);
+
+	for (uint32_t link_id = 0; link_id < n_links; link_id++) {
+		uint32_t RZ_length = ((reduce_order - 1) * (link_id + 1) + 1);
+		uint32_t buff_obstacle_length = RZ_length + 3;
+		uint32_t constraint_length = ((buff_obstacle_length - 1) * (buff_obstacle_length - 2));
+
+		double* dev_con_result; // results of evaluation of constriants
+		cudaMalloc((void**)&dev_con_result, n_obstacles * n_time_steps * constraint_length * sizeof(double));
+		
+		dim3 grid1(n_obstacles, constraint_length, 1);
+		evaluate_constraints_kernel << < grid1, n_time_steps >> > (dev_lambda, link_id, dev_A_con[link_id], max_k_con_num[link_id], dev_b_con[link_id], dev_k_con[link_id], dev_k_con_num[link_id], dev_con_result);
+		
+		dim3 block2(n_obstacles, n_time_steps, 1);
+		find_max_kernel << < 1, block2 >> > (dev_con_result, link_id, dev_con);
+
+		cudaFree(dev_con_result);
+	}
+
+	cudaMemcpy(con, dev_con, n_links * n_obstacles * n_time_steps * sizeof(double), cudaMemcpyDeviceToHost);
+
+	cudaFree(dev_con);
+
+	delete[] lambda;
+	cudaFree(dev_lambda);
+}
+
+__global__ void evaluate_constraints_kernel(double* lambda, uint32_t link_id, double* A_con, uint32_t A_con_width, double* b_con, bool* k_con, uint8_t* k_con_num, double* con_result) {
+	uint32_t obstacle_id = blockIdx.x;
+	uint32_t c_id = blockIdx.y;
+	uint32_t constraint_length = gridDim.y;
+	uint32_t time_id = threadIdx.x;
+	uint32_t n_time_steps = blockDim.x;
+	uint32_t RZ_length = ((reduce_order - 1) * (link_id + 1) + 1);
+	uint32_t k_con_num_base = time_id;
+	uint32_t con_base = (obstacle_id * n_time_steps + time_id) * constraint_length + c_id;
+
+	double result = 0;
+	for (uint32_t p = 0; p < k_con_num[k_con_num_base]; p++){
+		double prod = 1.0;
+		for (uint32_t j = 0; j < 2 * (link_id + 1); j++) {
+			if (k_con[(j * n_time_steps + time_id) * RZ_length + p]) {
+				prod *= lambda[j];
+			}
+		}
+
+		result += prod * A_con[con_base * A_con_width + p];
+	}
+
+	con_result[con_base] = result - b_con[con_base];
+}
+
+__global__ void find_max_kernel(double* con_result, uint32_t link_id, double* con) {
+	uint32_t obstacle_id = threadIdx.x;
+	uint32_t n_obstacles = blockDim.x;
+	uint32_t time_id = threadIdx.y;
+	uint32_t n_time_steps = blockDim.y;
+	
+	uint32_t RZ_length = ((reduce_order - 1) * (link_id + 1) + 1);
+	uint32_t buff_obstacle_length = RZ_length + 3;
+	uint32_t constraint_length = ((buff_obstacle_length - 1) * (buff_obstacle_length - 2));
+	uint32_t con_result_base = (obstacle_id * n_time_steps + time_id) * constraint_length;
+	uint32_t con_base = (link_id * n_obstacles + obstacle_id) * n_time_steps + time_id;
+
+	double maximum = FLT_MIN;
+	for (uint32_t i = 0; i < constraint_length; i++) {
+		if (maximum < con_result[con_result_base + i]) {
+			maximum = con_result[con_result_base + i];
+		}
+	}
+	
+	con[con_base] = -maximum;
+}
+
 rotatotopeArray::~rotatotopeArray() {
 	cudaFree(dev_Z);
 
@@ -608,22 +700,23 @@ rotatotopeArray::~rotatotopeArray() {
 		cudaFree(dev_c_idx);
 		cudaFree(dev_k_idx);
 	}
+	
+	if (c_k != nullptr) {
+		delete[] c_k;
+		delete[] g_k;
+	}
 
 	if (dev_RZ_stack != nullptr) {
 		for (uint32_t i = 0; i < n_links; i++) {
 			cudaFree(dev_RZ_stack[i]);
 		}
 		delete[] dev_RZ_stack;
-	}
 
-	if (dev_c_idx_stack != nullptr) {
 		for (uint32_t i = 0; i < n_links; i++) {
 			cudaFree(dev_c_idx_stack[i]);
 		}
 		delete[] dev_c_idx_stack;
-	}
 
-	if (dev_k_idx_stack != nullptr) {
 		for (uint32_t i = 0; i < n_links; i++) {
 			cudaFree(dev_k_idx_stack[i]);
 		}
@@ -635,58 +728,42 @@ rotatotopeArray::~rotatotopeArray() {
 			delete[] A_con[i];
 		}
 		delete[] A_con;
-	}
 
-	if (dev_A_con != nullptr) {
 		for (uint32_t i = 0; i < n_links; i++) {
 			cudaFree(dev_A_con[i]);
 		}
 		delete[] dev_A_con;
-	}
 
-	if (b_con != nullptr) {
 		for (uint32_t i = 0; i < n_links; i++) {
 			delete[] b_con[i];
 		}
 		delete[] b_con;
-	}
 
-	if (dev_b_con != nullptr) {
 		for (uint32_t i = 0; i < n_links; i++) {
 			cudaFree(dev_b_con[i]);
 		}
 		delete[] dev_b_con;
-	}
 
-	if (k_con != nullptr) {
 		for (uint32_t i = 0; i < n_links; i++) {
 			delete[] k_con[i];
 		}
 		delete[] k_con;
-	}
 
-	if (dev_k_con != nullptr) {
 		for (uint32_t i = 0; i < n_links; i++) {
 			cudaFree(dev_k_con[i]);
 		}
 		delete[] dev_k_con;
-	}
 
-	if (k_con_num != nullptr) {
 		for (uint32_t i = 0; i < n_links; i++) {
 			delete[] k_con_num[i];
 		}
 		delete[] k_con_num;
-	}
 
-	if (dev_k_con_num != nullptr) {
 		for (uint32_t i = 0; i < n_links; i++) {
 			cudaFree(dev_k_con_num[i]);
 		}
 		delete[] dev_k_con_num;
-	}
 
-	if (max_k_con_num != nullptr) {
 		delete[] max_k_con_num;
 	}
 

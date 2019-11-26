@@ -18,12 +18,13 @@ a cuda array for a cluster of rotatotopes
 #include <cstdlib>
 #include <cstdint>
 #include <ctime>
+#include <cfloat>
 
 #define k_dim 2
 #define reduce_order 31
 #define norm_size 310
 #define max_RZ_length 130
-#define A_BIG_NUMBER 1000000
+#define A_BIG_NUMBER 1000000.0
 
 class rotatotopeArray {
 public:
@@ -33,14 +34,15 @@ public:
 	Requires:
 		1. n_links
 		2. n_time_steps
-		3. dev_R
-		4. R_unit_length
-		5. dev_rot_axes
-		6. Z
-		7. Z_width
-		8. Z_length
+		3. R
+		4. dev_R
+		5. R_unit_length
+		6. dev_rot_axes
+		7. Z
+		8. Z_width
+		9. Z_length
 	*/
-	rotatotopeArray(uint32_t n_links_input, uint32_t n_time_steps_input, double* &dev_R_input, uint32_t R_unit_length_input, uint8_t* &dev_rot_axes_input, double* &Z_input, uint32_t Z_width_input, uint32_t Z_length_input);
+	rotatotopeArray(uint32_t n_links_input, uint32_t n_time_steps_input, double* &R_input, double* &dev_R_input, uint32_t R_unit_length_input, uint8_t* &dev_rot_axes_input, double* &Z_input, uint32_t Z_width_input, uint32_t Z_length_input);
 
 	/*
 	Instruction:
@@ -67,6 +69,19 @@ public:
 	*/
 	void generate_constraints(uint32_t n_obstacles, double* OZ, uint32_t OZ_width, uint32_t OZ_length);
 
+	/*
+	Instruction:
+		evaluate constraints at k_opt for optimization
+	Requires:
+		1. k_opt
+			--> input of k
+		2. con
+			--> value of constraints at k
+		3. grad_con
+			--> value of gradient of constraints at k
+	*/
+	void evaluate_constraints(double* k_opt, double* &con, double* &grad_con);
+
 	// number of different zonotopes
 	uint32_t n_links;
 
@@ -84,6 +99,10 @@ public:
 	double* Z;
 	double* dev_Z;
 	uint32_t Z_length, Z_width, Z_unit_length;
+
+	// zonotope of k interval
+	double* c_k;
+	double* g_k;
 
 	// the resulting array of rotatotopes without stacking
 	double* dev_RZ;
@@ -264,5 +283,30 @@ Modifies:
 */
 __global__ void polytope(uint32_t link_id, double* buff_obstacles, double* frs_k_dep_G, uint8_t* k_con_num, uint32_t A_con_width, double* A_con, double* b_con);
 
+/*
+Instruction:
+	evaluate constraints with lambda
+Requires:
+	1. lambda
+	2. link_id
+	3. A_con
+	4. b_con
+	5. k_con
+	6. k_con_num
+Modifies:
+	1. con_result
+*/
+__global__ void evaluate_constraints_kernel(double* lambda, uint32_t link_id, double* A_con, uint32_t A_con_width, double* b_con, bool* k_con, uint8_t* k_con_num, double* con_result);
+
+/*
+Instruction:
+	find the maximum of results
+Requires:
+	1. con_result
+	2. link_id
+Modifies:
+	1. con
+*/
+__global__ void find_max_kernel(double* con_result, uint32_t link_id, double* con);
 
 #endif // !ROTATOTOPE_ARRAY_H
