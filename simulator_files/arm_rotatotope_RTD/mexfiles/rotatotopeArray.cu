@@ -611,6 +611,11 @@ void rotatotopeArray::evaluate_constraints(double* k_opt, double* &con, double* 
 	double* dev_con;
 	cudaMalloc((void**)&dev_con, n_links * n_obstacles * n_time_steps * sizeof(double));
 
+	grad_con = new double[n_links * n_obstacles * n_time_steps * n_links * 2];
+	double* dev_grad_con;
+	cudaMalloc((void**)&dev_grad_con, n_links * n_obstacles * n_time_steps * n_links * 2 * sizeof(double));
+	cudaMemset(dev_grad_con, 0, n_links * n_obstacles * n_time_steps * n_links * 2 * sizeof(double));
+
 	double* lambda = new double[n_links * 2];
 	for (uint32_t joint_id = 0; joint_id < n_links * 2; joint_id++) {
 		lambda[joint_id] = c_k[joint_id] + k_opt[joint_id] / g_k[joint_id];
@@ -619,6 +624,10 @@ void rotatotopeArray::evaluate_constraints(double* k_opt, double* &con, double* 
 	double* dev_lambda;
 	cudaMalloc((void**)&dev_lambda, n_links * 2 * sizeof(double));
 	cudaMemcpy(dev_lambda, lambda, n_links * 2 * sizeof(double), cudaMemcpyHostToDevice);
+
+	double* dev_g_k;
+	cudaMalloc((void**)&dev_g_k, n_links * 2 * sizeof(double));
+	cudaMemcpy(dev_g_k, g_k, n_links * 2 * sizeof(double), cudaMemcpyHostToDevice);
 
 	for (uint32_t link_id = 0; link_id < n_links; link_id++) {
 		uint32_t RZ_length = ((reduce_order - 1) * (link_id + 1) + 1);
@@ -631,18 +640,23 @@ void rotatotopeArray::evaluate_constraints(double* k_opt, double* &con, double* 
 		dim3 grid1(n_obstacles, constraint_length, 1);
 		evaluate_constraints_kernel << < grid1, n_time_steps >> > (dev_lambda, link_id, dev_A_con[link_id], max_k_con_num[link_id], dev_b_con[link_id], dev_k_con[link_id], dev_k_con_num[link_id], dev_con_result);
 		
-		dim3 block2(n_obstacles, n_time_steps, 1);
-		find_max_kernel << < 1, block2 >> > (dev_con_result, link_id, dev_con);
+		dim3 grid2(n_obstacles, n_time_steps, 1);
+		dim3 block2((link_id + 1) * 2, 1, 1);
+		evaluate_gradient_kernel << < grid2, block2 >> > (dev_con_result, link_id, dev_lambda, dev_g_k, dev_A_con[link_id], max_k_con_num[link_id], dev_k_con[link_id], dev_k_con_num[link_id], n_links, dev_con, dev_grad_con);
 
 		cudaFree(dev_con_result);
 	}
 
 	cudaMemcpy(con, dev_con, n_links * n_obstacles * n_time_steps * sizeof(double), cudaMemcpyDeviceToHost);
-
 	cudaFree(dev_con);
 
+	cudaMemcpy(grad_con, dev_grad_con, n_links * n_obstacles * n_time_steps * n_links * 2 * sizeof(double), cudaMemcpyDeviceToHost);
+	cudaFree(dev_grad_con);
+	
 	delete[] lambda;
 	cudaFree(dev_lambda);
+
+	cudaFree(dev_g_k);
 }
 
 __global__ void evaluate_constraints_kernel(double* lambda, uint32_t link_id, double* A_con, uint32_t A_con_width, double* b_con, bool* k_con, uint8_t* k_con_num, double* con_result) {
@@ -670,26 +684,48 @@ __global__ void evaluate_constraints_kernel(double* lambda, uint32_t link_id, do
 	con_result[con_base] = result - b_con[con_base];
 }
 
-__global__ void find_max_kernel(double* con_result, uint32_t link_id, double* con) {
-	uint32_t obstacle_id = threadIdx.x;
-	uint32_t n_obstacles = blockDim.x;
-	uint32_t time_id = threadIdx.y;
-	uint32_t n_time_steps = blockDim.y;
+__global__ void evaluate_gradient_kernel(double* con_result, uint32_t link_id, double* lambda, double* g_k, double* A_con, uint32_t A_con_width, bool* k_con, uint8_t* k_con_num, uint32_t n_links, double* con, double* grad_con) {
+	uint32_t obstacle_id = blockIdx.x;
+	uint32_t n_obstacles = gridDim.x;
+	uint32_t time_id = blockIdx.y;
+	uint32_t n_time_steps = gridDim.y;
+	uint32_t joint_id = threadIdx.x;
+	uint32_t k_con_num_base = time_id;
 	
 	uint32_t RZ_length = ((reduce_order - 1) * (link_id + 1) + 1);
 	uint32_t buff_obstacle_length = RZ_length + 3;
 	uint32_t constraint_length = ((buff_obstacle_length - 1) * (buff_obstacle_length - 2));
 	uint32_t con_result_base = (obstacle_id * n_time_steps + time_id) * constraint_length;
+	__shared__ uint32_t max_idx;
 	uint32_t con_base = (link_id * n_obstacles + obstacle_id) * n_time_steps + time_id;
+	uint32_t grad_con_base = ((link_id * n_obstacles + obstacle_id) * n_time_steps + time_id) * n_links * 2;
 
-	double maximum = FLT_MIN;
-	for (uint32_t i = 0; i < constraint_length; i++) {
-		if (maximum < con_result[con_result_base + i]) {
-			maximum = con_result[con_result_base + i];
+	if (joint_id == 0) {
+		double maximum = FLT_MIN;
+		for (uint32_t i = 0; i < constraint_length; i++) {
+			if (maximum < con_result[con_result_base + i]) {
+				max_idx = con_result_base + i;
+				maximum = con_result[max_idx];
+			}
 		}
+		con[con_base] = -maximum;
 	}
-	
-	con[con_base] = -maximum;
+
+	__syncthreads();
+
+	double result = 0;
+	for (uint32_t p = 0; p < k_con_num[k_con_num_base]; p++) {
+		double prod = 1.0;
+		for (uint32_t j = 0; j < 2 * (link_id + 1); j++) {
+			if (j != joint_id && k_con[(j * n_time_steps + time_id) * RZ_length + p]) {
+				prod *= lambda[j];
+			}
+		}
+
+		result += prod * A_con[max_idx * A_con_width + p] / g_k[joint_id];
+	}
+
+	grad_con[grad_con_base + joint_id] = result;
 }
 
 rotatotopeArray::~rotatotopeArray() {

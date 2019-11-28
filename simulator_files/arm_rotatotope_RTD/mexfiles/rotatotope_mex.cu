@@ -107,7 +107,6 @@ P4.	evaluate the constraints
 	double* con = nullptr;
 	double* grad_con = nullptr;
 	links.evaluate_constraints(k_opt, con, grad_con);
-	
 
 	end_t = clock();
 	mexPrintf("MEX FUNCTION TIME: %.6f\n", (end_t - start_t) / (double)(CLOCKS_PER_SEC));
@@ -115,7 +114,7 @@ P4.	evaluate the constraints
 	/*
 P5. handle the output, release the memory
 	*/
-	nlhs = 1;
+	nlhs = 2;
 
 	plhs[0] = mxCreateNumericMatrix(n_links * n_obstacles * n_time_steps, 1, mxDOUBLE_CLASS, mxREAL);
 	double *output0 = (double*)mxGetData(plhs[0]);
@@ -123,6 +122,19 @@ P5. handle the output, release the memory
 		for (uint32_t j = 0; j < n_links; j++) {
 			for (uint32_t k = 0; k < n_time_steps; k++) {
 				output0[(i * n_links + j) * n_time_steps + k] = con[(j * n_obstacles + i) * n_time_steps + k];
+			}
+		}
+	}
+
+	plhs[1] = mxCreateNumericMatrix(n_links * 2, n_links * n_obstacles * n_time_steps, mxDOUBLE_CLASS, mxREAL);
+	double *output1 = (double*)mxGetData(plhs[1]);
+	
+	for (uint32_t i = 0; i < n_obstacles; i++) {
+		for (uint32_t j = 0; j < n_links; j++) {
+			for (uint32_t k = 0; k < n_time_steps; k++) {
+				for (uint32_t p = 0; p < n_links * 2; p++) {
+					output1[((i * n_links + j) * n_time_steps + k) * n_links * 2 + p] = grad_con[((j * n_obstacles + i) * n_time_steps + k) * n_links * 2 + p];
+				}
 			}
 		}
 	}
@@ -214,6 +226,10 @@ P5. handle the output, release the memory
 
 	if (con != nullptr) {
 		delete[] con;
+	}
+
+	if (grad_con != nullptr) {
+		delete[] grad_con;
 	}
 }
 

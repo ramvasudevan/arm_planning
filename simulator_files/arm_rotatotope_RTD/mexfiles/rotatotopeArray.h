@@ -25,6 +25,7 @@ a cuda array for a cluster of rotatotopes
 #define norm_size 310
 #define max_RZ_length 130
 #define A_BIG_NUMBER 1000000.0
+#define default_joint_number 6
 
 class rotatotopeArray {
 public:
@@ -290,9 +291,10 @@ Requires:
 	1. lambda
 	2. link_id
 	3. A_con
-	4. b_con
-	5. k_con
-	6. k_con_num
+	4. A_con_width
+	5. b_con
+	6. k_con
+	7. k_con_num
 Modifies:
 	1. con_result
 */
@@ -300,13 +302,21 @@ __global__ void evaluate_constraints_kernel(double* lambda, uint32_t link_id, do
 
 /*
 Instruction:
-	find the maximum of results
+	first find the maximum of the constraints
+	evaluate the gradient of constraint with that maximum
 Requires:
 	1. con_result
 	2. link_id
+	3. lambda
+	4. g_k
+	5. A_con
+	6. k_con
+	7. k_con_num
+	8. n_links
 Modifies:
 	1. con
+	2. grad_con
 */
-__global__ void find_max_kernel(double* con_result, uint32_t link_id, double* con);
+__global__ void evaluate_gradient_kernel(double* con_result, uint32_t link_id, double* lambda, double* g_k, double* A_con, uint32_t A_con_width, bool* k_con, uint8_t* k_con_num, uint32_t n_links, double* con, double* grad_con);
 
 #endif // !ROTATOTOPE_ARRAY_H
