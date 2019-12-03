@@ -9,6 +9,7 @@ classdef robot_arm_FRS_rotatotope_fetch
         link_joints = {[1;2], [1;2;3;4], [1;2;3;4;5;6]}; % joints that each link depends on
         link_zonotopes = {zonotope([0.33/2, 0.33/2; 0, 0; 0, 0]); zonotope([0.33/2, 0.33/2; 0, 0; 0, 0]); zonotope([0.33/2, 0.33/2; 0, 0; 0, 0])};
         link_EE_zonotopes = {zonotope([0.33; 0; 0]); zonotope([0.33; 0; 0]); zonotope([0.33; 0; 0])};
+        link_self_intersection = {[1;3]} % cell array of links that could intersect (joint limits cover the rest)
         n_links = 3;
         n_time_steps = 0;
         dim = 3;
@@ -27,6 +28,10 @@ classdef robot_arm_FRS_rotatotope_fetch
         A_con = {};
         b_con = {};
         k_con = {};
+        
+        A_con_self = {};
+        b_con_self = {};
+        k_con_self = {};
         
         c_k = [];
         g_k = [];
@@ -149,6 +154,21 @@ classdef robot_arm_FRS_rotatotope_fetch
             
         end
         
+        function [] = plot_slice_gensIncluded(obj, k, rate, colors)
+            if ~exist('colors', 'var')
+                colors = {'b', 'r', 'm'};
+            end
+            if ~exist('rate', 'var')
+                rate = 1;
+            end
+            for i = 1:length(obj.link_FRS)
+                for j = 1:rate:length(obj.link_FRS{i})
+                    obj.link_FRS{i}{j}.plot_slice_gensIncluded(k(obj.link_joints{i}), colors{i});
+                end
+            end
+            
+        end
+        
         function [obj] = generate_constraints(obj, obstacles)
             for i = 1:length(obstacles)
                 for j = 1:length(obj.link_FRS)
@@ -159,5 +179,43 @@ classdef robot_arm_FRS_rotatotope_fetch
             end
         end
         
+        function [obj] = generate_self_intersection_constraints(obj)
+           % takes in pairs of links that could intersect and generates
+           % Acon and bcon, as well as the combinations of k_idxs (kcon) these
+           % constraints depend on.
+           for i = 1:length(obj.link_self_intersection) % for each pair of links
+                for j = 1:length(obj.link_FRS{1}) % for each time step
+                    R1 = obj.link_FRS{obj.link_self_intersection{i}(1)}{j};
+                    R2 = obj.link_FRS{obj.link_self_intersection{i}(2)}{j};
+                    
+                    nGen_1 = size(R1.Rg, 2);
+                    [~, kc_col_1] = find(any(R1.k_idx) & R1.c_idx);
+                    frs_k_ind_G_1 = R1.Rg;
+                    frs_k_ind_G_1(:, kc_col_1) = [];
+                    frs_k_dep_G_1 = R1.Rg(:, kc_col_1);
+                    
+                    nGen_2 = size(R2.Rg, 2);
+                    [~, kc_col_2] = find(any(R2.k_idx) & R2.c_idx);
+                    frs_k_ind_G_2 = R2.Rg;
+                    frs_k_ind_G_2(:, kc_col_2) = [];
+                    frs_k_dep_G_2 = R2.Rg(:, kc_col_2);
+                    
+                    gen_concat = [frs_k_ind_G_1, frs_k_ind_G_2, 2*obj.FRS_options.buffer_dist/2*eye(3)]; % add buffer distance accounting for 2 links
+                    gen_concat(:, ~any(gen_concat)) = []; % delete zero columns
+                    gen_zono = [(R1.Rc - R2.Rc), gen_concat]; % centered at R1.Rc - R2.Rc
+                    [A_poly, b_poly] = polytope_PH(gen_zono, obj.FRS_options);
+                    
+                    % the difference in "sliced" points should be outside
+                    % this zono:
+                    k_dep_pt = [frs_k_dep_G_1, -frs_k_dep_G_2];
+                    obj.A_con_self{i}{j} = A_poly*k_dep_pt;
+                    obj.b_con_self{i}{j} = b_poly;
+                    obj.k_con_self{i}{j} = [[R1.k_idx(:, kc_col_1); zeros(size(R2.k_idx, 1) - size(R1.k_idx, 1), length(kc_col_1))], R2.k_idx(:, kc_col_2)]; % patrick 20191202: NEED TO CHECK THIS LINE
+                    
+                end
+            end
+            
+            
+        end
     end
 end

@@ -219,6 +219,26 @@ classdef rotatotope
             end
         end
         
+        function [] = plot_slice_gensIncluded(obj, k, color)
+            if ~exist('color', 'var')
+                color = 'b';
+            end
+            Z = slice_gensIncluded(obj, k);
+            switch obj.dim
+                case 2
+                    p = plotFilled(Z, [1, 2], color);
+                    p.FaceAlpha = 0.1;
+                case 3
+                    Z = reduce(Z, 'girard', 4);
+                    V = vertices(project(Z, [1, 2, 3]));
+                    shp = alphaShape(V(1, :)', V(2, :)', V(3, :)', inf);
+                    p = plot(shp);
+                    p.FaceAlpha = 0;
+                    p.EdgeAlpha = 0.15;
+                    p.EdgeColor = color;
+            end
+        end
+        
         function [Z] = slice_gensIncluded(obj, k)
             % this slicing function slices generators that don't slice
             % to a point
@@ -359,7 +379,7 @@ classdef rotatotope
            
            [A_poly, b_poly] = polytope_PH(buff_obstacle, options);
            
-           A_con = A_poly*frs_k_dep_G;
+           A_con = A_poly*frs_k_dep_G; % patrick 20191202: might need a negative sign here??
            b_con = b_poly;
            k_con = obj.k_idx(:, kc_col);
            

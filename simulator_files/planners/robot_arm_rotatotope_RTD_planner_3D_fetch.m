@@ -33,6 +33,16 @@ classdef robot_arm_rotatotope_RTD_planner_3D_fetch < robot_arm_generic_planner
         end
         
         function [T,U,Z] = replan(P,agent_info,world_info)
+            %%% 0. set joint state and speed limits
+            % set any joint limits that are +Inf to 200pi and -Inf to -200pi
+            joint_limit_infs = isinf(P.arm_joint_state_limits) ;
+            P.arm_joint_state_limits(1,joint_limit_infs(1,:)) = -200*pi ;
+            P.arm_joint_state_limits(2,joint_limit_infs(2,:)) = +200*pi ;
+            
+            speed_limit_infs = isinf(P.arm_joint_speed_limits) ;
+            P.arm_joint_speed_limits(1,speed_limit_infs(1,:)) = -200*pi ;
+            P.arm_joint_speed_limits(2,speed_limit_infs(2,:)) = +200*pi ;
+            
             %%% 1. generate cost function
             % generate a waypoint in configuration space
             if P.first_iter_pause && P.iter == 0
@@ -56,10 +66,15 @@ classdef robot_arm_rotatotope_RTD_planner_3D_fetch < robot_arm_generic_planner
             
             % map obstacles to trajectory parameter space
             P.R = P.R.generate_constraints(O);
+            
+            % protect against self-intersections:
+%             P.R = P.R.generate_self_intersection_constraints;
 %             [~, k_lim, k_unsafe_A, k_unsafe_b] = compute_unsafe_parameters_3D(P.R, P.phi_dot_0, O, P.FRS_options);
             
             %%% 3. solve for optimal trajectory parameter
             [k_opt, trajopt_failed] = P.trajopt(q_0, q_dot_0, q_des);
+%             disp(k_opt);
+%             pause;
             
             %%% 4. generate desired trajectory
             if ~trajopt_failed
@@ -110,7 +125,7 @@ classdef robot_arm_rotatotope_RTD_planner_3D_fetch < robot_arm_generic_planner
             P.vdisp('Running trajopt',3)
             
             cost_func = @(k) P.eval_cost(k, q_0, q_dot_0, q_des);
-            constraint_func = @(k) P.eval_constraint(k);
+            constraint_func = @(k) P.eval_constraint(k, q_0, q_dot_0);
             
             % generate upper and lower bounds
             lb = P.R.c_k - P.R.g_k;
@@ -136,13 +151,27 @@ classdef robot_arm_rotatotope_RTD_planner_3D_fetch < robot_arm_generic_planner
            cost = sum((q_plan - q_des).^2);
         end
         
-        function [c, ceq, gradc, gradceq] = eval_constraint(P, k_opt)
+        function [c, ceq, gradc, gradceq] = eval_constraint(P, k_opt, q_0, q_dot_0)
             epsilon = 1e-3;
             ceq = [];
             gradceq = [];
             
             c = [];
             gradc = [];
+            %%% Joint limit constraints:
+            [q_min, q_max, q_dot_min, q_dot_max, grad_q_min, grad_q_max, grad_q_dot_min, grad_q_dot_max] = P.compute_max_min_states(q_0, q_dot_0, k_opt);
+            c_joint = [];
+            c_joint = [c_joint; P.arm_joint_state_limits(1, :)' - q_min];
+            c_joint = [c_joint; -P.arm_joint_state_limits(2, :)' + q_max];
+            c_joint = [c_joint; P.arm_joint_speed_limits(1, :)' - q_dot_min];
+            c_joint = [c_joint; -P.arm_joint_speed_limits(2, :)' + q_dot_max];
+            
+            grad_c_joint = [grad_q_min, grad_q_max];
+            grad_c_joint = [grad_q_min, grad_q_max, grad_q_dot_min, grad_q_dot_max];
+            
+            c = [c; c_joint];
+            gradc = [gradc, grad_c_joint];
+                        
             %%% Obstacle constraint generation:
             for i = 1:length(P.R.A_con) % for each obstacle
                 for j = 1:length(P.R.A_con{i}) % for each link
@@ -170,19 +199,19 @@ classdef robot_arm_rotatotope_RTD_planner_3D_fetch < robot_arm_generic_planner
                             maxidx = find(c_obs == c_obs_max);
                             k_con_temp = P.R.k_con{i}{j}{idx(k)}';
                             lambdas_grad = k_con_temp;
-                            cols = 1:length(k_param);
-                            for l = 1:length(k_param)
+                            cols = 1:length(lambda);
+                            for l = 1:length(lambda)
                                 lambdas_grad_temp = k_con_temp(:, l);
-                                lambdas_grad_temp = lambdas_grad_temp*k_param(l);
+                                lambdas_grad_temp = lambdas_grad_temp*lambda(l);
                                 lambdas_grad_temp(~k_con_temp(:, l)) = 1;
                                 lambdas_grad(:, cols ~= l) = lambdas_grad_temp.*lambdas_grad(:, cols ~= l);
                             end
                             if length(maxidx) > 1
 %                                 disp('ahhh');
                                 tempgradc = P.R.A_con{i}{j}{idx(k)}(maxidx, :)*lambdas_grad;
-                                gradc = [gradc, [-max(tempgradc)'; zeros(length(k_opt) - length(k_param), 1)]];
+                                gradc = [gradc, [(-max(tempgradc)')./g_param; zeros(length(k_opt) - length(lambda), 1)]];
                             else
-                                gradc = [gradc, [-(P.R.A_con{i}{j}{idx(k)}(maxidx, :)*lambdas_grad)'; zeros(length(k_opt) - length(k_param), 1)]];
+                                gradc = [gradc, [(-(P.R.A_con{i}{j}{idx(k)}(maxidx, :)*lambdas_grad)')./g_param; zeros(length(k_opt) - length(lambda), 1)]];
                             end
                         end
                         
@@ -225,6 +254,178 @@ classdef robot_arm_rotatotope_RTD_planner_3D_fetch < robot_arm_generic_planner
             % chosen acceleration k
             
             q_plan = q_0 + q_dot_0*P.t_plan + (1/2)*k*P.t_plan^2;
+        end
+        
+        function [q_min, q_max, q_dot_min, q_dot_max, grad_q_min, grad_q_max, grad_q_dot_min, grad_q_dot_max] = compute_max_min_states(P, q_0, q_dot_0, k)
+            % updated 11/27/2019... this function turned out a lot longer
+            % than i was expecting... i tried to write it without using
+            % maxes and mins (mebbe it'll be easier in C++ that way) but
+            % that just made a lot of if statements.
+            
+            % compute the max and min joint positions and velocities over
+            % the time horizon, given k.
+            n_angles = length(q_0);
+            n_k = length(k);
+            t_to_stop = P.t_total - P.t_plan;
+            
+            q_peak = q_0 + q_dot_0*P.t_plan + (1/2)*k*P.t_plan^2;
+            q_dot_peak = q_dot_0 + k*P.t_plan;
+            q_ddot_to_stop = ((0 - q_dot_peak)./t_to_stop);
+            
+            q_max = zeros(n_angles, 1);
+            q_min = zeros(n_angles, 1);
+            q_dot_max = zeros(n_angles, 1);
+            q_dot_min = zeros(n_angles, 1);
+            
+            grad_q_max = zeros(n_angles, 1);
+            grad_q_min = zeros(n_angles, 1);
+            grad_q_dot_max = zeros(n_angles, 1);
+            grad_q_dot_min = zeros(n_angles, 1);
+            
+            q_max_to_peak = zeros(n_angles, 1);
+            q_min_to_peak = zeros(n_angles, 1);
+            q_dot_max_to_peak = zeros(n_angles, 1);
+            q_dot_min_to_peak = zeros(n_angles, 1);
+            
+            grad_q_max_to_peak = zeros(n_angles, 1);
+            grad_q_min_to_peak = zeros(n_angles, 1);
+            grad_q_dot_max_to_peak = zeros(n_angles, 1);
+            grad_q_dot_min_to_peak = zeros(n_angles, 1);
+            
+            q_max_to_stop = zeros(n_angles, 1);
+            q_min_to_stop = zeros(n_angles, 1);
+            q_dot_max_to_stop = zeros(n_angles, 1);
+            q_dot_min_to_stop = zeros(n_angles, 1);
+            
+            grad_q_max_to_stop = zeros(n_angles, 1);
+            grad_q_min_to_stop = zeros(n_angles, 1);
+            grad_q_dot_max_to_stop = zeros(n_angles, 1);
+            grad_q_dot_min_to_stop = zeros(n_angles, 1);
+            
+            q_stop = q_peak + q_dot_peak.*t_to_stop + (1/2)*q_ddot_to_stop.*t_to_stop.^2;
+            
+            t_max_min_to_peak = -q_dot_0./k; % time of max or min for to peak dynamics
+            for i = 1:n_angles
+                % TO PEAK PART OF TRAJECTORY
+                % order q endpoints
+                if q_peak(i) >= q_0(i)
+                    q_endpoints_ordered = [q_0(i); q_peak(i)];
+                    grad_q_endpoints_ordered = [0; (1/2)*P.t_plan^2];
+                else
+                    q_endpoints_ordered = [q_peak(i); q_0(i)];
+                    grad_q_endpoints_ordered = [(1/2)*P.t_plan^2; 0];
+                end
+                
+                if t_max_min_to_peak(i) > 0 && t_max_min_to_peak(i) < P.t_plan % this implies local max/min of q
+                    if k(i) >= 0
+                        q_min_to_peak(i) = q_0(i) + q_dot_0(i)*t_max_min_to_peak(i) + (1/2)*k(i)*t_max_min_to_peak(i)^2;
+                        q_max_to_peak(i)  = q_endpoints_ordered(2);
+                        grad_q_min_to_peak(i) = ((1/2)*q_dot_0(i)^2)/k(i)^2;
+                        grad_q_max_to_peak(i) = grad_q_endpoints_ordered(2);
+                    else
+                        q_min_to_peak(i) = q_endpoints_ordered(1);
+                        q_max_to_peak(i) = q_0(i) + q_dot_0(i)*t_max_min_to_peak(i) + (1/2)*k(i)*t_max_min_to_peak(i)^2;
+                        grad_q_min_to_peak(i) = grad_q_endpoints_ordered(1);
+                        grad_q_max_to_peak(i) = ((1/2)*q_dot_0(i)^2)/k(i)^2;
+                    end
+                else
+                    q_min_to_peak(i) = q_endpoints_ordered(1);
+                    q_max_to_peak(i) = q_endpoints_ordered(2);
+                    
+                    grad_q_min_to_peak(i) = grad_q_endpoints_ordered(1);
+                    grad_q_max_to_peak(i) = grad_q_endpoints_ordered(2);
+                end
+                
+                % max or min velocity must occur at endpoints
+                if q_dot_peak(i) >= q_dot_0(i)
+                    q_dot_min_to_peak(i) = q_dot_0(i);
+                    q_dot_max_to_peak(i) = q_dot_peak(i);
+                    
+                    grad_q_dot_min_to_peak(i) = 0;
+                    grad_q_dot_max_to_peak(i) = P.t_plan;
+                else
+                    q_dot_min_to_peak(i) = q_dot_peak(i);
+                    q_dot_max_to_peak(i) = q_dot_0(i);
+                    
+                    grad_q_dot_min_to_peak(i) = P.t_plan;
+                    grad_q_dot_max_to_peak(i) = 0;
+                end
+            
+                % BRAKING PART OF TRAJECTORY
+                % note that when braking, we have 0 velocity at P.t_total.
+                % Therefore, max and min q and q_dot occur at the endpoints of
+                % the braking times.
+                if q_stop(i) >= q_peak(i)
+                    q_min_to_stop(i) = q_peak(i);
+                    q_max_to_stop(i) = q_stop(i);
+                    
+                    grad_q_min_to_stop(i) = (1/2)*P.t_plan^2;
+                    grad_q_max_to_stop(i) = (1/2)*P.t_plan^2 + (1/2)*P.t_plan*t_to_stop;
+                else
+                    q_min_to_stop(i) = q_stop(i);
+                    q_max_to_stop(i) = q_peak(i);
+                    
+                    grad_q_min_to_stop(i) = (1/2)*P.t_plan^2 + (1/2)*P.t_plan*t_to_stop;
+                    grad_q_max_to_stop(i) = (1/2)*P.t_plan^2;
+                end
+                
+                if q_dot_peak(i) >= 0
+                    q_dot_min_to_stop(i) = 0;
+                    q_dot_max_to_stop(i) = q_dot_peak(i);
+                    
+                    grad_q_dot_min_to_stop(i) = 0;
+                    grad_q_dot_max_to_stop(i) = P.t_plan;
+                else
+                    q_dot_min_to_stop(i) = q_dot_peak(i);
+                    q_dot_max_to_stop(i) = 0;
+                    
+                    grad_q_dot_min_to_stop(i) = P.t_plan;
+                    grad_q_dot_max_to_stop(i) = 0;
+                end
+                
+                % TAKE MAX/MIN OF TO PEAK AND BRAKING TRAJECTORIES
+                % positions:
+                if q_min_to_peak(i) <= q_min_to_stop(i)
+                    q_min(i) = q_min_to_peak(i);
+                    grad_q_min(i) = grad_q_min_to_peak(i);
+                else
+                    q_min(i) = q_min_to_stop(i);
+                    grad_q_min(i) = grad_q_min_to_stop(i);
+                end
+                
+                if q_max_to_peak(i) >= q_max_to_stop(i)
+                    q_max(i) = q_max_to_peak(i);
+                    grad_q_max(i) = grad_q_max_to_peak(i);
+                else
+                    q_max(i) = q_max_to_stop(i);
+                    grad_q_max(i) = grad_q_max_to_stop(i);
+                end
+                
+                % velocities:
+                if q_dot_min_to_peak(i) <= q_dot_min_to_stop(i)
+                    q_dot_min(i) = q_dot_min_to_peak(i);
+                    grad_q_dot_min(i) = grad_q_dot_min_to_peak(i);
+                else
+                    q_dot_min(i) = q_dot_min_to_stop(i);
+                    grad_q_dot_min(i) = grad_q_dot_min_to_stop(i);
+                end
+                
+                if q_dot_max_to_peak(i) >= q_dot_max_to_stop(i)
+                    q_dot_max(i) = q_dot_max_to_peak(i);
+                    grad_q_dot_max(i) = grad_q_dot_max_to_peak(i);
+                else
+                    q_dot_max(i) = q_dot_max_to_stop(i);
+                    grad_q_dot_max(i) = grad_q_dot_max_to_stop(i);
+                end
+                
+            end
+            
+            % finally, make diagonal matrices out of gradients:
+            grad_q_min = diag(grad_q_min);
+            grad_q_max = diag(grad_q_max);
+            grad_q_dot_min = diag(grad_q_dot_min);
+            grad_q_dot_max = diag(grad_q_dot_max);
+            
         end
     end
 end

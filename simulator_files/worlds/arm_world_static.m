@@ -26,7 +26,7 @@ classdef arm_world_static < world
     methods
         %% constructor
         function W = arm_world_static(varargin)
-            % W = arm_world_static('property1',value1,'property2',value2,...)
+            % W = arm_world_static('Aproperty1',value1,'property2',value2,...)
             
             default_goal_radius = 0.05 ; % rad/joint
             W@world('start',[],'goal',[],'N_obstacles',0,...

@@ -45,7 +45,7 @@ for i = N_obstacle_min:N_obstacle_max
         % place arm at starting configuration
         A.state(A.joint_state_indices) = W.start ;
         
-        filename = sprintf('%s20191111_obstacles_%s_world_%s.csv', world_save_dir, num2str(i), num2str(j));
+        filename = sprintf('%s20191125_obstacles_%s_world_%s.csv', world_save_dir, num2str(i), num2str(j));
 
         % create .csv file
         write_fetch_scene_to_csv(W, filename);
