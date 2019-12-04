@@ -163,12 +163,12 @@ def main():
 		default_wrist_roll = 0.0
 		start_position.append(default_wrist_roll)
 		goal_position.append(default_wrist_roll)
-		my_group.go_to_joint_state(start_position)
-		my_group.go_to_joint_state(goal_position)
+		#my_group.go_to_joint_state(start_position)
+		#my_group.go_to_joint_state(goal_position)
 		my_group.go_to_joint_state(start_position)
 
-		print "Press Enter to add obstacles"
-		raw_input()
+		#print "Press Enter to add obstacles"
+		#raw_input()
 
 		my_group.add_all_obstacles(obstacles)
 
@@ -177,7 +177,7 @@ def main():
 		my_group.add_scene_obstacle(first_obstacle, 0)
 
 		#TODO probably should add a wait here!
-
+		rospy.sleep(1.5)
 		#print "Press enter to continue"
 		#print len(obstacles)
 		#raw_input()
@@ -209,8 +209,8 @@ def main():
 		my_group.add_box(box_name_origin, box_pose_origin, box_size_origin)
 
 		'''
-		print "Press enter to close"
-		raw_input()
+		#print "Press enter to close"
+		#raw_input()
 
 
 
