@@ -10,6 +10,8 @@ from math import pi
 from std_msgs.msg import String
 from moveit_commander.conversions import pose_to_list
 
+#directory path: ~/ws_moveit/src/armtd_benchmark/test_worlds/world_1/obstacles_x_world_1.csv
+#output directory path: = ~/ws_moveit/src/armtd_benchmark/chomp_stats/chomp_ouput_0x_0y.txt
 def all_close(goal, actual, tolerance):
 	"""
 	Convenience method for checking if a list of values are within tolerance
@@ -83,6 +85,7 @@ class PythonBenchmarkInterface(object):
 			added = box_name in self.scene.get_known_object_names()
 
 			if added:
+				#print box_name
 				return True
 
 			rospy.sleep(0.1)
@@ -94,7 +97,9 @@ class PythonBenchmarkInterface(object):
 	def add_box(self, box_name, box_pose, box_size, timeout=4):
 
 		self.scene.add_box(box_name, box_pose, box_size)
+		#print box_name
 		return self.wait_for_box_update(box_name, timeout)
+		#return self.wait_for_box_update(box_name, 10)
 
 	def display_trajectory(self, plan, start):
 		#self.display_trajectory_publisher
@@ -159,21 +164,31 @@ def main():
 		start_position.append(default_wrist_roll)
 		goal_position.append(default_wrist_roll)
 		my_group.go_to_joint_state(start_position)
-		#my_group.go_to_joint_state(goal_position)
+		my_group.go_to_joint_state(goal_position)
+		my_group.go_to_joint_state(start_position)
 
 		print "Press Enter to add obstacles"
 		raw_input()
 
 		my_group.add_all_obstacles(obstacles)
 
-		print "Press enter to continue"
-		raw_input()
-		goal_position[0] = 1.6
+		first_obstacle = obstacles[0]
+
+		my_group.add_scene_obstacle(first_obstacle, 0)
+
+		#TODO probably should add a wait here!
+
+		#print "Press enter to continue"
+		#print len(obstacles)
+		#raw_input()
+		#goal_position[0] = 1.6
 		my_group.go_to_joint_state(goal_position)
+
+
 		
 
 		#print my_group.robot.get_current_state()
-
+		'''
 		print "press enter to add box to Origin"
 		raw_input()
 # 0.119525 0 0.34858
@@ -193,7 +208,7 @@ def main():
 
 		my_group.add_box(box_name_origin, box_pose_origin, box_size_origin)
 
-
+		'''
 		print "Press enter to close"
 		raw_input()
 
