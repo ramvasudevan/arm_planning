@@ -702,6 +702,7 @@ __global__ void evaluate_gradient_kernel(double* con_result, uint32_t link_id, d
 
 	if (joint_id == 0) {
 		double maximum = FLT_MIN;
+		max_idx = 0;
 		for (uint32_t i = 0; i < constraint_length; i++) {
 			if (maximum < con_result[con_result_base + i]) {
 				max_idx = con_result_base + i;
@@ -714,6 +715,7 @@ __global__ void evaluate_gradient_kernel(double* con_result, uint32_t link_id, d
 	__syncthreads();
 
 	double result = 0;
+	
 	for (uint32_t p = 0; p < k_con_num[k_con_num_base]; p++) {
 		double prod = 1.0;
 		for (uint32_t j = 0; j < 2 * (link_id + 1); j++) {
@@ -721,11 +723,11 @@ __global__ void evaluate_gradient_kernel(double* con_result, uint32_t link_id, d
 				prod *= lambda[j];
 			}
 		}
-
-		result += prod * A_con[max_idx * A_con_width + p] / g_k[joint_id];
+		
+		result += prod * A_con[max_idx * A_con_width + p];
 	}
-
-	grad_con[grad_con_base + joint_id] = result;
+	
+	grad_con[grad_con_base + joint_id] = -result / g_k[joint_id];
 }
 
 rotatotopeArray::~rotatotopeArray() {

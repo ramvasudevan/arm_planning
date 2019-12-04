@@ -125,7 +125,7 @@ P5. handle the output, release the memory
 			}
 		}
 	}
-
+	
 	plhs[1] = mxCreateNumericMatrix(n_links * 2, n_links * n_obstacles * n_time_steps, mxDOUBLE_CLASS, mxREAL);
 	double *output1 = (double*)mxGetData(plhs[1]);
 	
