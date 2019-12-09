@@ -34,7 +34,7 @@ classdef robot_arm_straight_line_HLP < high_level_planner
         function setup(HLP,agent_info,world_info)
             % get all the necessary arm properties filled in
             HLP.vdisp('Filling in HLP''s arm properties',9)
-            HLP = fill_in_arm_properties(HLP,agent_info,true) ;
+            HLP = fill_in_arm_properties(HLP,agent_info,false) ;
             
             % get the world goal
             HLP.vdisp('Setting goal',9)

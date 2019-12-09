@@ -62,6 +62,23 @@ function [PA, Pb] = polytope_PH(Z, options)
 c = Z(:, 1);
 G = Z(:, 2:end);
 G(:, ~any(G)) = [];
+
+% patrick edit 12/03/2019
+% reduce small generators for numerical reasons:
+%compute metric of generators
+h = vnorm(G, 1, 2);
+% sort generators according to metric
+[h_sort, indices] = sort(h, 'descend');
+threshold = 0.001;
+first_reduce_idx = find(h_sort < threshold, 1, 'first');
+Gunred = G(:, indices(1:first_reduce_idx-1));
+Gred = G(:, indices(first_reduce_idx:end));
+% box remaining generators
+d=sum(abs(Gred),2);
+%build box Gbox from interval hull vector d
+Gbox=diag(d);
+G = [Gunred, Gbox];
+    
 [dim,nrOfGenerators]=size(G);
 
 if dim > 1
@@ -79,8 +96,8 @@ if dim > 1
 %     for i=1:length(comb(:,1))
 %         indices=comb(i,:);
 %         Q=G(:,indices);
-% %         v=ndimCross(Q);
-%         v = ndimCross_PH(Q);
+%         v=ndimCross(Q);
+% %         v = ndimCross_PH(Q);
 %         C(end+1,:)=v'/norm(v);
 %     end
     

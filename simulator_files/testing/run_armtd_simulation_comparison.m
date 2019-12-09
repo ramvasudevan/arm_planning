@@ -9,17 +9,16 @@
 clear; clc;
 
 %% user parameters
-goal_radius = 0.1;
+goal_radius = 0.03;
 dimension = 3 ;
 nLinks = 3 ;
 allow_replan_errors = true ;
 t_plan = 0.5 ;
 time_discretization = 0.01 ;
 T = 1 ;
-floor_normal_axis = 1;
 
 % plotting
-plot_during_sim = true ;
+plot_while_running = false ;
 % agent_camera_distance = 3 ; % default is 3
 % agent_camera_position = [-3;0;1] ; % default is [-3;0;1.5]
 % plot_agent_view = 'behind' ; % none, behind, above, or onboard
@@ -36,12 +35,12 @@ max_sim_iter = 50 ;
 % if ~exist('arm_planning/simulator_files/testing/trial_data', 'dir')
 %     mkdir('arm_planning/simulator_files/testing/trial_data');
 % end
-save_file_header = 'trial_20191125_' ;
-file_location = '/Users/pdholmes/Documents/MATLAB/arm_planning/simulator_files/testing/trial_data/' ;
+save_file_header = 'trial_' ;
+file_location = '/Users/pdholmes/Documents/MATLAB/arm_planning/simulator_files/testing/trial_data/20191205/' ;
 
 % world file
-world_file_header = '20191111';
-world_file_folder = '/Users/pdholmes/Documents/MATLAB/arm_planning/simulator_files/testing/saved_worlds/';
+world_file_header = 'scene';
+world_file_folder = '/Users/pdholmes/Documents/MATLAB/arm_planning/simulator_files/testing/saved_worlds/20191205/';
 world_file_location = sprintf('%s*%s*', world_file_folder, world_file_header);
 world_file_list = dir(world_file_location);
 
@@ -54,11 +53,13 @@ for idx = 1:length(world_file_list)
     world_filename = world_file_list(idx).name;
     [start, goal, obstacles] = load_saved_world([world_file_folder world_filename]);
     
-    W = arm_world_static('floor_normal_axis', floor_normal_axis, 'include_base_obstacle', 0, 'goal_radius', goal_radius, 'N_obstacles',length(obstacles),'dimension',dimension,'workspace_goal_check', 0,...
+    figure(1); clf; view(3); grid on;
+    
+    W = fetch_base_world_static('create_random_obstacles', false, 'include_base_obstacle', true, 'goal_radius', goal_radius, 'N_obstacles',length(obstacles),'dimension',dimension,'workspace_goal_check', 0,...
     'verbose',verbosity, 'start', start, 'goal', goal, 'obstacles', obstacles) ;
     
     % create arm agent
-    A = robot_arm_3D_fetch('verbose', verbosity, 'floor_normal_axis', floor_normal_axis, 'animation_set_axes_flag', 0, 'animation_set_view_flag', 0);
+    A = robot_arm_3D_fetch('verbose', verbosity, 'animation_set_axes_flag', 0, 'animation_set_view_flag', 0);
     
     % can adjust LLC gains here
     A.LLC.K_p = 1*A.LLC.K_p;
@@ -71,7 +72,6 @@ for idx = 1:length(world_file_list)
     FRS_options.t_plan = t_plan;
     FRS_options.origin_shift = A.joint_locations(1:3, 1);
     FRS_options.T = T;
-    FRS_options.L = 0.33;
     FRS_options.buffer_dist = A.buffer_dist;
     FRS_options.combs = generate_combinations_upto(200);
     FRS_options.maxcombs = 200;
@@ -88,13 +88,14 @@ for idx = 1:length(world_file_list)
     A.state(A.joint_state_indices) = W.start ;
     
     % create simulator
-    S = simulator(A,W,P,'allow_replan_errors',allow_replan_errors,'max_sim_time',max_sim_time,'max_sim_iterations',max_sim_iter) ; 
+    S = simulator(A,W,P, 'plot_while_running', plot_while_running, 'allow_replan_errors',allow_replan_errors,'max_sim_time',max_sim_time,'max_sim_iterations',max_sim_iter) ; 
     
     % run simulation
     summary = S.run() ;
     
     % save summary
-    filename = [file_location,save_file_header,num2str(idx,'%04.f'),'.mat'] ;
+%     filename = [file_location,save_file_header,num2str(idx,'%04.f'),'.mat'] ;
+    filename = [file_location,save_file_header,world_filename(1:end-4),'.mat'] ;
     save(filename, 'world_filename', 'summary')
     
     toc

@@ -97,7 +97,7 @@ classdef robot_arm_agent < multi_link_agent
         link_plot_edge_width = 1.25 ;
         
         % floor orientation
-        floor_normal_axis = 3 ;
+%         floor_normal_axis = 3 ;
         
         % buffer distance for obstacles
         buffer_dist = 0;
@@ -929,14 +929,15 @@ classdef robot_arm_agent < multi_link_agent
                 case 2
                     lims = [-L,L,0,L] ;
                 case 3
-                    switch A.floor_normal_axis
-                        case 1
-                            lims = [-L, L, -L, L, -L, L] ;
-                        case 2
-                            lims = [-L, L, 0, L, -L, L] ;
-                        case 3
-                            lims = [-L,L,-L,L,0,L] ;
-                    end
+%                     switch A.floor_normal_axis
+%                         case 1
+%                             lims = [-L, L, -L, L, -L, L] ;
+%                         case 2
+%                             lims = [-L, L, 0, L, -L, L] ;
+%                         case 3
+%                             lims = [-L,L,-L,L,0,L] ;
+%                     end
+                    lims = [-L, L, -L, L, L, L] ;
                     
                     % in case base of robot is not a [0;0;0]:
                     lims = lims + [A.joint_locations(1, 1)*ones(1, 2), A.joint_locations(2, 1)*ones(1, 2), A.joint_locations(3, 1)*ones(1, 2)];

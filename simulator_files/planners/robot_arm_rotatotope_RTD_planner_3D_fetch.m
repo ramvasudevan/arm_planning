@@ -22,6 +22,7 @@ classdef robot_arm_rotatotope_RTD_planner_3D_fetch < robot_arm_generic_planner
         function P = robot_arm_rotatotope_RTD_planner_3D_fetch(varargin)
             t_move = 0.5;
             lookahead_distance = 0.3;
+%             lookahead_distance = 1;
 %             HLP = robot_arm_RRT_HLP('make_new_tree_every_iteration_flag',true) ;
 %             HLP = robot_arm_PRM_HLP( ) ;
             HLP = robot_arm_straight_line_HLP( );
@@ -179,13 +180,14 @@ classdef robot_arm_rotatotope_RTD_planner_3D_fetch < robot_arm_generic_planner
                     k_param = k_opt(P.R.link_joints{j});
                     c_param = P.R.c_k(P.R.link_joints{j});
                     g_param = P.R.g_k(P.R.link_joints{j});
-                    lambda = c_param + (k_param./g_param);
+%                     lambda = c_param + (k_param./g_param);
+                    lambda = (k_param - c_param)./g_param;
                     for k = 1:length(idx) % for each time step
-                        lambdas = P.R.k_con{i}{j}{idx(k)}.*lambda;
-                        lambdas(~P.R.k_con{i}{j}{idx(k)}) = 1;
-                        lambdas = prod(lambdas, 1)';
+                        lambdas_prod = P.R.k_con{i}{j}{idx(k)}.*lambda;
+                        lambdas_prod(~P.R.k_con{i}{j}{idx(k)}) = 1;
+                        lambdas_prod = prod(lambdas_prod, 1)';
                         
-                        c_obs = P.R.A_con{i}{j}{idx(k)}*lambdas - P.R.b_con{i}{j}{idx(k)};
+                        c_obs = P.R.A_con{i}{j}{idx(k)}*lambdas_prod - P.R.b_con{i}{j}{idx(k)};
                         c_obs_max = max(c_obs);
                         c_k = -(c_obs_max - epsilon);
                         c = [c; c_k];
@@ -218,6 +220,56 @@ classdef robot_arm_rotatotope_RTD_planner_3D_fetch < robot_arm_generic_planner
                     end
                 end
             end
+            
+            %%% Self-intersection constraint generation:
+            for i = 1:length(P.R.A_con_self) % for each pair of joints that can intersect
+                idx = find(~cellfun('isempty', P.R.A_con_self{i}));
+                for j = 1:length(idx) % for each (nonempty) time step
+                    k_param = k_opt;
+                    c_param = P.R.c_k;
+                    g_param = P.R.g_k;
+                    
+                    lambda = (k_param - c_param)./g_param;
+                    
+                    % dumb way to do this... want to multiply rows of lambdas
+                    % together, replacing zeros with ones
+                    lambdas_prod = P.R.k_con_self{i}{idx(j)}.*lambda;
+                    lambdas_prod(~P.R.k_con_self{i}{idx(j)}) = 1;
+                    lambdas_prod = prod(lambdas_prod, 1)';
+                    
+                    c_obs = P.R.A_con_self{i}{idx(j)}*lambdas_prod - P.R.b_con_self{i}{idx(j)};
+                    c_obs_max = max(c_obs);
+                    c_k = -(c_obs_max - epsilon);
+                    c = [c; c_k];
+                    
+                    % specify gradients
+                    % this is going to be really gross... but basically
+                    % the gradient will depend on the row of A being
+                    % multiplied by lambda, as well as which k's the
+                    % lambdas depend on.
+                    if nargout > 2
+                        maxidx = find(c_obs == c_obs_max);
+                        k_con_temp = P.R.k_con_self{i}{idx(j)}';
+                        lambdas_grad = k_con_temp;
+                        cols = 1:length(lambda);
+                        for l = 1:length(lambda)
+                            lambdas_grad_temp = k_con_temp(:, l);
+                            lambdas_grad_temp = lambdas_grad_temp*lambda(l);
+                            lambdas_grad_temp(~k_con_temp(:, l)) = 1;
+                            lambdas_grad(:, cols ~= l) = lambdas_grad_temp.*lambdas_grad(:, cols ~= l);
+                        end
+                        if length(maxidx) > 1
+                            %                                 disp('ahhh');
+                            tempgradc = P.R.A_con_self{i}{idx(j)}(maxidx, :)*lambdas_grad;
+                            gradc = [gradc, (-max(tempgradc)')./g_param];
+                        else
+                            gradc = [gradc, (-(P.R.A_con_self{i}{idx(j)}(maxidx, :)*lambdas_grad)')./g_param];
+                        end
+                    end
+                    
+                end
+            end
+                    
             
         end
         

@@ -11,6 +11,7 @@ FRS_options.L = 0.33;
 FRS_options.buffer_dist = 0;
 FRS_options.combs = generate_combinations_upto(200);
 FRS_options.maxcombs = 200;
+FRS_options.origin_shift = [0;0;0];
 
 % get current obstacles
 obs_center = [0.8; 0.2; -0.2];

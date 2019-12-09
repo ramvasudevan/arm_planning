@@ -47,7 +47,7 @@ classdef robot_arm_generic_planner < planner
             P.vdisp('Getting agent info',9)
             P.dimension = agent_info.dimension ;
             P.bounds = agent_info.reach_limits ;
-            P = fill_in_arm_properties(P,agent_info,true) ;
+            P = fill_in_arm_properties(P,agent_info,false) ;
             
             % fill in world info
             P.vdisp('Getting world info',9)

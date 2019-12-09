@@ -3,14 +3,21 @@ classdef robot_arm_FRS_rotatotope_fetch
     %describing the FRS of each joint
     %   this class is defined specifically for the fetch robot, and is
     %   mostly a wrapper to facilitate working with the rotatotope.m class.
+    %
+    % note that for planning purposes, we are treating the robot arm as a 3
+    % link arm. the short shoulder base link is incorporated in the
+    % "stacking" step and included as a base_EE_zonotope
     
     properties
         rot_axes = [3;2;1;2;1;2]; % order of rotation axes on fetch
         link_joints = {[1;2], [1;2;3;4], [1;2;3;4;5;6]}; % joints that each link depends on
-        link_zonotopes = {zonotope([0.33/2, 0.33/2; 0, 0; 0, 0]); zonotope([0.33/2, 0.33/2; 0, 0; 0, 0]); zonotope([0.33/2, 0.33/2; 0, 0; 0, 0])};
-        link_EE_zonotopes = {zonotope([0.33; 0; 0]); zonotope([0.33; 0; 0]); zonotope([0.33; 0; 0])};
+        link_zonotopes = {zonotope([0.3556/2, 0.3556/2; 0, 0; 0, 0]); zonotope([0.3302/2, 0.3302/2; 0, 0; 0, 0]); zonotope([0.3302/2, 0.3302/2; 0, 0; 0, 0])};
+        link_EE_zonotopes = {zonotope([0.3556; 0; 0]); zonotope([0.3302; 0; 0]); zonotope([0.3302; 0; 0])};
+        base_joints = {[1]} % treat shoulder base link separately
+        base_EE_zonotopes = {zonotope([0.1206; 0; 0.0825])}; % incorporate shoulder base link in stacking
         link_self_intersection = {[1;3]} % cell array of links that could intersect (joint limits cover the rest)
         n_links = 3;
+        n_base = 1;
         n_time_steps = 0;
         dim = 3;
         FRS_path = 'FRS_trig/';
@@ -21,6 +28,7 @@ classdef robot_arm_FRS_rotatotope_fetch
         
         link_rotatotopes = {};
         link_EE_rotatotopes = {};
+        base_EE_rotatotopes = {};
         link_FRS = {}
         
         FRS_options = {};
@@ -93,12 +101,21 @@ classdef robot_arm_FRS_rotatotope_fetch
             end
             obj.n_time_steps = length(trig_FRS);
             
-            % construct a bunch of rotatotopes
+            % base EE rotatotope
+            for i = 1:obj.n_base
+                for j = 1:obj.n_time_steps
+                    obj.base_EE_rotatotopes{i}{j} = rotatotope(obj.rot_axes(obj.base_joints{i}), trig_FRS{j}(obj.base_joints{i}), obj.base_EE_zonotopes{i});
+                end
+            end
+            
+            % link rotatotopes
             for i = 1:obj.n_links
                for j = 1:obj.n_time_steps
                    obj.link_rotatotopes{i}{j} = rotatotope(obj.rot_axes(obj.link_joints{i}), trig_FRS{j}(obj.link_joints{i}), obj.link_zonotopes{i});
                end
             end
+            
+            % linke EE rotatotopes
             for i = 1:obj.n_links - 1
                 for j = 1:obj.n_time_steps
                     obj.link_EE_rotatotopes{i}{j} = rotatotope(obj.rot_axes(obj.link_joints{i}), trig_FRS{j}(obj.link_joints{i}), obj.link_EE_zonotopes{i});
@@ -107,8 +124,13 @@ classdef robot_arm_FRS_rotatotope_fetch
             
             % stack
             obj.link_FRS = obj.link_rotatotopes;
-            for i = 2:obj.n_links
+            for i = 1:obj.n_links
                 for j = 1:obj.n_time_steps
+                    % stack on base
+                    for k = 1:obj.n_base
+                        obj.link_FRS{i}{j} = obj.link_FRS{i}{j}.stack(obj.base_EE_rotatotopes{k}{j});
+                    end
+                    % stack on prev. links
                     for k = 1:i-1
                         obj.link_FRS{i}{j} = obj.link_FRS{i}{j}.stack(obj.link_EE_rotatotopes{k}{j});
                     end
@@ -173,14 +195,20 @@ classdef robot_arm_FRS_rotatotope_fetch
             for i = 1:length(obstacles)
                 for j = 1:length(obj.link_FRS)
                     for k = 1:length(obj.link_FRS{j})
-                        [obj.A_con{i}{j}{k}, obj.b_con{i}{j}{k}, obj.k_con{i}{j}{k}] = obj.link_FRS{j}{k}.generate_constraints(obstacles{i}.zono.Z, obj.FRS_options, j);
+%                         if (j == 1 && isprop(obstacles{i}, 'is_base_obstacle') && obstacles{i}.is_base_obstacle) % skip base obstacles for first link
+%                             obj.A_con{i}{j}{k} = [];
+%                             obj.b_con{i}{j}{k} = [];
+%                             obj.k_con{i}{j}{k} = [];
+%                         else
+                            [obj.A_con{i}{j}{k}, obj.b_con{i}{j}{k}, obj.k_con{i}{j}{k}] = obj.link_FRS{j}{k}.generate_constraints(obstacles{i}.zono.Z, obj.FRS_options, j);
+%                         end
                     end
                 end
             end
         end
         
         function [obj] = generate_self_intersection_constraints(obj)
-           % takes in pairs of links that could intersect and generates
+            % takes in pairs of links that could intersect and generates
            % Acon and bcon, as well as the combinations of k_idxs (kcon) these
            % constraints depend on.
            for i = 1:length(obj.link_self_intersection) % for each pair of links
@@ -203,14 +231,39 @@ classdef robot_arm_FRS_rotatotope_fetch
                     gen_concat = [frs_k_ind_G_1, frs_k_ind_G_2, 2*obj.FRS_options.buffer_dist/2*eye(3)]; % add buffer distance accounting for 2 links
                     gen_concat(:, ~any(gen_concat)) = []; % delete zero columns
                     gen_zono = [(R1.Rc - R2.Rc), gen_concat]; % centered at R1.Rc - R2.Rc
+                    
                     [A_poly, b_poly] = polytope_PH(gen_zono, obj.FRS_options);
                     
                     % the difference in "sliced" points should be outside
                     % this zono:
-                    k_dep_pt = [frs_k_dep_G_1, -frs_k_dep_G_2];
-                    obj.A_con_self{i}{j} = A_poly*k_dep_pt;
-                    obj.b_con_self{i}{j} = b_poly;
-                    obj.k_con_self{i}{j} = [[R1.k_idx(:, kc_col_1); zeros(size(R2.k_idx, 1) - size(R1.k_idx, 1), length(kc_col_1))], R2.k_idx(:, kc_col_2)]; % patrick 20191202: NEED TO CHECK THIS LINE
+                    k_dep_pt = [-frs_k_dep_G_1, frs_k_dep_G_2];
+                    A_con = A_poly*k_dep_pt;
+                    b_con = b_poly;
+                    k_con = [[R1.k_idx(:, kc_col_1); zeros(size(R2.k_idx, 1) - size(R1.k_idx, 1), length(kc_col_1))], R2.k_idx(:, kc_col_2)];
+                    
+                    % add a test here that throws out unnecessary constraints.
+                    % ( not entirely sure this is still valid!! )
+                    intersection_possible = 0;
+                    for k = 1:size(obj.FRS_options.kV_lambda{end}, 2)
+                        lambdas_orig = k_con.*obj.FRS_options.kV_lambda{end}(:, k);
+                        lambdas_prod = lambdas_orig;
+                        lambdas_prod(~lambdas_prod) = 1;
+                        lambdas_prod = prod(lambdas_prod, 1)';
+                        lambdas_prod(~any(lambdas_orig)) = 0; % set lambdas corresponding to all zero columns equal to zero
+                        
+                        kVc = A_con*lambdas_prod - b_con;
+                        test_kV = max(kVc);
+                        if test_kV <= 0
+                            intersection_possible = 1;
+                        end
+                    end
+                    if ~intersection_possible
+                        A_con = []; b_con = []; k_con = [];
+                    end
+                    
+                    obj.A_con_self{i}{j} = A_con;
+                    obj.b_con_self{i}{j} = b_con;
+                    obj.k_con_self{i}{j} = k_con;
                     
                 end
             end

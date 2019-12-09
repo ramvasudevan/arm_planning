@@ -1,7 +1,7 @@
 %% user parameters
 % filename = 'trial_20190410_0262.mat' ;
-clear; clc; 
-filename = '/Users/pdholmes/Documents/MATLAB/arm_planning/simulator_files/testing/trial_data/trial_20191125_0008.mat';
+clear;
+filename = '/Users/pdholmes/Documents/MATLAB/arm_planning/simulator_files/testing/trial_data/20191205/trial_scene_010_005.mat';
 
 % obs_color = [1 0.7 0.7] ;
 % obs_opacity = 0.5 ;
@@ -10,8 +10,7 @@ filename = '/Users/pdholmes/Documents/MATLAB/arm_planning/simulator_files/testin
 % agent_camera_position = [-3;0;1] ; % default is [-3;0;1.5]
 % plot_agent_view = 'behind' ; % none, behind, above, or onboard
 
-verbosity = 10 ;
-floor_normal_axis = 1;
+verbosity = 0 ;
 dimension = 3;
 
 
@@ -31,7 +30,7 @@ goal = summary(1).goal ;
 %     'camera_direction_offset',agent_camera_position,...
 %     'camera_follow_dist',agent_camera_distance) ;
 
-A = robot_arm_3D_fetch('verbose', verbosity, 'floor_normal_axis', floor_normal_axis, 'animation_set_axes_flag', 0, 'animation_set_view_flag', 0);
+A = robot_arm_3D_fetch('verbose', verbosity, 'animation_set_axes_flag', 0, 'animation_set_view_flag', 0);
 
 % create world
 % W = zonotope_box_world('verbose',verbose_level,...
@@ -41,7 +40,7 @@ A = robot_arm_3D_fetch('verbose', verbosity, 'floor_normal_axis', floor_normal_a
 %     'obstacles',obstacles,...
 %     'goal',goal) ;
 
-W = arm_world_static('floor_normal_axis', floor_normal_axis, 'include_base_obstacle', 0, 'N_obstacles',length(obstacles),'dimension',dimension,'workspace_goal_check', 0,...
+W = fetch_base_world_static('create_random_obstacles', 0, 'include_base_obstacle', 0, 'N_obstacles',length(obstacles),'dimension',dimension,'workspace_goal_check', 0,...
     'verbose',verbosity, 'start', start, 'goal', goal, 'obstacles', obstacles) ;
 
 % fill in agent state
