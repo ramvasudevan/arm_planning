@@ -78,14 +78,14 @@ if teston
             for j = 1:length(myk)
                 K = [0;0;0;Xk(i, j); 0;Yk(i, j)];
                 lambda = (K - c_k)./g_k;
-                lambdas_orig = k_con.*lambda;
+                lambdas_prod = k_con.*lambda;
                 
                 % dumb way to do this... want to multiply rows of lambdas
                 % together, replacing zeros with ones
-                lambdas_prod = lambdas_orig;
-                lambdas_prod(~lambdas_prod) = 1;
+%                 lambdas_prod = lambdas_orig;
+                lambdas_prod(~k_con) = 1;
                 lambdas_prod = prod(lambdas_prod, 1)';
-                lambdas_prod(~any(lambdas_orig)) = 0; % set lambdas corresponding to all zero columns equal to zero
+%                 lambdas_prod(~any(lambdas_orig)) = 0; % set lambdas corresponding to all zero columns equal to zero
                 
                 Zk = A_con*lambdas_prod - b_con;
                 Zk = max(Zk);
