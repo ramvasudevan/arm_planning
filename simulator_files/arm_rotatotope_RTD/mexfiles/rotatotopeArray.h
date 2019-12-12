@@ -21,11 +21,10 @@ a cuda array for a cluster of rotatotopes
 #include <cfloat>
 
 #define k_dim 2
-#define reduce_order 31
-#define norm_size 310
+#define reduce_order 16
+#define norm_size 160
 #define max_RZ_length 130
 #define A_BIG_NUMBER 1000000.0
-#define default_joint_number 6
 
 class rotatotopeArray {
 public:
