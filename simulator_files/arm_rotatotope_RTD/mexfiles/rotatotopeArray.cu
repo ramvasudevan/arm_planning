@@ -669,12 +669,20 @@ __global__ void evaluate_constraints_kernel(double* lambda, uint32_t link_id, do
 	uint32_t k_con_num_base = time_id;
 	uint32_t con_base = (obstacle_id * n_time_steps + time_id) * constraint_length + c_id;
 
+	__shared__ double shared_lambda[6];
+
+	if (c_id < 2 * (link_id + 1)) {
+		shared_lambda[c_id] = lambda[c_id];
+	}
+
+	__syncthreads();
+
 	double result = 0;
 	for (uint32_t p = 0; p < k_con_num[k_con_num_base]; p++){
 		double prod = 1.0;
 		for (uint32_t j = 0; j < 2 * (link_id + 1); j++) {
 			if (k_con[(j * n_time_steps + time_id) * RZ_length + p]) {
-				prod *= lambda[j];
+				prod *= shared_lambda[j];
 			}
 		}
 
@@ -712,6 +720,12 @@ __global__ void evaluate_gradient_kernel(double* con_result, uint32_t link_id, d
 		con[con_base] = -maximum;
 	}
 
+	__shared__ double shared_lambda[6];
+
+	if (joint_id < 2 * (link_id + 1)) {
+		shared_lambda[joint_id] = lambda[joint_id];
+	}
+
 	__syncthreads();
 
 	double result = 0;
@@ -720,7 +734,7 @@ __global__ void evaluate_gradient_kernel(double* con_result, uint32_t link_id, d
 		double prod = 1.0;
 		for (uint32_t j = 0; j < 2 * (link_id + 1); j++) {
 			if (j != joint_id && k_con[(j * n_time_steps + time_id) * RZ_length + p]) {
-				prod *= lambda[j];
+				prod *= shared_lambda[j];
 			}
 		}
 		
