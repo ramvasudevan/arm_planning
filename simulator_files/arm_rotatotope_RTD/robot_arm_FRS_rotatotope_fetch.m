@@ -33,6 +33,7 @@ classdef robot_arm_FRS_rotatotope_fetch
         
         % ===== mex properties =====
         obstacles = [];
+        k_opt = [];
         
         mex_RZ = [];
         mex_c_idx = [];
@@ -45,13 +46,14 @@ classdef robot_arm_FRS_rotatotope_fetch
         deb_RZ = [];
         deb_c_idx = [];
         deb_k_idx = [];
-        debug = [];
-        debug_2 = [];
+        
+        eval_output = [];
+        eval_grad_output = []
         % ===== mex properties =====
     end
     
     methods
-        function obj = robot_arm_FRS_rotatotope_fetch(q, q_dot, obstacles, FRS_options)
+        function obj = robot_arm_FRS_rotatotope_fetch(q, q_dot, obstacles, k_opt, FRS_options)
             %robot_arm_FRS_rotatotope_fetch constructs an FRS for the full arm
             % based on rotatotopes. this class is specific to the Fetch,
             % and will create an FRS using default link lengths and
@@ -62,6 +64,7 @@ classdef robot_arm_FRS_rotatotope_fetch
             obj.q = q;
             obj.q_dot = q_dot;
             obj.obstacles = obstacles;
+            obj.k_opt = k_opt;
             
             FRSkeytmp = load([obj.FRS_path, '0key.mat']); % fix this
             obj.FRS_key = FRSkeytmp.c_IC;
@@ -157,9 +160,8 @@ classdef robot_arm_FRS_rotatotope_fetch
                 mexin_OZ = [mexin_OZ, obj.obstacles{i}.zono.Z];
             end
             
-            %[obj.mex_A_con, obj.mex_b_con, obj.mex_k_con, obj.debug, obj.debug_2] = rotatotope_mex(obj.n_links, obj.n_time_steps, mexin_R, mexin_Z, mexin_EE, length(obj.obstacles), mexin_OZ);
-            %[obj.mex_A_con, obj.mex_b_con, obj.mex_k_con, obj.deb_RZ, obj.deb_c_idx, obj.deb_k_idx] = rotatotope_mex(obj.n_links, obj.n_time_steps, mexin_R, mexin_Z, mexin_EE, length(obj.obstacles), mexin_OZ);
-            [obj.mex_A_con, obj.mex_b_con, obj.mex_k_con] = rotatotope_mex(obj.n_links, obj.n_time_steps, mexin_R, mexin_Z, mexin_EE, length(obj.obstacles), mexin_OZ);
+            %[obj.mex_A_con, obj.mex_b_con, obj.mex_k_con] = rotatotope_mex(obj.n_links, obj.n_time_steps, mexin_R, mexin_Z, mexin_EE, length(obj.obstacles), mexin_OZ);
+            [obj.eval_output,obj.eval_grad_output] = rotatotope_mex(obj.n_links, obj.n_time_steps, mexin_R, mexin_Z, mexin_EE, length(obj.obstacles), mexin_OZ, obj.k_opt);
             
             toc;
         end
