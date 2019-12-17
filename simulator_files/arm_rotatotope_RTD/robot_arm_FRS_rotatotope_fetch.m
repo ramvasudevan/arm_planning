@@ -245,11 +245,9 @@ classdef robot_arm_FRS_rotatotope_fetch
                     % ( not entirely sure this is still valid!! )
                     intersection_possible = 0;
                     for k = 1:size(obj.FRS_options.kV_lambda{end}, 2)
-                        lambdas_orig = k_con.*obj.FRS_options.kV_lambda{end}(:, k);
-                        lambdas_prod = lambdas_orig;
-                        lambdas_prod(~lambdas_prod) = 1;
+                        lambdas_prod = k_con.*obj.FRS_options.kV_lambda{end}(:, k);
+                        lambdas_prod(~k_con) = 1;
                         lambdas_prod = prod(lambdas_prod, 1)';
-                        lambdas_prod(~any(lambdas_orig)) = 0; % set lambdas corresponding to all zero columns equal to zero
                         
                         kVc = A_con*lambdas_prod - b_con;
                         test_kV = max(kVc);

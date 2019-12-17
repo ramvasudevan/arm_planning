@@ -12,7 +12,7 @@
 clear ; clc ; figure(1); clf; view(3); grid on;
 
 %% user parameters
-N_obstacles = 50 ;
+N_obstacles = 10 ;
 dimension = 3 ;
 nLinks = 3 ;
 verbosity = 6 ;

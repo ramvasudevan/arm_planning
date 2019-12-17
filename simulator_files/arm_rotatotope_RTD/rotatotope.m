@@ -379,7 +379,7 @@ classdef rotatotope
            
            [A_poly, b_poly] = polytope_PH(buff_obstacle, options);
            
-           A_con = A_poly*frs_k_dep_G; % patrick 20191202: might need a negative sign here??
+           A_con = A_poly*frs_k_dep_G;
            b_con = b_poly;
            k_con = obj.k_idx(:, kc_col);
            
@@ -388,7 +388,7 @@ classdef rotatotope
            intersection_possible = 0;
            for i = 1:size(options.kV_lambda{link_number}, 2)
                lambdas = k_con.*options.kV_lambda{link_number}(:, i);
-               lambdas(~lambdas) = 1;
+               lambdas(~k_con) = 1;
                lambdas = prod(lambdas, 1)';
                
                kVc = A_con*lambdas - b_con;
