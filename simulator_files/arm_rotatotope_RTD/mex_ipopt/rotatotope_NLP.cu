@@ -182,9 +182,6 @@ bool rotatotope_NLP::eval_grad_f(
 {
    assert(n == ra_info->n_links * 2);
 
-   grad_f[0] = 0;
-   grad_f[1] = 0; 
-
    for(uint32_t i = 0; i < ra_info->n_links * 2; i++){
         double entry = q[i] + q_dot[i] * t_plan + x[i] * t_plan * t_plan / 2 - q_des[i];
         grad_f[i] = t_plan * t_plan * entry;
@@ -282,43 +279,22 @@ bool rotatotope_NLP::eval_jac_g(
       // return the structure of the Jacobian
 
       // this particular Jacobian is dense
-      iRow[0] = 0;
-      jCol[0] = 0;
-      iRow[1] = 0;
-      jCol[1] = 1;
-      // iRow[2] = 0;
-      // jCol[2] = 2;
-      // iRow[3] = 0;
-      // jCol[3] = 3;
-      // iRow[4] = 1;
-      // jCol[4] = 0;
-      // iRow[5] = 1;
-      // jCol[5] = 1;
-      // iRow[6] = 1;
-      // jCol[6] = 2;
-      // iRow[7] = 1;
-      // jCol[7] = 3;
+      for(Index i = 0; i < m; i++){
+          for(Index j = 0; j < n; j++){
+              iRow[i * n + j] = i;
+              jCol[i * n + j] = j;
+          }
+      }
    }
    else
    {
-
-      // have to evaluate the constraints again...
-      //Vec vec_x(x, x + n); // convert number array to vector
-      //Vec c = A_con*vec_x - b_con;
-      //int idx = std::min_element(std::begin(c), std::end(c)) - std::begin(c);
-      // cout << "INDEX WOO" << idx << "\n";
-
       // return the values of the Jacobian of the constraints
 
-      values[0] = 0; // 0,0
-      values[1] = 0; // 0,1
-      // values[2] = x[0] * x[1] * x[3]; // 0,2
-      // values[3] = x[0] * x[1] * x[2]; // 0,3
-
-      // values[4] = 2 * x[0]; // 1,0
-      // values[5] = 2 * x[1]; // 1,1
-      // values[6] = 2 * x[2]; // 1,2
-      // values[7] = 2 * x[3]; // 1,3
+      for(Index i = 0; i < m; i++){
+          for(Index j = 0; j < n; j++){
+              values[i * n + j] = ra_info->grad_con[i * n + j];
+          }
+      }
    }
 
    return true;
@@ -341,8 +317,8 @@ bool rotatotope_NLP::eval_h(
    Number*       values
 )
 {
-   assert(n == 2);
-   assert(m == 1);
+    assert(n == ra_info->n_links * 2);
+    assert(m == ra_info->n_links * n_obstacles * ra_info->n_time_steps);
 
    if( values == NULL )
    {
