@@ -37,6 +37,8 @@ rotatotope_NLP::~rotatotope_NLP()
     double* q_input,
     double* q_dot_input,
     double* q_des_input,
+    double* c_k_input,
+    double* g_k_input,
     uint32_t n_obstacles_input
  )
  {
@@ -44,6 +46,8 @@ rotatotope_NLP::~rotatotope_NLP()
     q = q_input;
     q_dot = q_dot_input;
     q_des = q_des_input;
+    c_k = c_k_input;
+    g_k = g_k_input;
     n_obstacles = n_obstacles_input;
     return true;
  };
@@ -58,18 +62,16 @@ bool rotatotope_NLP::get_nlp_info(
    IndexStyleEnum& index_style
 )
 {
+   mexPrintf("get_NLP_info\n");
+
    // The problem described 6 variables, x[0] through x[5] for each joint
    n = ra_info->n_links * 2;
 
    // number of inequality constraint
    m = ra_info->n_links * n_obstacles * ra_info->n_time_steps;
 
-   // in this example the jacobian is dense and contains 8 nonzeros
-   nnz_jac_g = 2; //? 
-
-   // the Hessian is also dense and has 4 total nonzeros, but we
-   // only need the lower left corner (since it is symmetric)
-   nnz_h_lag = 3; // ?
+   nnz_jac_g = 0;
+   nnz_h_lag = 0;
 
    // use the C style indexing (0-based)
    index_style = TNLP::C_STYLE;
@@ -91,25 +93,29 @@ bool rotatotope_NLP::get_bounds_info(
 {
    // here, the n and m we gave IPOPT in get_nlp_info are passed back to us.
    // If desired, we could assert to make sure they are what we think they are.
-   assert(n == ra_info->n_links * 2);
-   assert(m == ra_info->n_links * n_obstacles * ra_info->n_time_steps);
-
-   // the variables have lower bounds of 0 ?
-   for( Index i = 0; i < n; i++ )
-   {
-      x_l[i] = 0.0;
+   if(n != ra_info->n_links * 2){
+      mexErrMsgIdAndTxt("MyProg:ConvertString", "*** Error wrong value of n in get_bounds_info!");
+   }
+   if(m != ra_info->n_links * n_obstacles * ra_info->n_time_steps){
+      mexErrMsgIdAndTxt("MyProg:ConvertString", "*** Error wrong value of m in get_bounds_info!");
    }
 
-   // the variables have upper bounds of 1 ? 
-   for( Index i = 0; i < n; i++ )
-   {
-      x_u[i] = 1.0;
+   // lower bounds
+   for( Index i = 0; i < n; i++ ) {
+      x_l[i] = c_k[i] - g_k[i];
    }
 
-   // the first constraint g1 has a lower bound of inf
-   g_l[0] = -2e19;
-   // the first constraint g1 has an upper bound of 0
-   g_u[0] = 0;
+   // upper bounds  
+   for( Index i = 0; i < n; i++ ) {
+      x_u[i] = c_k[i] + g_k[i];
+   }
+
+   for( Index i = 0; i < m; i++ ) {
+      // constraint has a lower bound of inf
+      g_l[i] = -2e19;
+      // constraint has an upper bound of 0
+      g_u[i] = 0;
+   }
 
    return true;
 }
@@ -132,17 +138,20 @@ bool rotatotope_NLP::get_starting_point(
    // Here, we assume we only have starting values for x, if you code
    // your own NLP, you can provide starting values for the dual variables
    // if you wish
-   assert(init_x == true);
-   assert(init_z == false);
-   assert(init_lambda == false);
+   if(init_x == false || init_z == true || init_lambda == true){
+       mexErrMsgIdAndTxt("MyProg:ConvertString", "*** Error wrong value of init in get_starting_point!");
+   }
+
+   if(n != ra_info->n_links * 2){
+      mexErrMsgIdAndTxt("MyProg:ConvertString", "*** Error wrong value of n in get_starting_point!");
+   }
+
+   mexPrintf("starting_point\n");
 
    // initialize to the given starting point
-   x[0] = 0.5;
-   x[1] = 0.5;
-   x[2] = 0.5;
-   x[3] = 0.5;
-   x[4] = 0.5;
-   x[5] = 0.5;
+   for( Index i = 0; i < n; i++ ) {
+      x[i] = c_k[i];
+   }
 
    return true;
 }
@@ -157,7 +166,11 @@ bool rotatotope_NLP::eval_f(
    Number&       obj_value
 )
 {
-   assert(n == ra_info->n_links * 2);
+   if(n != ra_info->n_links * 2){
+      mexErrMsgIdAndTxt("MyProg:ConvertString", "*** Error wrong value of n in eval_f!");
+   }
+
+   mexPrintf("F\n");
 
    // q_plan = q_0 + q_dot_0*P.t_plan + (1/2)*k*P.t_plan^2;
    // obj_value = sum((q_plan - q_des).^2);
@@ -180,12 +193,16 @@ bool rotatotope_NLP::eval_grad_f(
    Number*       grad_f
 )
 {
-   assert(n == ra_info->n_links * 2);
+   if(n != ra_info->n_links * 2){
+      mexErrMsgIdAndTxt("MyProg:ConvertString", "*** Error wrong value of n in eval_grad_f!");
+   }
+
+   mexPrintf("F_G\n");
 
    for(uint32_t i = 0; i < ra_info->n_links * 2; i++){
         double entry = q[i] + q_dot[i] * t_plan + x[i] * t_plan * t_plan / 2 - q_des[i];
         grad_f[i] = t_plan * t_plan * entry;
-    }
+   }
 
    return true;
 }
@@ -201,13 +218,19 @@ bool rotatotope_NLP::eval_g(
    Number*       g
 )
 {
-   assert(n == ra_info->n_links * 2);
-   assert(m == ra_info->n_links * n_obstacles * ra_info->n_time_steps);
+   if(n != ra_info->n_links * 2){
+      mexErrMsgIdAndTxt("MyProg:ConvertString", "*** Error wrong value of n in eval_g!");
+   }
+   if(m != ra_info->n_links * n_obstacles * ra_info->n_time_steps){
+      mexErrMsgIdAndTxt("MyProg:ConvertString", "*** Error wrong value of m in eval_g!");
+   }
+
+   mexPrintf("G\n");
 
    bool compute_new_constraints;
    if(ra_info->current_k_opt != nullptr){
         compute_new_constraints = false;
-        for(uint32_t i = 0; i < ra_info->n_links * 2; i++){
+        for(uint32_t i = 0; i < n; i++){
             if(ra_info->current_k_opt[i] != x[i]){
                 compute_new_constraints = true;
                 break;
@@ -219,15 +242,15 @@ bool rotatotope_NLP::eval_g(
     }
 
     if(compute_new_constraints){
-        double* x_double = new double[ra_info->n_links * 2];
-        for(uint32_t i = 0; i < ra_info->n_links * 2; i++){
-            x_double[i] = x[i];
+        double* x_double = new double[n];
+        for(uint32_t i = 0; i < n; i++){
+            x_double[i] = (double)x[i];
         }
         ra_info->evaluate_constraints(x_double);
         delete[] x_double;
     }
 
-   for(uint32_t i = 0; i < ra_info->n_links * n_obstacles * ra_info->n_time_steps; i++){
+   for(uint32_t i = 0; i < m; i++) {
         g[i] = ra_info->con[i];
    }
 
@@ -248,36 +271,18 @@ bool rotatotope_NLP::eval_jac_g(
    Number*       values
 )
 {
-    assert(n == ra_info->n_links * 2);
-    assert(m == ra_info->n_links * n_obstacles * ra_info->n_time_steps);
+   if(n != ra_info->n_links * 2){
+      mexErrMsgIdAndTxt("MyProg:ConvertString", "*** Error wrong value of n in eval_jac_g!");
+   }
+   if(m != ra_info->n_links * n_obstacles * ra_info->n_time_steps){
+      mexErrMsgIdAndTxt("MyProg:ConvertString", "*** Error wrong value of m in eval_jac_g!");
+   }
 
-    bool compute_new_constraints;
-    if(ra_info->current_k_opt != nullptr){
-         compute_new_constraints = false;
-         for(uint32_t i = 0; i < ra_info->n_links * 2; i++){
-             if(ra_info->current_k_opt[i] != x[i]){
-                 compute_new_constraints = true;
-                 break;
-             }
-         }
-     }
-     else{
-         compute_new_constraints = true;
-     }
- 
-     if(compute_new_constraints){
-         double* x_double = new double[ra_info->n_links * 2];
-         for(uint32_t i = 0; i < ra_info->n_links * 2; i++){
-             x_double[i] = x[i];
-         }
-         ra_info->evaluate_constraints(x_double);
-         delete[] x_double;
-     }
+   mexPrintf("G_J\n");
 
-   if( values == NULL )
-   {
+   if( values == NULL ) {
       // return the structure of the Jacobian
-
+      mexPrintf("G_J 1\n");
       // this particular Jacobian is dense
       for(Index i = 0; i < m; i++){
           for(Index j = 0; j < n; j++){
@@ -286,10 +291,33 @@ bool rotatotope_NLP::eval_jac_g(
           }
       }
    }
-   else
-   {
-      // return the values of the Jacobian of the constraints
+   else {
+      mexPrintf("G_J 2\n");
 
+      bool compute_new_constraints;
+      if(ra_info->current_k_opt != nullptr){
+         compute_new_constraints = false;
+         for(uint32_t i = 0; i < n; i++){
+            if(ra_info->current_k_opt[i] != x[i]){
+               compute_new_constraints = true;
+               break;
+            }
+         }
+      }
+      else{
+         compute_new_constraints = true;
+      }
+   
+      if(compute_new_constraints){
+         double* x_double = new double[n];
+         for(uint32_t i = 0; i < n; i++){
+            x_double[i] = (double)x[i];
+         }
+         ra_info->evaluate_constraints(x_double);
+         delete[] x_double;
+      }
+
+      // return the values of the Jacobian of the constraints
       for(Index i = 0; i < m; i++){
           for(Index j = 0; j < n; j++){
               values[i * n + j] = ra_info->grad_con[i * n + j];
@@ -317,17 +345,22 @@ bool rotatotope_NLP::eval_h(
    Number*       values
 )
 {
-    assert(n == ra_info->n_links * 2);
-    assert(m == ra_info->n_links * n_obstacles * ra_info->n_time_steps);
+   if(n != ra_info->n_links * 2){
+      mexErrMsgIdAndTxt("MyProg:ConvertString", "*** Error wrong value of n in eval_h!");
+   }
+   if(m != ra_info->n_links * n_obstacles * ra_info->n_time_steps){
+      mexErrMsgIdAndTxt("MyProg:ConvertString", "*** Error wrong value of m in eval_h!");
+   }
 
-   if( values == NULL )
-   {
+   mexPrintf("H\n");
+
+   if( values == NULL ) {
       // return the structure. This is a symmetric matrix, fill the lower left
       // triangle only.
 
       // the hessian for this problem is actually dense
       Index idx = 0;
-      for( Index row = 0; row < 2; row++ )
+      for( Index row = 0; row < 6; row++ )
       {
          for( Index col = 0; col <= row; col++ )
          {
@@ -337,46 +370,29 @@ bool rotatotope_NLP::eval_h(
          }
       }
 
-      assert(idx == nele_hess);
+      if(idx != nele_hess){
+         mexErrMsgIdAndTxt("MyProg:ConvertString", "*** Error wrong size of hessian!");
+      }
    }
-   else
-   {
+   else {
       // return the values. This is a symmetric matrix, fill the lower left
       // triangle only
 
       // fill the objective portion
-      values[0] = obj_factor * 2; // 0,0
-
-      values[1] = 0.;     // 1,0
-      values[2] = obj_factor * 2; // 1,1
-
-      // values[3] = obj_factor * (x[3]);     // 2,0
-      // values[4] = 0.;                      // 2,1
-      // values[5] = 0.;                      // 2,2
-
-      // values[6] = obj_factor * (2 * x[0] + x[1] + x[2]); // 3,0
-      // values[7] = obj_factor * (x[0]);                   // 3,1
-      // values[8] = obj_factor * (x[0]);                   // 3,2
-      // values[9] = 0.;                                    // 3,3
-
-      // // add the portion for the first constraint
-      // values[1] += lambda[0] * (x[2] * x[3]); // 1,0
-
-      // values[3] += lambda[0] * (x[1] * x[3]); // 2,0
-      // values[4] += lambda[0] * (x[0] * x[3]); // 2,1
-
-      // values[6] += lambda[0] * (x[1] * x[2]); // 3,0
-      // values[7] += lambda[0] * (x[0] * x[2]); // 3,1
-      // values[8] += lambda[0] * (x[0] * x[1]); // 3,2
-
-      // // add the portion for the second constraint
-      // values[0] += lambda[1] * 2; // 0,0
-
-      // values[2] += lambda[1] * 2; // 1,1
-
-      // values[5] += lambda[1] * 2; // 2,2
-
-      // values[9] += lambda[1] * 2; // 3,3
+      Index idx = 0;
+      for( Index row = 0; row < 6; row++ )
+      {
+         for( Index col = 0; col <= row; col++ )
+         {
+            if(row == col){
+               values[idx] = t_plan * t_plan * t_plan * t_plan / 2;
+            }
+            else{
+               values[idx] = 0;
+            }
+            idx++;
+         }
+      }
    }
 
    return true;
@@ -402,16 +418,15 @@ void rotatotope_NLP::finalize_solution(
    // so we could use the solution.
 
    // For this example, we write the solution to the console
-   std::cout << std::endl << std::endl << "Solution of the primal variables, x" << std::endl;
-   for( Index i = 0; i < n; i++ )
-   {
-      std::cout << "x[" << i << "] = " << x[i] << std::endl;
+   mexPrintf("\nSolution of the primal variables, x\n\n");
+   for( Index i = 0; i < n; i++ ) {
+      mexPrintf( "x[%d] = %f\n", i, x[i]);
    }
 
-   std::cout << std::endl << std::endl << "Solution of the bound multipliers, z_L and z_U" << std::endl;
+   mexPrintf("\nSolution of the bound multipliers, z_L and z_U\n");
    for( Index i = 0; i < n; i++ )
    {
-      std::cout << "z_L[" << i << "] = " << z_L[i] << std::endl;
+      mexPrintf( "z_L[%d] = %f\n", i, z_L[i]);
    }
    for( Index i = 0; i < n; i++ )
    {

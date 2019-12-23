@@ -46,8 +46,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 	/*
 P0.	process the input
 	*/
-	if (nrhs != 9) {
-		mexErrMsgIdAndTxt("MyProg:ConvertString","Incorrect number of input!");
+	if (nrhs != 11) {
+		mexErrMsgIdAndTxt("MyProg:ConvertString","*** Incorrect number of input!");
 	}
 
 	uint32_t n_links = 3;
@@ -84,6 +84,10 @@ P0.	process the input
 
 	double* q_des = mxGetPr(prhs[8]);
 
+	double* c_k = mxGetPr(prhs[9]);
+
+	double* g_k = mxGetPr(prhs[10]);
+
 	start_t = clock();
 
 	/*
@@ -111,10 +115,43 @@ P3.	generate the constraints
 	/*
 P4.	evaluate the constraints
 	*/
-	links.evaluate_constraints(k_opt);
+	//links.evaluate_constraints(k_opt);
 
 	SmartPtr<rotatotope_NLP> mynlp = new rotatotope_NLP();
-    mynlp->set_parameters(&links, q, q_dot, q_des, n_obstacles);
+	mynlp->set_parameters(&links, q, q_dot, q_des, c_k, g_k, n_obstacles);
+
+	// Create a new instance of IpoptApplication
+    //  (use a SmartPtr, not raw)
+    // We are using the factory, since this allows us to compile this
+    // example with an Ipopt Windows DLL
+    SmartPtr<IpoptApplication> app = IpoptApplicationFactory();
+
+    // Change some options
+    // Note: The following choices are only examples, they might not be
+    //       suitable for your optimization problem.
+    app->Options()->SetNumericValue("tol", 1e-7);
+    app->Options()->SetStringValue("mu_strategy", "adaptive");
+    app->Options()->SetStringValue("output_file", "ipopt.out");
+    app->Options()->SetStringValue("hessian_approximation", "limited-memory");
+	app->Options()->SetStringValue("limited_memory_update_type", "bfgs");
+
+    // Initialize the IpoptApplication and process the options
+    ApplicationReturnStatus status;
+    status = app->Initialize();
+    if( status != Solve_Succeeded ) {
+		mexErrMsgIdAndTxt("MyProg:ConvertString", "*** Error during initialization!");
+    }
+
+    // Ask Ipopt to solve the problem
+    status = app->OptimizeTNLP(mynlp);
+
+    if( status == Solve_Succeeded ) {
+        mexPrintf("*** The problem solved!\n");
+    }
+    else {
+		mexPrintf("*** The problem FAILED!\n");
+    }
+
 
 	end_t = clock();
 	mexPrintf("MEX FUNCTION TIME: %.6f\n", (end_t - start_t) / (double)(CLOCKS_PER_SEC));
@@ -122,8 +159,8 @@ P4.	evaluate the constraints
 	/*
 P5. handle the output, release the memory
 	*/
-	nlhs = 2;
-
+	nlhs = 0;
+	/*
 	plhs[0] = mxCreateNumericMatrix(n_links * n_obstacles * n_time_steps, 1, mxDOUBLE_CLASS, mxREAL);
 	double *output0 = (double*)mxGetData(plhs[0]);
 	for (uint32_t i = 0; i < n_obstacles; i++) {
@@ -146,7 +183,7 @@ P5. handle the output, release the memory
 			}
 		}
 	}
-	
+	*/
 	/*
 	mxArray* output1 = mxCreateCellMatrix(1, n_obstacles);
 	for (uint32_t i = 0; i < n_obstacles; i++) {

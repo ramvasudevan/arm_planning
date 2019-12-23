@@ -611,9 +611,14 @@ __global__ void polytope(uint32_t link_id, double* buff_obstacles, double* frs_k
 }
 
 void rotatotopeArray::evaluate_constraints(double* k_opt) {
+	if(con != nullptr){
+		delete[] con;
+		delete[] grad_con;
+	}
+
 	current_k_opt = k_opt;
 
-	con = new double [n_links * n_obstacles * n_time_steps];
+	con = new double[n_links * n_obstacles * n_time_steps];
 	double* dev_con;
 	cudaMalloc((void**)&dev_con, n_links * n_obstacles * n_time_steps * sizeof(double));
 
