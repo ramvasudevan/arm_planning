@@ -2,7 +2,7 @@ classdef robot_arm_PRM_HLP < robot_arm_sampling_based_HLP
     %% properties
     properties
         new_node_growth_distance = 0.1 ;
-        new_node_nearest_neighbor_distance = 0.2 ;
+        new_node_nearest_neighbor_distance = 0.5 ;
     end
     
     %% methods
@@ -28,6 +28,10 @@ classdef robot_arm_PRM_HLP < robot_arm_sampling_based_HLP
         %% sampling
         function q_new = create_new_node(HLP,~,~)
             HLP.vdisp('Creating new node',9)
+%             
+%             % create a new node in the valid workspace of the arm
+%             B = HLP.arm_joint_state_limits ;
+%             q_new = rand_range(B(1,:),B(2,:))' ;
             
             % pick an existing node
             n = HLP.n_nodes ;

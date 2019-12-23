@@ -15,7 +15,7 @@ classdef robot_arm_rotatotope_RTD_planner_3D_fetch < robot_arm_generic_planner
         k_opt_prev = [];
         
         iter = 0;
-        first_iter_pause = 1;
+        first_iter_pause_flag = true ;
        
     end
     methods
@@ -46,13 +46,18 @@ classdef robot_arm_rotatotope_RTD_planner_3D_fetch < robot_arm_generic_planner
             
             %%% 1. generate cost function
             % generate a waypoint in configuration space
-            if P.first_iter_pause && P.iter == 0
+            if P.first_iter_pause_flag && P.iter == 0
                pause; 
             end
             P.iter = P.iter + 1;
             planning_time = tic;
 
             q_des = P.HLP.get_waypoint(agent_info,world_info,P.lookahead_distance) ;
+            
+            if isempty(q_des)
+                P.vdisp('Waypoint creation failed! Using global goal instead.',3)
+                q_des = P.HLP.goal ;
+            end
                         
             %%% 2. generate constraints
             % get current obstacles

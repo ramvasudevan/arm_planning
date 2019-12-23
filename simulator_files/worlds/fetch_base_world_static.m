@@ -2,7 +2,7 @@ classdef fetch_base_world_static < world
     properties
         % setup info
         include_base_obstacle = true ;
-        create_random_obstacles = true ;
+        create_random_obstacles_flag = true ;
         obstacle_size_range = 2*[0.01 0.15] ; % [min, max] side length
         create_configuration_timeout = 1 ;
         create_obstacle_timeout =  1 ;
@@ -68,7 +68,7 @@ classdef fetch_base_world_static < world
             W.goal_plot_patch_data = I.get_collision_check_volume(W.goal) ;
             
             % create random obstacles
-            if W.create_random_obstacles
+            if W.create_random_obstacles_flag
                 for idx = 1:W.N_obstacles
                     O = W.create_collision_free_obstacle(I) ;
                     if ~isempty(O)
@@ -218,7 +218,7 @@ classdef fetch_base_world_static < world
                 'creation_buffer', W.creation_buffer) ;
         end
         
-        function O = create_base_obstacle(W)
+        function create_base_obstacle(W)
             W.vdisp('Making base obstacles',3) ;
             
             % floor zono

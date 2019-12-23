@@ -18,10 +18,15 @@ classdef robot_arm_sampling_based_HLP < high_level_planner
         n_nodes_max = 20000 ;
         all_node_idxs ;
         sampling_timeout = 0.1 ; % seconds per planning iteration
+        choose_goal_as_new_node_frequency = 0.1 ;
+        make_new_graph_every_iteration_flag = true ;
         
         % path
         best_path_nodes
         best_path_node_idxs
+        
+        % plotting
+        plot_while_sampling_flag = false ; 
     end
     
     %% methods
@@ -36,6 +41,9 @@ classdef robot_arm_sampling_based_HLP < high_level_planner
             % create the planner
             HLP@high_level_planner(varargin{:}) ;
             HLP.all_node_idxs = 1:HLP.n_nodes_max ;
+            
+            % set up the plot data
+            HLP.plot_data.new_node = [] ;
         end
         
         function setup(HLP,agent_info,world_info)
@@ -145,6 +153,10 @@ classdef robot_arm_sampling_based_HLP < high_level_planner
             start_tic = tic ;
             t_cur = toc(start_tic) ;
             
+            if HLP.make_new_graph_every_iteration_flag
+                HLP.initialize_graph(agent_info,world_info)
+            end
+            
             % run sampling
             HLP.vdisp('Running sampling algorithm',5)
             
@@ -159,6 +171,18 @@ classdef robot_arm_sampling_based_HLP < high_level_planner
                 if q_is_feasible
                     HLP.vdisp('Feasible node found!',9)
                     HLP.add_node(q_new,agent_info,world_info) ;
+                    
+                    % FOR DEBUGGING
+                    if HLP.plot_while_sampling_flag
+                        V_plot = agent_info.get_collision_check_volume(q_new) ;
+                        if check_if_plot_is_available(HLP,'new_node')
+                            HLP.plot_data.new_node.Faces = V_plot.faces ;
+                            HLP.plot_data.new_node.Vertices = V_plot.vertices ;
+                        else
+                            HLP.plot_data.new_node = patch(V_plot,'facecolor',[0 0 1],'facealpha',0.05) ;
+                        end
+                        drawnow()
+                    end
                 else
                     HLP.vdisp('Node infeasible',9)
                 end
