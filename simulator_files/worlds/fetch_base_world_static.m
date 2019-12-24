@@ -40,6 +40,7 @@ classdef fetch_base_world_static < world
             
             W.plot_data.obstacles = [] ;
             W.plot_data.goal = [] ;
+%             W.plot_data.baselink = [] ;
         end
         
         %% setup

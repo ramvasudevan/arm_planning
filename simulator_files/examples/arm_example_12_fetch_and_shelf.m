@@ -1,6 +1,6 @@
 %% description
-% This script sets up a Fetch robot in an environment with a shelf-like
-% obstacle.
+% This script sets up a Fetch robot in an environment with two shelf-like
+% obstacles
 %
 % Authors: Shreyas Kousik and Patrick Holmes
 % Created: 23 Dec 2019
@@ -9,10 +9,10 @@
 %% user parameters
 %%% WORLD PARAMETERS %%%
 % manually create start
-start = [0;-0.5;0;0.5;0;0] ; % on top shelf
+start = [0;-0.5;0;0.5;0;0] ; % on top of shelf 1 (in front of robot)
 
 % manually create goal
-goal = [0;+1;0;-1;0;0] ; % reach to bottom of shelf 1
+% goal = [0;+1;0;-1;0;0] ; % reach to bottom of shelf 1
 % goal = [0.5;-0.5;0;0.5;0;0] ; % reach to the left of shelf 1
 % goal = [0.5;+1;0;-1;0;0] ; % reach down and to the left of shelf 1
 goal = [pi/2 ; -0.5;0;0.5;0;0] ; % on top of shelf 2
@@ -49,9 +49,10 @@ plot_waypoint_flag = true ;
 
 %% automated from here
 % make agent
-A = robot_arm_3D_fetch('verbose', verbosity, 'animation_set_axes_flag', 0, 'animation_set_view_flag', 0);
+A = robot_arm_3D_fetch('verbose',verbosity, 'animation_set_axes_flag',0,...
+    'animation_set_view_flag',0);
 
-% can adjust LLC gains here
+% can adjust tracking controller gains here
 A.LLC.K_p = 1*A.LLC.K_p;
 A.LLC.K_i = 1*A.LLC.K_i;
 A.LLC.K_d = 1*A.LLC.K_d;

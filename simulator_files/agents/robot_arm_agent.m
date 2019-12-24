@@ -149,6 +149,8 @@ classdef robot_arm_agent < multi_link_agent
             % set up plotting and collision check data
             A.create_plot_patch_data() ;
             A.create_collision_check_patch_data() ;
+            A.plot_data.baselink = [] ;
+            A.plot_data.links = [] ;
         end
         
         %% property check
