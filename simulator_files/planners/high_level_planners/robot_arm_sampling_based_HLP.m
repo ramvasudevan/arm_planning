@@ -22,11 +22,14 @@ classdef robot_arm_sampling_based_HLP < high_level_planner
         make_new_graph_every_iteration_flag = true ;
         
         % path
+        start
         best_path_nodes
         best_path_node_idxs
         
         % plotting
-        plot_while_sampling_flag = false ; 
+        plot_while_sampling_flag = false ;
+        plot_waypoint_flag = false ;
+        plot_waypoint_color = [0 1 0] ;
     end
     
     %% methods
@@ -44,6 +47,7 @@ classdef robot_arm_sampling_based_HLP < high_level_planner
             
             % set up the plot data
             HLP.plot_data.new_node = [] ;
+            HLP.plot_data.waypoint = [] ;
         end
         
         function setup(HLP,agent_info,world_info)
@@ -56,6 +60,7 @@ classdef robot_arm_sampling_based_HLP < high_level_planner
             
             % get the world goal
             HLP.vdisp('Setting goal',9)
+            HLP.start = world_info.start ;
             HLP.goal = world_info.goal ;
             
             % set up graph structure
@@ -67,8 +72,13 @@ classdef robot_arm_sampling_based_HLP < high_level_planner
             HLP.vdisp('Initializing planner graph structures',4)
             HLP.n_nodes = 1 ;
             HLP.nodes = nan(HLP.arm_n_links_and_joints,HLP.n_nodes_max) ;
-            HLP.nodes(:,1) = agent_info.state(HLP.arm_joint_state_indices,end) ;
             HLP.adjacency_matrix = sparse(HLP.n_nodes_max, HLP.n_nodes_max) ;
+            
+            % start the graph at the agent's current state (if the graph is
+            % re-initialized at the beginning of each planning iteration,
+            % then this ensures the graph starts where the agent is --
+            % i.e., when HLP.make_new_graph_every_iteration_flag is true)
+            HLP.nodes(:,1) = agent_info.state(HLP.arm_joint_state_indices,end) ;
             
             % reset best path and best path nodes
             HLP.best_path_nodes = [] ;
@@ -94,6 +104,21 @@ classdef robot_arm_sampling_based_HLP < high_level_planner
                 lookahead_distance = HLP.default_lookahead_distance ;
             end
             waypoint = HLP.create_waypoint(agent_info,world_info,lookahead_distance) ;
+            
+            if HLP.plot_waypoint_flag
+                HLP.vdisp('Plotting waypoint',6)
+                
+                V_plot = agent_info.get_collision_check_volume(waypoint) ;
+                
+                if check_if_plot_is_available(HLP,'waypoint')
+                    HLP.plot_data.waypoint.Faces = V_plot.faces ;
+                    HLP.plot_data.waypoint.Vertices = V_plot.vertices ;
+                else
+                    HLP.plot_data.waypoint = patch(V_plot,...
+                        'facecolor',HLP.plot_waypoint_color,'facealpha',0.1) ;
+                end
+                drawnow()
+            end
         end
         
         function waypoint = create_waypoint(HLP,agent_info,world_info,lookahead_distance)
@@ -103,10 +128,36 @@ classdef robot_arm_sampling_based_HLP < high_level_planner
             % distance along the path, then interpolate by the lookahead
             % distance to create a waypoint along the path.
             
+            HLP.vdisp('Making waypoint',5) ;
+            
+            % get the best path
             path_nodes = HLP.best_path_nodes ;
-            path_dists = dist_polyline_cumulative(path_nodes) ;
-            lookahead_distance = min(path_dists(end),lookahead_distance) ;
-            waypoint = match_trajectories(lookahead_distance,path_dists,path_nodes) ;
+            
+            % if the best path isn't empty, get the distance along it
+            if ~isempty(path_nodes)
+                % get the current state
+                z_cur = agent_info.state(:,end) ;
+                q_cur = z_cur(HLP.arm_joint_state_indices) ;
+                
+                % get the distance of the current node along the path
+                [d,~,d_along] = dist_point_on_polyline(q_cur,path_nodes) ;
+                
+                % look ahead to generate a waypoint
+                d_lkhd = min([d + lookahead_distance, d_along(end)]) ;
+                waypoint = match_trajectories(d_lkhd,d_along,path_nodes) ;
+                
+%                 % get the first waypoint that is further along than the
+%                 % current state
+%                 q_idx = find(d_along > d,1,'first') ;
+%                 
+%                 if ~isempty(q_idx)
+%                     waypoint = path_nodes(:,q_idx) ;
+%                 else
+%                     waypoint = path_nodes(:,end) ;
+%                 end
+            else
+                waypoint = HLP.goal ;
+            end
         end
         
         %% graph search
@@ -119,19 +170,14 @@ classdef robot_arm_sampling_based_HLP < high_level_planner
             % node closest to the agent's current state to the node closest
             % to the global goal position.
             
-            % get the current state
-            z_cur = agent_info.state(:,end) ;
-            q_cur = z_cur(HLP.arm_joint_state_indices) ;
-            
-            % find the node closest to the current state
-            [~,q_near_idx] = HLP.find_nearest_node(q_cur) ;
+            HLP.vdisp('Finding best path',5)
             
             % find the node closest to the goal state
             [~,q_goal_idx] = HLP.find_nearest_node(HLP.goal) ;
             
-            % find the best path between the current and goal nodes
+            % find the best path between the start and goal nodes
             [~,best_path_idxs,~] = graphshortestpath(HLP.adjacency_matrix,...
-                q_near_idx,q_goal_idx) ;
+                1,q_goal_idx) ;
             
             HLP.best_path_nodes = HLP.nodes(:,best_path_idxs) ;
             HLP.best_path_node_idxs = best_path_idxs ;
@@ -171,20 +217,22 @@ classdef robot_arm_sampling_based_HLP < high_level_planner
                 if q_is_feasible
                     HLP.vdisp('Feasible node found!',9)
                     HLP.add_node(q_new,agent_info,world_info) ;
-                    
-                    % FOR DEBUGGING
-                    if HLP.plot_while_sampling_flag
-                        V_plot = agent_info.get_collision_check_volume(q_new) ;
-                        if check_if_plot_is_available(HLP,'new_node')
-                            HLP.plot_data.new_node.Faces = V_plot.faces ;
-                            HLP.plot_data.new_node.Vertices = V_plot.vertices ;
-                        else
-                            HLP.plot_data.new_node = patch(V_plot,'facecolor',[0 0 1],'facealpha',0.05) ;
-                        end
-                        drawnow()
-                    end
+                    new_node_color = [0 0 1] ;
                 else
                     HLP.vdisp('Node infeasible',9)
+                    new_node_color = [1 0 0] ;
+                end
+                
+                % plot the new node (FOR DEBUGGING)
+                if HLP.plot_while_sampling_flag
+                    V_plot = agent_info.get_collision_check_volume(q_new) ;
+                    if check_if_plot_is_available(HLP,'new_node')
+                        HLP.plot_data.new_node.Faces = V_plot.faces ;
+                        HLP.plot_data.new_node.Vertices = V_plot.vertices ;
+                    else
+                        HLP.plot_data.new_node = patch(V_plot,'facecolor',new_node_color,'facealpha',0.05) ;
+                    end
+                    drawnow()
                 end
                 
                 % update timing
@@ -198,7 +246,7 @@ classdef robot_arm_sampling_based_HLP < high_level_planner
         function q_new = create_new_node(HLP,agent_info,world_info)
             HLP.vdisp('Sampling a new node',8)
             q_new = rand_range(HLP.arm_joint_state_limits(1,:)',...
-                               HLP.arm_joint_state_limits(2,:)') ;
+                HLP.arm_joint_state_limits(2,:)') ;
         end
         
         %% feasibility checking
@@ -250,7 +298,7 @@ classdef robot_arm_sampling_based_HLP < high_level_planner
             % Add the node q_new to the list of nodes, and update the graph
             % representation. By default, the new node is connected to its
             % nearest neighbor.
-
+            
             [~,q_near_idx] = HLP.find_nearest_node(q_new) ;
             HLP.update_nodes_and_adjacency_matrix(q_new,q_near_idx) ;
         end

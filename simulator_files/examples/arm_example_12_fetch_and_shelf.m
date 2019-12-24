@@ -4,7 +4,7 @@
 %
 % Authors: Shreyas Kousik and Patrick Holmes
 % Created: 23 Dec 2019
-% Updated: -
+% Updated: 23 Dec 2019
 %
 %% user parameters
 %%% WORLD PARAMETERS %%%
@@ -12,14 +12,16 @@
 start = [0;-0.5;0;0.5;0;0] ; % on top shelf
 
 % manually create goal
-goal = [0;+1;0;-1;0;0] ; % reach to bottom shelf
-% goal = [0.5;-0.5;0;0.5;0;0] ; % reach to the left
-% goal = [0.5;+1;0;-1;0;0] ; % reach down and to the left
+goal = [0;+1;0;-1;0;0] ; % reach to bottom of shelf 1
+% goal = [0.5;-0.5;0;0.5;0;0] ; % reach to the left of shelf 1
+% goal = [0.5;+1;0;-1;0;0] ; % reach down and to the left of shelf 1
+goal = [pi/2 ; -0.5;0;0.5;0;0] ; % on top of shelf 2
 
 % shelf parameters
-shelf_center = [1.2 ; 0 ; 0.6] ;
+shelf_center_1 = [1.2 ; 0 ; 0.6] ;
+shelf_center_2 = [0 ; 1.2 ; 0.6] ;
 shelf_height = 1.2 ; % m
-shelf_width = 1.5 ; % m 
+shelf_width = 1.2 ; % m 
 shelf_depth = 0.8 ; % m
 N_shelves = 3 ;
 min_shelf_height = 0.3 ;
@@ -40,8 +42,9 @@ T = 1 ;
 first_iter_pause_flag = false ; 
 run_simulation_flag = true ;
 HLP_timeout = 2 ; 
-plot_while_sampling = true ;
-make_new_graph_every_iteration = true ; 
+plot_while_sampling_flag = true ;
+make_new_graph_every_iteration = false ;
+plot_waypoint_flag = true ;
 %%% END OTHER PARAMETERS %%%
 
 %% automated from here
@@ -62,10 +65,13 @@ W = fetch_base_world_static('include_base_obstacle', 1, 'goal_radius', 0.03,...
     'create_random_obstacles_flag',create_random_obstacles_flag) ;
 
 %% make shelf obstacle
-shelf_cell = make_shelf_obstacle(shelf_center,shelf_height,shelf_width,...
-    shelf_depth,N_shelves,min_shelf_height,max_shelf_height) ;
+shelf_1 = make_shelf_obstacle(shelf_center_1,shelf_height,shelf_width,...
+    shelf_depth,N_shelves,min_shelf_height,max_shelf_height,1) ;
 
-W.obstacles = shelf_cell ;
+shelf_2 = make_shelf_obstacle(shelf_center_2,shelf_height,shelf_width,...
+    shelf_depth,N_shelves,min_shelf_height,max_shelf_height,2) ;
+
+W.obstacles = [shelf_1, shelf_2] ;
 
 %% make planner
 FRS_options = struct() ;
@@ -82,10 +88,11 @@ P = robot_arm_rotatotope_RTD_planner_3D_fetch(FRS_options,...
     'first_iter_pause_flag',first_iter_pause_flag) ;
 
 P.HLP = robot_arm_RRT_HLP('sampling_timeout',HLP_timeout,...
-    'plot_while_sampling_flag',plot_while_sampling,...
+    'plot_while_sampling_flag',plot_while_sampling_flag,...
+    'plot_waypoint_flag',plot_waypoint_flag,...
     'make_new_graph_every_iteration_flag',make_new_graph_every_iteration,...
-    'new_node_growth_distance',0.5)%,...
-%     'new_node_nearest_neighbor_distance',1) ;
+    'new_node_growth_distance',0.5,...
+    'choose_goal_as_new_node_frequency',0.5) ;
 
 %% set up simulator
 % set up world using arm
