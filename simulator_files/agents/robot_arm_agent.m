@@ -521,7 +521,10 @@ classdef robot_arm_agent < multi_link_agent
         
         %% get agent info
         function agent_info = get_agent_info(A)
+            % call superclass
             agent_info = get_agent_info@agent(A) ;
+            
+            % properties
             agent_info.n_links_and_joints = A.n_links_and_joints ;
             agent_info.dimension = A.dimension ;
             agent_info.joint_axes = A.joint_axes ;
@@ -531,12 +534,17 @@ classdef robot_arm_agent < multi_link_agent
             agent_info.joint_state_limits = A.joint_state_limits ;
             agent_info.joint_speed_limits = A.joint_speed_limits ;
             agent_info.joint_input_limits = A.joint_input_limits ;
-            agent_info.get_collision_check_volume = @(q) A.get_collision_check_volume(q) ;
-            agent_info.get_joint_locations = @(q) A.get_joint_locations(q) ;
-            agent_info.collision_check_patch_data = A.collision_check_patch_data ;
-            agent_info.get_link_rotations_and_translations = @(t_or_q) A.get_link_rotations_and_translations(t_or_q) ;
             agent_info.reach_limits = A.get_axis_lims() ;
             agent_info.buffer_dist = A.buffer_dist ;
+            
+            % collision check data
+            agent_info.collision_check_patch_data = A.collision_check_patch_data ;
+            
+            % useful functions
+            agent_info.get_collision_check_volume = @(q) A.get_collision_check_volume(q) ;
+            agent_info.get_joint_locations = @(q) A.get_joint_locations(q) ;
+            agent_info.get_link_rotations_and_translations = @(t_or_q) A.get_link_rotations_and_translations(t_or_q) ;
+            agent_info.inverse_kinematics = @(J,q_0) A.inverse_kinematics(J,q_0) ;
         end
         
         %% get collision check volume
@@ -736,6 +744,62 @@ classdef robot_arm_agent < multi_link_agent
             [~,~,J] = A.get_link_rotations_and_translations(time_or_config) ;
         end
         
+        function J = get_joint_locations_from_configuration(A,q)
+            % J = A.get_joint_locations_from_configuration(q)
+            %
+            % Return the joint locations just like A.get_joint_locations,
+            % but this is faster since it does not return the rotation
+            % matrices or translations of each joint, and can only take in
+            % a configuration.
+            
+            j_vals = q ; % joint angles
+            j_locs = A.joint_locations ; % joint locations
+            
+            % extract dimensions
+            n = A.n_links_and_joints ;
+            d = A.dimension ;
+            
+            % set up translations and rotations
+            R_pred = eye(d) ;
+            T_pred = zeros(d,1) ;
+            
+            % allocate array for the joint locations
+            J = nan(d,n) ;
+            
+            % move through the kinematic chain and get the rotations and
+            % translation of each link
+            for idx = 1:n
+                % get the value and location of the current joint
+                j_idx = j_vals(idx) ;
+                j_loc = j_locs(:,idx) ;
+                
+                % rotation matrix of current joint
+                axis_pred = R_pred*A.joint_axes(:,idx) ;
+                R_succ = axis_angle_to_rotation_matrix_3D([axis_pred', j_idx])*R_pred ;
+                
+                % create translation
+                T_succ = T_pred + R_pred*j_loc(1:d) - R_succ*j_loc(d+1:end) ;
+                
+                % fill in the joint location
+                j_loc_local = j_locs((d+1):end,idx) ;
+                J(:,idx) = -R_succ*j_loc_local + T_succ ;
+                
+                % update predecessors for next iteration
+                R_pred = R_succ ;
+                T_pred = T_succ ;
+            end
+        end
+        
+        function J = get_end_effector_location(A,q)
+            % J = A.get_end_effector_location(q)
+            %
+            % Does what it says! Given a configuration q, this method
+            % returns the end effector location.
+            
+            J = A.get_joint_locations_from_configuration(q) ;
+            J = J(:,end) ;
+        end
+        
         function [R,T,J] = forward_kinematics(A,time_or_config)
             % [R,T,J] = A.forward_kinematics(time_or_config)
             %
@@ -756,14 +820,38 @@ classdef robot_arm_agent < multi_link_agent
         end
         
         %% inverse kinematics
-        function q = get_joint_configuration(A,J,q0)
-            % q = A.get_joint_configuration(J)
-            % q = A.get_joint_configuration(J,q0)
+        function [q,exitflag] = inverse_kinematics(A,J,q0)
+            % q = A.inverse_kinematics(J)
+            % q = A.inverse_kinematics(J,q0)
+            % [q,exitflag] = A.inverse_kinematics(...)
+            %
+            % Given a desired end-effector location, or locations of all
+            % the joints, J, as an A.dimension-by-(1 or A.n_links...)
+            % array, attempt to find a configuration q that reaches that
+            % location. This uses fmincon for nonlinear optimization of the
+            % Euclidean distances squared to each joint location as the
+            % cost function. The second (optional) argument is an initial
+            % guess for the nonlinear solver.
+            
+            if nargin < 3
+                q0 = A.state(A.joint_state_indices,end) ;
+            end
+            
+            if size(J,2) > 1
+                [q,exitflag] = A.inverse_kinematics_joint_locations(J,q0) ;
+            else
+                [q,exitflag] = A.inverse_kinematics_end_effector(J,q0) ;
+            end
+        end
+        
+        function [q,exitflag] = inverse_kinematics_joint_locations(A,J,q0)
+            % q = A.inverse_kinematics_joint_locations(J)
+            % q = A.inverse_kinematics_joint_locations(J,q0)
             %
             % Given joint locations J as a d-by-n array, return the
             % static configuration q as an n-by-1 vector where n is the
-            % number of joints of the arm. This uses nonlinear least
-            % squares to find the joint configuration.
+            % number of joints of the arm. This uses nonlinear optimization
+            % (fmincon) to find the joint configuration.
             %
             % The optional second input is an initial guess for the
             % nonlinear least squares solver. If it is not returned, the
@@ -772,17 +860,56 @@ classdef robot_arm_agent < multi_link_agent
             
             % set up the initial config
             if nargin < 3
-                q0 = A.state(:,end) ;
+                q0 = A.state(A.joint_state_indices,end) ;
             end
             
             % create the least-squares function to solve for the config
-            J = J(:) ;
             n = A.n_links_and_joints ;
             d = A.dimension ;
-            lsq_fn = @(x) reshape(A.get_joint_locations(x),n*d,1) - J ;
+            opt_fun = @(x) sum(vecnorm(reshape(A.get_joint_locations(x),n*d,1) - J)) ;
             
-            % run least squares
-            q = lsqnonlin(lsq_fn, q0) ;
+            % create bounds on the solution
+            lb = A.joint_state_limits(1,:)' ;
+            ub = A.joint_state_limits(2,:)' ;
+            
+            % set options
+            options = optimoptions('fmincon') ;
+            if A.verbose < 2
+                options.Display = 'off' ;
+            end
+            
+            % optimize!
+            [q,~,exitflag] = fmincon(opt_fun,q0,[],[],[],[],lb,ub,[],options) ;
+        end
+        
+        function [q,exitflag] = inverse_kinematics_end_effector(A,J,q0)
+            % q = A.inverse_kinematics_end_effector(J,q0)
+            %
+            % Given an end-effector location J \in \R^d where d is the
+            % dimension of the agent (2 or 3), find the configuration q
+            % that gets the arm to that end effector location (or fail
+            % trying! aaaah!)
+            
+            % set up the initial guess
+            if nargin < 3
+                q0 = A.state(A.joint_state_indices,end) ;
+            end
+            
+            % create the function to solve for the config
+            opt_fun = @(x) sum((A.get_end_effector_location(x) - J(:)).^2) ;
+            
+            % create bounds on the solution
+            lb = A.joint_state_limits(1,:)' ;
+            ub = A.joint_state_limits(2,:)' ;
+            
+            % set options
+            options = optimoptions('fmincon') ;
+            if A.verbose < 2
+                options.Display = 'off' ;
+            end
+            
+            % optimize!
+            [q,~,exitflag] = fmincon(opt_fun,q0,[],[],[],[],lb,ub,[],options) ;
         end
         
         %% dynamics

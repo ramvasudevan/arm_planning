@@ -4,7 +4,7 @@
 %
 % Authors: Shreyas Kousik and Patrick Holmes
 % Created: 23 Dec 2019
-% Updated: 23 Dec 2019
+% Updated: 25 Dec 2019
 %
 %% user parameters
 %%% WORLD PARAMETERS %%%
@@ -18,14 +18,14 @@ start = [0;-0.5;0;0.5;0;0] ; % on top of shelf 1 (in front of robot)
 goal = [pi/2 ; -0.5;0;0.5;0;0] ; % on top of shelf 2
 
 % shelf parameters
-shelf_center_1 = [1.2 ; 0 ; 0.6] ;
-shelf_center_2 = [0 ; 1.2 ; 0.6] ;
-shelf_height = 1.2 ; % m
+shelf_center_1 = [1.2 ; 0 ; 0.7] ;
+shelf_center_2 = [0 ; 1.2 ; 0.7] ;
+shelf_height = 1.4 ; % m
 shelf_width = 1.2 ; % m 
 shelf_depth = 0.8 ; % m
 N_shelves = 3 ;
-min_shelf_height = 0.3 ;
-max_shelf_height = 1.2 ;
+min_shelf_height = 0.1 ;
+max_shelf_height = 1.4 ;
 
 % add more obstacles
 N_random_obstacles = 2 ;
@@ -33,7 +33,6 @@ create_random_obstacles_flag = false ; % in addition to the shelf
 %%% END WORLD PARAMETERS %%%
 
 %%% OTHER PARAMETERS %%%
-nLinks = 3 ;
 verbosity = 6 ;
 allow_replan_errors = true ;
 t_plan = 0.5 ;
@@ -59,8 +58,8 @@ A.LLC.K_d = 1*A.LLC.K_d;
 A.joint_input_limits = 1*A.joint_input_limits;
 
 %% make world
-W = fetch_base_world_static('include_base_obstacle', 1, 'goal_radius', 0.03,...
-    'N_obstacles',N_random_obstacles,'dimension',3,'workspace_goal_check', 0,...
+W = fetch_base_world_static('include_base_obstacle', 1, 'goal_radius', 0.1,...
+    'N_obstacles',N_random_obstacles,'dimension',3,'workspace_goal_check', 1,...
     'verbose',verbosity, 'creation_buffer', 0.1, 'base_creation_buffer', 0.025,...
     'start',start,'goal',goal,...
     'create_random_obstacles_flag',create_random_obstacles_flag) ;
@@ -88,16 +87,21 @@ P = robot_arm_rotatotope_RTD_planner_3D_fetch(FRS_options,...
     'verbose', verbosity, 't_plan', t_plan,...
     'time_discretization', time_discretization,...
     'first_iter_pause_flag',first_iter_pause_flag,...
-    'plot_HLP_flag',plot_HLP_flag) ;
-
-P.HLP = robot_arm_RRT_HLP('sampling_timeout',HLP_timeout,...
-    'plot_while_sampling_flag',plot_while_sampling_flag,...
     'plot_HLP_flag',plot_HLP_flag,...
-    'make_new_graph_every_iteration_flag',make_new_graph_every_iteration,...
-    'new_node_growth_distance',0.5,...
-    'choose_goal_as_new_node_frequency',0.5) ;
+    'lookahead_distance',0.1) ;
+
+% P.HLP = robot_arm_RRT_HLP('sampling_timeout',HLP_timeout,...
+%     'plot_while_sampling_flag',plot_while_sampling_flag,...
+%     'plot_HLP_flag',plot_HLP_flag,...
+%     'make_new_graph_every_iteration_flag',make_new_graph_every_iteration,...
+%     'new_node_growth_distance',0.5,...
+%     'choose_goal_as_new_node_frequency',0.5) ;
 
 % P.HLP = robot_arm_optimization_HLP() ;
+
+P.HLP = arm_end_effector_RRT_star_HLP('plot_waypoint_flag',true,...
+    'grow_tree_mode','new',...
+    'buffer',0.1) ;
 
 %% set up simulator
 % set up world using arm
@@ -112,7 +116,8 @@ S = simulator(A,W,P,'allow_replan_errors',allow_replan_errors,'max_sim_time',100
 
 %% initial plot
 figure(1); clf; view(3); axis equal ; hold on ; grid on ;
-plot(S)
+plot(A)
+plot(W)
 
 %% create .csv file for MoveIt!
 % write_fetch_scene_to_csv(W);

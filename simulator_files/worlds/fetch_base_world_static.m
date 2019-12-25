@@ -14,6 +14,9 @@ classdef fetch_base_world_static < world
         arm_n_links_and_joints
         arm_joint_state_indices
         
+        % goal in workspace
+        goal_in_workspace
+        
         % goal plotting
         goal_plot_patch_data
         goal_plot_face_color = [0 1 0] ;
@@ -41,6 +44,11 @@ classdef fetch_base_world_static < world
             W.plot_data.obstacles = [] ;
             W.plot_data.goal = [] ;
 %             W.plot_data.baselink = [] ;
+
+            % generate obstacles representing the fetch's body
+            if W.include_base_obstacle
+                W.create_base_obstacle() ;
+            end
         end
         
         %% setup
@@ -149,6 +157,10 @@ classdef fetch_base_world_static < world
                 W.goal = new_goal ;
             end
             
+            % make goal in workspace as the joint l
+            W.vdisp('Making goal in workspace using joint locations')
+            J = I.get_joint_locations(W.goal) ;
+            W.goal_in_workspace = J ;
         end
         
         %% make configurations
@@ -272,6 +284,7 @@ classdef fetch_base_world_static < world
                 'creation_buffer',W.base_creation_buffer) ;
             
             W.obstacles = [W.obstacles, {O_floor, O_base, O_tower, O_head}];
+            W.N_obstacles = length(W.obstacles) ;
         end
         
         %% collision checking
@@ -353,13 +366,23 @@ classdef fetch_base_world_static < world
         %% goal check
         function out = goal_check(W,agent_info)
             
+            z = agent_info.state(W.arm_joint_state_indices,:) ;
+            
             if ~W.workspace_goal_check
-                z = agent_info.state(W.arm_joint_state_indices,:) ;
                 dz = min(abs(z - repmat(W.goal,1,size(z,2))),[],2) ;
                 dz_log = all(dz <= W.goal_radius) ;
                 out = all(dz_log) ;
             else
-                error('not implemented yet!');
+                % get the joint locations
+                z = z(:,end) ;
+                J = agent_info.get_joint_locations(z) 
+                
+                % check how far each current joint is from each desired
+                % joint location
+                dz = max(vecnorm(J - W.goal_in_workspace)) ;
+                out = dz <= W.goal_radius ;
+                
+%                 error('not implemented yet!');
                 %%%PATRICK HACK FOR 1 LINK
                 %                 z_agent = agent_info.state(W.arm_joint_state_indices,end) ;
                 %                 z_goal = W.goal;
@@ -421,7 +444,7 @@ classdef fetch_base_world_static < world
             
             G = W.goal_plot_patch_data ;
             
-            if ~check_if_plot_is_available(W,'goal')
+            if ~check_if_plot_is_available(W,'goal') && ~isempty(W.goal)
                 switch W.dimension
                     case 2
                         data = plot(G(1,:),G(2,:),'Color',W.goal_plot_edge_color,...
