@@ -152,7 +152,7 @@ classdef robot_arm_rotatotope_RTD_planner_3D_fetch < robot_arm_generic_planner
         end
         
         function [cost] = eval_cost(P, k, q_0, q_dot_0, q_des)
-            % generate a simple cost fucntion
+            % generate a simple cost function
            q_plan = compute_q_plan(P, q_0, q_dot_0, k);
            cost = sum((q_plan - q_des).^2);
         end

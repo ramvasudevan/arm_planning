@@ -10,7 +10,7 @@ classdef robot_arm_RRT_HLP < robot_arm_sampling_based_HLP
             HLP@robot_arm_sampling_based_HLP(varargin{:}) ;
         end
         
-        %% sampling        
+        %% sampling
         function q_new = create_new_node(HLP,~,~)
             HLP.vdisp('Creating new node',9)
             
@@ -21,10 +21,10 @@ classdef robot_arm_RRT_HLP < robot_arm_sampling_based_HLP
                 q_new = rand_range(HLP.arm_joint_state_limits(1,:),...
                     HLP.arm_joint_state_limits(2,:))' ;
             end
-                           
-             % find nearest neighbor in tree
+            
+            % find nearest neighbor in tree
             q_near = HLP.find_nearest_node(q_new) ;
-
+            
             % grow tree towards new node
             q_dir = q_new - q_near ;
             q_dir = q_dir./norm(q_dir) ;

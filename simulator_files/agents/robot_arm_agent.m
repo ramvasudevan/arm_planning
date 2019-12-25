@@ -523,6 +523,9 @@ classdef robot_arm_agent < multi_link_agent
         function agent_info = get_agent_info(A)
             agent_info = get_agent_info@agent(A) ;
             agent_info.n_links_and_joints = A.n_links_and_joints ;
+            agent_info.dimension = A.dimension ;
+            agent_info.joint_axes = A.joint_axes ;
+            agent_info.joint_locations = A.joint_locations ;
             agent_info.joint_state_indices = A.joint_state_indices ;
             agent_info.joint_speed_indices = A.joint_speed_indices ;
             agent_info.joint_state_limits = A.joint_state_limits ;

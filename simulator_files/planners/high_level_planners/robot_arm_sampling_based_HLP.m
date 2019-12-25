@@ -28,7 +28,7 @@ classdef robot_arm_sampling_based_HLP < high_level_planner
         
         % plotting
         plot_while_sampling_flag = false ;
-        plot_waypoint_flag = false ;
+        plot_HLP_flag = false ;
         plot_waypoint_color = [0 1 0] ;
     end
     
@@ -105,7 +105,7 @@ classdef robot_arm_sampling_based_HLP < high_level_planner
             end
             waypoint = HLP.create_waypoint(agent_info,world_info,lookahead_distance) ;
             
-            if HLP.plot_waypoint_flag
+            if HLP.plot_HLP_flag
                 HLP.vdisp('Plotting waypoint',6)
                 
                 V_plot = agent_info.get_collision_check_volume(waypoint) ;

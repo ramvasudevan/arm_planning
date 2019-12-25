@@ -42,9 +42,9 @@ T = 1 ;
 first_iter_pause_flag = false ; 
 run_simulation_flag = true ;
 HLP_timeout = 2 ; 
-plot_while_sampling_flag = true ;
+plot_while_sampling_flag = false ;
 make_new_graph_every_iteration = false ;
-plot_waypoint_flag = true ;
+plot_HLP_flag = true ;
 %%% END OTHER PARAMETERS %%%
 
 %% automated from here
@@ -83,17 +83,21 @@ FRS_options.L = 0.33;
 FRS_options.buffer_dist = A.buffer_dist;
 FRS_options.combs = generate_combinations_upto(200);
 FRS_options.maxcombs = 200;
+
 P = robot_arm_rotatotope_RTD_planner_3D_fetch(FRS_options,...
     'verbose', verbosity, 't_plan', t_plan,...
     'time_discretization', time_discretization,...
-    'first_iter_pause_flag',first_iter_pause_flag) ;
+    'first_iter_pause_flag',first_iter_pause_flag,...
+    'plot_HLP_flag',plot_HLP_flag) ;
 
 P.HLP = robot_arm_RRT_HLP('sampling_timeout',HLP_timeout,...
     'plot_while_sampling_flag',plot_while_sampling_flag,...
-    'plot_waypoint_flag',plot_waypoint_flag,...
+    'plot_HLP_flag',plot_HLP_flag,...
     'make_new_graph_every_iteration_flag',make_new_graph_every_iteration,...
     'new_node_growth_distance',0.5,...
     'choose_goal_as_new_node_frequency',0.5) ;
+
+% P.HLP = robot_arm_optimization_HLP() ;
 
 %% set up simulator
 % set up world using arm
