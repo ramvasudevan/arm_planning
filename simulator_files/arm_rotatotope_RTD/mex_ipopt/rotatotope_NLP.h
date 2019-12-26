@@ -145,6 +145,8 @@ public:
    );
    //@}
 
+   double* solution;
+
 private:
    /**@name Methods to block default compiler methods.
     *

@@ -129,7 +129,8 @@ P4.	evaluate the constraints
     // Change some options
     // Note: The following choices are only examples, they might not be
     //       suitable for your optimization problem.
-    app->Options()->SetNumericValue("tol", 1e-7);
+	app->Options()->SetNumericValue("tol", 1e-7);
+	app->Options()->SetNumericValue("print_level", 0);
     app->Options()->SetStringValue("mu_strategy", "adaptive");
     app->Options()->SetStringValue("output_file", "ipopt.out");
     app->Options()->SetStringValue("hessian_approximation", "limited-memory");
@@ -152,14 +153,25 @@ P4.	evaluate the constraints
 		mexPrintf("*** The problem FAILED!\n");
     }
 
-
 	end_t = clock();
 	mexPrintf("MEX FUNCTION TIME: %.6f\n", (end_t - start_t) / (double)(CLOCKS_PER_SEC));
 
 	/*
 P5. handle the output, release the memory
 	*/
-	nlhs = 0;
+	nlhs = 1;
+	if(mynlp->solution != nullptr){
+		plhs[0] = mxCreateNumericMatrix(n_links * 2, 1, mxDOUBLE_CLASS, mxREAL);
+		double *output0 = (double*)mxGetData(plhs[0]);
+		for (uint32_t i = 0; i < n_links * 2; i++) {
+			output0[i] = mynlp->solution[i];
+		}
+	}
+	else{
+		plhs[0] = mxCreateNumericMatrix(1, 1, mxINT32_CLASS, mxREAL);
+		int *output0 = (int*)mxGetData(plhs[0]);
+		*output0 = -12345;
+	}
 	/*
 	plhs[0] = mxCreateNumericMatrix(n_links * n_obstacles * n_time_steps, 1, mxDOUBLE_CLASS, mxREAL);
 	double *output0 = (double*)mxGetData(plhs[0]);
