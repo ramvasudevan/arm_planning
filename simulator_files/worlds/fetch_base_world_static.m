@@ -2,6 +2,7 @@ classdef fetch_base_world_static < world
     properties
         % setup info
         include_base_obstacle = true ;
+        N_random_obstacles = 0 ;
         create_random_obstacles_flag = true ;
         obstacle_size_range = 2*[0.01 0.15] ; % [min, max] side length
         create_configuration_timeout = 1 ;
@@ -82,11 +83,11 @@ classdef fetch_base_world_static < world
             end
             
             % create random obstacles
-            if W.create_random_obstacles_flag
-                for idx = 1:W.N_obstacles
+            if W.create_random_obstacles_flag && (W.N_random_obstacles > 0)
+                for idx = 1:W.N_random_obstacles
                     O = W.create_collision_free_obstacle(I) ;
                     if ~isempty(O)
-                        W.obstacles = [W.obstacles, {O}] ;
+                        W.add_obstacle(O) ;
                     end
                 end
             end
@@ -108,6 +109,15 @@ classdef fetch_base_world_static < world
             
             W.vdisp('Arm world setup complete',2)
             W.setting_up = false;
+        end
+        
+        function add_obstacle(W,O)
+            if iscell(O)
+                W.obstacles = [W.obstacles, O] ;
+            else
+                W.obstacles = [W.obstacles, {O}] ;
+            end
+            W.N_obstacles = length(W.obstacles) ;
         end
         
         %% get bounds and joint limits
@@ -249,11 +259,21 @@ classdef fetch_base_world_static < world
             start_tic = tic ;
             t_cur = toc(start_tic) ;
             V_arm = I.get_collision_check_volume(q) ;
-            V_arm2 = I.get_collision_check_volume(q2) ;
+            
+            if strcmp(W.goal_type,'configuration')
+                V_arm2 = I.get_collision_check_volume(q2) ;
+            end
             
             while ~obstacle_is_valid && t_cur <= W.create_obstacle_timeout
                 O = W.create_random_obstacle() ;
-                obstacle_is_valid = ~(W.collision_check_single_obstacle(O,V_arm)) && ~(W.collision_check_single_obstacle(O,V_arm2)) && ~(W.collision_check_current_obstacles(O));
+                obstacle_is_valid = ~(W.collision_check_single_obstacle(O,V_arm)) && ...
+                    ~(W.collision_check_current_obstacles(O));
+                
+                if strcmp(W.goal_type,'configuration')
+                    obstacle_is_valid = obstacle_is_valid && ...
+                        ~(W.collision_check_single_obstacle(O,V_arm2)) ;
+                end
+                
                 t_cur = toc(start_tic) ;
             end
             

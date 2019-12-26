@@ -5,6 +5,7 @@ classdef arm_end_effector_RRT_star_HLP < RRT_star_HLP
         edge_feasibility_check_discretization = 0.01 ; 
         O_cell ; % cell array for obstacles
         current_waypoint_patch_data
+        plot_waypoint_arm_flag = false ;
     end
     
     methods
@@ -146,7 +147,7 @@ classdef arm_end_effector_RRT_star_HLP < RRT_star_HLP
             plot@RRT_star_HLP(HLP)
             
             % plot the waypoint
-            if HLP.plot_waypoint_flag && ~isempty(HLP.current_waypoint)
+            if HLP.plot_waypoint_arm_flag && ~isempty(HLP.current_waypoint)
                 if check_if_plot_is_available(HLP,'waypoint_arm_volume')
                     HLP.plot_data.waypoint_arm_volume.Faces = HLP.current_waypoint_patch_data.faces ;
                     HLP.plot_data.waypoint_arm_volume.Vertices = HLP.current_waypoint_patch_data.vertices ;

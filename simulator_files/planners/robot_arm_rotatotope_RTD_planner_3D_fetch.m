@@ -18,6 +18,10 @@ classdef robot_arm_rotatotope_RTD_planner_3D_fetch < robot_arm_generic_planner
         
         iter = 0;
         first_iter_pause_flag = true ;
+        
+        % for cost function
+        use_end_effector_for_cost_flag = false ;
+        forward_kinematics_end_effector = [] ;
        
     end
     
@@ -53,6 +57,11 @@ classdef robot_arm_rotatotope_RTD_planner_3D_fetch < robot_arm_generic_planner
             P.arm_joint_speed_limits(2,speed_limit_infs(2,:)) = +200*pi ;
             
             P.vdisp('Generating cost function',6)
+            % get forward kinematics function
+            if P.use_end_effector_for_cost_flag
+                P.forward_kinematics_end_effector = agent_info.get_end_effector_location ;
+            end
+            
             % generate a waypoint in configuration space
             if P.first_iter_pause_flag && P.iter == 0
                pause; 
@@ -144,7 +153,12 @@ classdef robot_arm_rotatotope_RTD_planner_3D_fetch < robot_arm_generic_planner
             
             P.trajopt_start_tic = tic ;
             
-            cost_func = @(k) P.eval_cost(k, q_0, q_dot_0, q_des);
+            if P.use_end_effector_for_cost_flag
+                ee_des = P.forward_kinematics_end_effector(q_des) ;
+                cost_func = @(k) P.eval_cost_end_effector(k, q_0, q_dot_0, ee_des);
+            else
+                cost_func = @(k) P.eval_cost(k, q_0, q_dot_0, q_des);
+            end
             constraint_func = @(k) P.eval_constraint(k, q_0, q_dot_0);
             
             % generate upper and lower bounds
@@ -167,6 +181,14 @@ classdef robot_arm_rotatotope_RTD_planner_3D_fetch < robot_arm_generic_planner
            cost = sum((q_plan - q_des).^2);
            
            error_if_out_of_time(P.trajopt_start_tic,P.t_plan)
+        end
+        
+        function c = eval_cost_end_effector(P, k, q_0, q_dot_0, ee_des)
+            q_plan = compute_q_plan(P, q_0, q_dot_0, k);
+            ee_plan = P.forward_kinematics_end_effector(q_plan(:,end)) ;
+            c = sum((ee_plan - ee_des).^2) ;
+            
+            error_if_out_of_time(P.trajopt_start_tic,P.t_plan)
         end
         
         function [c, ceq, gradc, gradceq] = eval_constraint(P, k_opt, q_0, q_dot_0)

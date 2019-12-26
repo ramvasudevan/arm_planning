@@ -545,6 +545,7 @@ classdef robot_arm_agent < multi_link_agent
             agent_info.get_joint_locations = @(q) A.get_joint_locations(q) ;
             agent_info.get_link_rotations_and_translations = @(t_or_q) A.get_link_rotations_and_translations(t_or_q) ;
             agent_info.inverse_kinematics = @(J,q_0) A.inverse_kinematics(J,q_0) ;
+            agent_info.get_end_effector_location = @(q) A.get_end_effector_location(q) ;
         end
         
         %% get collision check volume

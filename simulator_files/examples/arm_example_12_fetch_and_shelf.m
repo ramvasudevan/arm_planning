@@ -12,21 +12,25 @@
 start = [0;-0.5;0;0.5;0;0] ; % on top of shelf 1 (in front of robot)
 
 % manually create goal
+goal_radius = 0.1 ;
 goal_type = 'end_effector_location' ; % 'configuration' or 'end_effector_location'
 
 % configuration goals:
-% goal = [0;+1;0;-1;0;0] ; % bottom of shelf 1
-% goal = [0.5;-0.5;0;0.5;0;0] ; % left of shelf 1
-% goal = [0.5;+1;0;-1;0;0] ; bottom left of shelf 1
-% goal = [pi/2 ; -0.5;0;0.5;0;0] ; % top of shelf 2
-% goal = [pi/2 ;+1;0;-1;0;0] ; % bottom of shelf 2
+% goal = [0;+1;0;-1;0;0] ; % bottom of front shelf
+% goal = [0.5;-0.5;0;0.5;0;0] ; % left of front shelf
+% goal = [0.5;+1;0;-1;0;0] ; bottom left of front shelf
+% goal = [pi/2 ; -0.5;0;0.5;0;0] ; % top of left shelf
+% goal = [pi/2 ;+1;0;-1;0;0] ; % bottom of left shelf
 
 % end effector location goals:
-goal = [0; 1 ; 0.4] ;
+% goal = [0; 1 ; 0.4] ; bottom middle of left shelf
+% goal = [0.25 ; 1 ; 1] ; top right of left shelf
+% goal = [1 ; -0.4 ; 0.6] ; % bottom right of front shelf
+goal = [-0.3 ; 1 ; 0.6] ; % bottom of left shelf
 
 % shelf parameters
-shelf_center_1 = [1 ; 0 ; 0.7] ;
-shelf_center_2 = [0 ; 1 ; 0.7] ;
+shelf_center_1 = [1.1 ; 0 ; 0.7] ;
+shelf_center_2 = [0 ; 1.1 ; 0.7] ;
 shelf_height = 1.4 ; % m
 shelf_width = 1.2 ; % m 
 shelf_depth = 0.8 ; % m
@@ -35,13 +39,13 @@ min_shelf_height = 0.3 ;
 max_shelf_height = 1.4 ;
 
 % add more obstacles
-N_random_obstacles = 2 ;
+N_random_obstacles = 6 ; % NOTE we should no longer set W.N_obstacles
 create_random_obstacles_flag = false ; % in addition to the shelf
 %%% END WORLD PARAMETERS %%%
 
 %%% OTHER PARAMETERS %%%
 verbosity = 6 ;
-allow_replan_errors = false ;
+allow_replan_errors = true ;
 actual_t_plan = 10 ;
 simulated_t_plan = 0.5 ;
 time_discretization = 0.01 ;
@@ -49,10 +53,14 @@ T = 1 ;
 first_iter_pause_flag = false ; 
 run_simulation_flag = true ;
 HLP_timeout = 2 ; 
+HLP_grow_tree_mode = 'new' ;
 plot_while_sampling_flag = false ;
 make_new_graph_every_iteration = false ;
-plot_HLP_flag = true ;
+plot_HLP_flag = true ; % for planner
+plot_waypoint_flag = true ; % for HLP
+plot_waypoint_arm_flag  = true ; % for HLP
 lookahead_distance = 0.2 ;
+use_end_effector_for_cost_flag = false ;
 %%% END OTHER PARAMETERS %%%
 
 %% automated from here
@@ -67,8 +75,8 @@ A.LLC.K_d = 1*A.LLC.K_d;
 A.joint_input_limits = 1*A.joint_input_limits;
 
 %% make world
-W = fetch_base_world_static('include_base_obstacle', 1, 'goal_radius',0.1,...
-    'N_obstacles',N_random_obstacles,'dimension',3,'workspace_goal_check',1,...
+W = fetch_base_world_static('include_base_obstacle', 1, 'goal_radius',goal_radius,...
+    'N_random_obstacles',N_random_obstacles,'dimension',3,'workspace_goal_check',1,...
     'verbose',verbosity, 'creation_buffer', 0.1, 'base_creation_buffer', 0.025,...
     'start',start,'goal',goal,...
     'create_random_obstacles_flag',create_random_obstacles_flag,...
@@ -81,7 +89,7 @@ shelf_1 = make_shelf_obstacle(shelf_center_1,shelf_height,shelf_width,...
 shelf_2 = make_shelf_obstacle(shelf_center_2,shelf_height,shelf_width,...
     shelf_depth,N_shelves,min_shelf_height,max_shelf_height,2) ;
 
-W.obstacles = [shelf_1, shelf_2] ;
+W.add_obstacle([shelf_1, shelf_2]) ;
 
 %% make planner
 FRS_options = struct() ;
@@ -99,7 +107,8 @@ P = robot_arm_rotatotope_RTD_planner_3D_fetch(FRS_options,...
     'time_discretization', time_discretization,...
     'first_iter_pause_flag',first_iter_pause_flag,...
     'plot_HLP_flag',plot_HLP_flag,...
-    'lookahead_distance',lookahead_distance) ;
+    'lookahead_distance',lookahead_distance,...
+    'use_end_effector_for_cost_flag',use_end_effector_for_cost_flag) ;
 
 % P.HLP = robot_arm_RRT_HLP('sampling_timeout',HLP_timeout,...
 %     'plot_while_sampling_flag',plot_while_sampling_flag,...
@@ -110,8 +119,9 @@ P = robot_arm_rotatotope_RTD_planner_3D_fetch(FRS_options,...
 
 % P.HLP = robot_arm_optimization_HLP() ;
 
-P.HLP = arm_end_effector_RRT_star_HLP('plot_waypoint_flag',true,...
-    'grow_tree_mode','new',...
+P.HLP = arm_end_effector_RRT_star_HLP('plot_waypoint_flag',plot_waypoint_flag,...
+    'plot_waypoint_arm_flag',plot_waypoint_arm_flag,...
+    'grow_tree_mode',HLP_grow_tree_mode,...
     'buffer',0.1) ;
 
 %% set up simulator
