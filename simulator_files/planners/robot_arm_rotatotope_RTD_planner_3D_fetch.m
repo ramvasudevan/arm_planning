@@ -1,5 +1,7 @@
 classdef robot_arm_rotatotope_RTD_planner_3D_fetch < robot_arm_generic_planner
+    %% properties
     properties
+        trajopt_start_tic
         t_total = 1 ; % total duration of desired traj
         time_discretization = 0.01 ; % time discretization of desired traj
         FRS_options struct;
@@ -18,7 +20,10 @@ classdef robot_arm_rotatotope_RTD_planner_3D_fetch < robot_arm_generic_planner
         first_iter_pause_flag = true ;
        
     end
+    
+    %% methods
     methods
+        %% constructor
         function P = robot_arm_rotatotope_RTD_planner_3D_fetch(varargin)
             t_move = 0.5;
             lookahead_distance = 0.3;
@@ -33,8 +38,11 @@ classdef robot_arm_rotatotope_RTD_planner_3D_fetch < robot_arm_generic_planner
 %             P.FRS_options.maxcombs = 200;
         end
         
+        %% replan
         function [T,U,Z] = replan(P,agent_info,world_info)
-            %%% 0. set joint state and speed limits
+            P.vdisp('Replanning!',5)
+            
+            P.vdisp('Seting joint state and speed limits',7)
             % set any joint limits that are +Inf to 200pi and -Inf to -200pi
             joint_limit_infs = isinf(P.arm_joint_state_limits) ;
             P.arm_joint_state_limits(1,joint_limit_infs(1,:)) = -200*pi ;
@@ -44,7 +52,7 @@ classdef robot_arm_rotatotope_RTD_planner_3D_fetch < robot_arm_generic_planner
             P.arm_joint_speed_limits(1,speed_limit_infs(1,:)) = -200*pi ;
             P.arm_joint_speed_limits(2,speed_limit_infs(2,:)) = +200*pi ;
             
-            %%% 1. generate cost function
+            P.vdisp('Generating cost function',6)
             % generate a waypoint in configuration space
             if P.first_iter_pause_flag && P.iter == 0
                pause; 
@@ -59,7 +67,7 @@ classdef robot_arm_rotatotope_RTD_planner_3D_fetch < robot_arm_generic_planner
                 q_des = P.HLP.goal ;
             end
                         
-            %%% 2. generate constraints
+            P.vdisp('Generating constraints',6)
             % get current obstacles
             O = world_info.obstacles ;
             
@@ -77,12 +85,16 @@ classdef robot_arm_rotatotope_RTD_planner_3D_fetch < robot_arm_generic_planner
 %             P.R = P.R.generate_self_intersection_constraints;
 %             [~, k_lim, k_unsafe_A, k_unsafe_b] = compute_unsafe_parameters_3D(P.R, P.phi_dot_0, O, P.FRS_options);
             
-            %%% 3. solve for optimal trajectory parameter
-            [k_opt, trajopt_failed] = P.trajopt(q_0, q_dot_0, q_des);
+            P.vdisp('Replan is calling trajopt!',8)
+            try
+                [k_opt, trajopt_failed] = P.trajopt(q_0, q_dot_0, q_des);
+            catch
+                trajopt_failed = true ;
+            end
 %             disp(k_opt);
 %             pause;
             
-            %%% 4. generate desired trajectory
+            P.vdisp('Processing trajopt result',8)
             if ~trajopt_failed
                 P.vdisp('New trajectory found!',3);
                 
@@ -130,6 +142,8 @@ classdef robot_arm_rotatotope_RTD_planner_3D_fetch < robot_arm_generic_planner
             % use fmincon to optimize the cost subject to constraints
             P.vdisp('Running trajopt',3)
             
+            P.trajopt_start_tic = tic ;
+            
             cost_func = @(k) P.eval_cost(k, q_0, q_dot_0, q_des);
             constraint_func = @(k) P.eval_constraint(k, q_0, q_dot_0);
             
@@ -144,17 +158,15 @@ classdef robot_arm_rotatotope_RTD_planner_3D_fetch < robot_arm_generic_planner
 %             options = optimoptions('fmincon');
             [k_opt, ~, exitflag, ~] = fmincon(cost_func, initial_guess, [], [], [], [], lb, ub, constraint_func, options) ;
             
-            if exitflag <= 0
-                trajopt_failed = true;
-            else
-                trajopt_failed = false;
-            end
+            trajopt_failed = exitflag <= 0 ;
         end
         
         function [cost] = eval_cost(P, k, q_0, q_dot_0, q_des)
             % generate a simple cost function
            q_plan = compute_q_plan(P, q_0, q_dot_0, k);
            cost = sum((q_plan - q_des).^2);
+           
+           error_if_out_of_time(P.trajopt_start_tic,P.t_plan)
         end
         
         function [c, ceq, gradc, gradceq] = eval_constraint(P, k_opt, q_0, q_dot_0)
@@ -221,9 +233,10 @@ classdef robot_arm_rotatotope_RTD_planner_3D_fetch < robot_arm_generic_planner
                                 gradc = [gradc, [(-(P.R.A_con{i}{j}{idx(k)}(maxidx, :)*lambdas_grad)')./g_param; zeros(length(k_opt) - length(lambda), 1)]];
                             end
                         end
-                        
                     end
                 end
+                
+                error_if_out_of_time(P.trajopt_start_tic,P.t_plan)
             end
             
             %%% Self-intersection constraint generation:
@@ -307,10 +320,11 @@ classdef robot_arm_rotatotope_RTD_planner_3D_fetch < robot_arm_generic_planner
         end
         
         function [q_plan] = compute_q_plan(P, q_0, q_dot_0, k)
-            % returns the configuration at t_plan given initial state and
-            % chosen acceleration k
+            % returns the configuration at t_move given initial state and
+            % chosen acceleration k; note if P.t_plan = P.t_move then
+            % real-time planning is enforced (more or less)
             
-            q_plan = q_0 + q_dot_0*P.t_plan + (1/2)*k*P.t_plan^2;
+            q_plan = q_0 + q_dot_0*P.t_move + (1/2)*k*P.t_move^2;
         end
         
         function [q_min, q_max, q_dot_min, q_dot_max, grad_q_min, grad_q_max, grad_q_dot_min, grad_q_dot_max] = compute_max_min_states(P, q_0, q_dot_0, k)
@@ -323,10 +337,10 @@ classdef robot_arm_rotatotope_RTD_planner_3D_fetch < robot_arm_generic_planner
             % the time horizon, given k.
             n_angles = length(q_0);
             n_k = length(k);
-            t_to_stop = P.t_total - P.t_plan;
+            t_to_stop = P.t_total - P.t_move;
             
-            q_peak = q_0 + q_dot_0*P.t_plan + (1/2)*k*P.t_plan^2;
-            q_dot_peak = q_dot_0 + k*P.t_plan;
+            q_peak = q_0 + q_dot_0*P.t_move + (1/2)*k*P.t_move^2;
+            q_dot_peak = q_dot_0 + k*P.t_move;
             q_ddot_to_stop = ((0 - q_dot_peak)./t_to_stop);
             
             q_max = zeros(n_angles, 1);
@@ -367,13 +381,13 @@ classdef robot_arm_rotatotope_RTD_planner_3D_fetch < robot_arm_generic_planner
                 % order q endpoints
                 if q_peak(i) >= q_0(i)
                     q_endpoints_ordered = [q_0(i); q_peak(i)];
-                    grad_q_endpoints_ordered = [0; (1/2)*P.t_plan^2];
+                    grad_q_endpoints_ordered = [0; (1/2)*P.t_move^2];
                 else
                     q_endpoints_ordered = [q_peak(i); q_0(i)];
-                    grad_q_endpoints_ordered = [(1/2)*P.t_plan^2; 0];
+                    grad_q_endpoints_ordered = [(1/2)*P.t_move^2; 0];
                 end
                 
-                if t_max_min_to_peak(i) > 0 && t_max_min_to_peak(i) < P.t_plan % this implies local max/min of q
+                if t_max_min_to_peak(i) > 0 && t_max_min_to_peak(i) < P.t_move % this implies local max/min of q
                     if k(i) >= 0
                         q_min_to_peak(i) = q_0(i) + q_dot_0(i)*t_max_min_to_peak(i) + (1/2)*k(i)*t_max_min_to_peak(i)^2;
                         q_max_to_peak(i)  = q_endpoints_ordered(2);
@@ -399,12 +413,12 @@ classdef robot_arm_rotatotope_RTD_planner_3D_fetch < robot_arm_generic_planner
                     q_dot_max_to_peak(i) = q_dot_peak(i);
                     
                     grad_q_dot_min_to_peak(i) = 0;
-                    grad_q_dot_max_to_peak(i) = P.t_plan;
+                    grad_q_dot_max_to_peak(i) = P.t_move;
                 else
                     q_dot_min_to_peak(i) = q_dot_peak(i);
                     q_dot_max_to_peak(i) = q_dot_0(i);
                     
-                    grad_q_dot_min_to_peak(i) = P.t_plan;
+                    grad_q_dot_min_to_peak(i) = P.t_move;
                     grad_q_dot_max_to_peak(i) = 0;
                 end
             
@@ -416,14 +430,14 @@ classdef robot_arm_rotatotope_RTD_planner_3D_fetch < robot_arm_generic_planner
                     q_min_to_stop(i) = q_peak(i);
                     q_max_to_stop(i) = q_stop(i);
                     
-                    grad_q_min_to_stop(i) = (1/2)*P.t_plan^2;
-                    grad_q_max_to_stop(i) = (1/2)*P.t_plan^2 + (1/2)*P.t_plan*t_to_stop;
+                    grad_q_min_to_stop(i) = (1/2)*P.t_move^2;
+                    grad_q_max_to_stop(i) = (1/2)*P.t_move^2 + (1/2)*P.t_move*t_to_stop;
                 else
                     q_min_to_stop(i) = q_stop(i);
                     q_max_to_stop(i) = q_peak(i);
                     
-                    grad_q_min_to_stop(i) = (1/2)*P.t_plan^2 + (1/2)*P.t_plan*t_to_stop;
-                    grad_q_max_to_stop(i) = (1/2)*P.t_plan^2;
+                    grad_q_min_to_stop(i) = (1/2)*P.t_move^2 + (1/2)*P.t_move*t_to_stop;
+                    grad_q_max_to_stop(i) = (1/2)*P.t_move^2;
                 end
                 
                 if q_dot_peak(i) >= 0
@@ -431,12 +445,12 @@ classdef robot_arm_rotatotope_RTD_planner_3D_fetch < robot_arm_generic_planner
                     q_dot_max_to_stop(i) = q_dot_peak(i);
                     
                     grad_q_dot_min_to_stop(i) = 0;
-                    grad_q_dot_max_to_stop(i) = P.t_plan;
+                    grad_q_dot_max_to_stop(i) = P.t_move;
                 else
                     q_dot_min_to_stop(i) = q_dot_peak(i);
                     q_dot_max_to_stop(i) = 0;
                     
-                    grad_q_dot_min_to_stop(i) = P.t_plan;
+                    grad_q_dot_min_to_stop(i) = P.t_move;
                     grad_q_dot_max_to_stop(i) = 0;
                 end
                 

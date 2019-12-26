@@ -16,23 +16,29 @@ classdef arm_end_effector_RRT_star_HLP < RRT_star_HLP
             HLP.plot_data.waypoint_arm_volume = [] ;
         end
         
-        function setup(HLP,agent_info,world_info)
+        function setup(HLP,AI,WI)
             % call superclass
-            setup@RRT_star_HLP(HLP,agent_info,world_info) ;
+            setup@RRT_star_HLP(HLP,AI,WI) ;
             
             % set the start and goal
-            J_start = agent_info.get_joint_locations(world_info.start) ;
+            J_start = AI.get_joint_locations(WI.start) ;
             HLP.start = J_start(:,end) ;
             
-            J_goal = agent_info.get_joint_locations(world_info.goal) ;
-            HLP.goal = J_goal(:,end) ;
+            if size(WI.goal,1) == AI.n_links_and_joints
+                J_goal = AI.get_joint_locations(WI.goal) ;
+                HLP.goal = J_goal(:,end) ;
+            elseif size(WI.goal,1) == WI.dimension
+                HLP.goal = WI.goal ;
+            else
+                error('The world goal is a weird, invalid size')
+            end
             
             % initialize tree
-            HLP.initialize_tree(agent_info)
+            HLP.initialize_tree(AI)
             
             % set the bounds from the buffer
             b = HLP.buffer ;
-            HLP.bounds = world_info.bounds - b.*[-1 1 -1 1 -1 1] ; % 3D
+            HLP.bounds = WI.bounds - b.*[-1 1 -1 1 -1 1] ; % 3D
         end
         
         function z = get_agent_position(HLP,agent_info)

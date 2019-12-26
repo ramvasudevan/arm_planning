@@ -14,7 +14,9 @@ classdef fetch_base_world_static < world
         arm_n_links_and_joints
         arm_joint_state_indices
         
-        % goal in workspace
+        % goal
+        goal_type = 'configuration' ;
+        goal_buffer_distance = 0.2 ; % m
         goal_in_workspace
         
         % goal plotting
@@ -74,7 +76,10 @@ classdef fetch_base_world_static < world
             if isempty(W.goal)
                 W.create_goal(I) ;
             end
-            W.goal_plot_patch_data = I.get_collision_check_volume(W.goal) ;
+            
+            if strcmp(W.goal_type,'configuration')
+                W.goal_plot_patch_data = I.get_collision_check_volume(W.goal) ;
+            end
             
             % create random obstacles
             if W.create_random_obstacles_flag
@@ -88,6 +93,18 @@ classdef fetch_base_world_static < world
             
             % update the number of obstacles
             W.N_obstacles = length(W.obstacles) ;
+            
+            % make goal in workspace as the joint locations
+            switch W.goal_type
+                case 'configuration'
+                    W.vdisp('Making goal in workspace using joint locations',5)
+                    J = I.get_joint_locations(W.goal) ;
+                    W.goal_in_workspace = J ;
+                case 'end_effector_location'
+                    W.vdisp('Setting end effector position as goal in workspace!',5)
+                    W.goal_in_workspace = W.goal ;
+            end
+                    
             
             W.vdisp('Arm world setup complete',2)
             W.setting_up = false;
@@ -132,35 +149,71 @@ classdef fetch_base_world_static < world
         end
         
         function create_goal(W,I)
-            W.vdisp('Making goal configuration',5)
+            W.vdisp('Making goal!',3)
             
-            dist_between_start_and_goal = 0 ;
-            start_tic = tic ;
-            t_cur = toc(start_tic) ;
-            new_goal = [] ;
-            
-            while dist_between_start_and_goal < W.min_dist_in_config_space_between_start_and_goal && ...
-                t_cur <= W.create_configuration_timeout
-            
-                % new_goal = rand_range(W.arm_joint_state_limits(1,:),W.arm_joint_state_limits(2,:))' ;
-                new_goal = W.create_collision_free_configuration(I) ;
-                
-                dist_between_start_and_goal = norm(W.start - new_goal) ;
-                
-                t_cur = toc(start_tic) ;
+            switch W.goal_type
+                case 'configuration'
+                    W.vdisp('Making goal configuration',5)
+                    
+                    dist_between_start_and_goal = 0 ;
+                    start_tic = tic ;
+                    t_cur = toc(start_tic) ;
+                    new_goal = [] ;
+                    
+                    while dist_between_start_and_goal < W.min_dist_in_config_space_between_start_and_goal && ...
+                            t_cur <= W.create_configuration_timeout
+                        
+                        % new_goal = rand_range(W.arm_joint_state_limits(1,:),W.arm_joint_state_limits(2,:))' ;
+                        new_goal = W.create_collision_free_configuration(I) ;
+                        
+                        dist_between_start_and_goal = norm(W.start - new_goal) ;
+                        
+                        t_cur = toc(start_tic) ;
+                    end
+                    
+                    if isempty(new_goal)
+                        W.vdisp('Goal creation failed! Using random goal',3)
+                        W.goal = rand_range(W.arm_joint_state_limits(1,:),W.arm_joint_state_limits(2,:))' ;
+                    else
+                        W.goal = new_goal ;
+                    end
+                case 'end_effector_location'
+                    % make a position that isn't in any obstacles
+                    goal_in_obs = true ;
+                    while goal_in_obs
+                        B = W.bounds ;
+                        B = reshape(B(:),2,[])' ;
+                        new_goal = rand_range(B(:,1),B(:,2)) ;
+                        
+                        dists_to_obs = zeros(1,length(W.obstacles)) ;
+                        
+                        for idx = 1:length(W.obstacles)
+                            o = W.obstacles{idx} ;
+                            if isa(o,'box_obstacle_zonotope')
+                                
+                                dists_to_obs(idx) = dist_point_to_box(new_goal,...
+                                    o.side_lengths(1),...
+                                    o.side_lengths(2),...
+                                    o.side_lengths(3),...
+                                    o.center) ;
+                                
+                            end
+                        end
+                        
+                        d = min(dists_to_obs) ;
+                        if d < W.goal_buffer_distance
+                            goal_in_obs = false ;
+                        end
+                    end
+                    
+                    if ~isempty(new_goal)
+                        W.goal = new_goal ;
+                    else
+                        error('goal creation failed!')
+                    end
+                otherwise
+                    error('Invalid goal_type property!')
             end
-            
-            if isempty(new_goal)
-                W.vdisp('Goal creation failed! Using random goal',3)
-                W.goal = rand_range(W.arm_joint_state_limits(1,:),W.arm_joint_state_limits(2,:))' ;
-            else
-                W.goal = new_goal ;
-            end
-            
-            % make goal in workspace as the joint l
-            W.vdisp('Making goal in workspace using joint locations')
-            J = I.get_joint_locations(W.goal) ;
-            W.goal_in_workspace = J ;
         end
         
         %% make configurations
@@ -368,29 +421,32 @@ classdef fetch_base_world_static < world
             
             z = agent_info.state(W.arm_joint_state_indices,:) ;
             
-            if ~W.workspace_goal_check
-                dz = min(abs(z - repmat(W.goal,1,size(z,2))),[],2) ;
-                dz_log = all(dz <= W.goal_radius) ;
-                out = all(dz_log) ;
-            else
-                % get the joint locations
-                z = z(:,end) ;
-                J = agent_info.get_joint_locations(z) 
-                
-                % check how far each current joint is from each desired
-                % joint location
-                dz = max(vecnorm(J - W.goal_in_workspace)) ;
-                out = dz <= W.goal_radius ;
-                
-%                 error('not implemented yet!');
-                %%%PATRICK HACK FOR 1 LINK
-                %                 z_agent = agent_info.state(W.arm_joint_state_indices,end) ;
-                %                 z_goal = W.goal;
-                %                 x_agent = make_orientation(z_agent(1), 3)*make_orientation(z_agent(2), 2)*[0.33; 0; 0];
-                %                 x_goal = make_orientation(z_goal(1), 3)*make_orientation(z_goal(2), 2)*[0.33; 0; 0];
-                %                 dz = min(sqrt(sum((x_agent - x_goal).^2)));
-                %                 out = dz <= W.goal_radius;
-                
+            switch W.goal_type
+                case 'configuration'
+                    dz = min(abs(z - repmat(W.goal,1,size(z,2))),[],2) ;
+                    dz_log = all(dz <= W.goal_radius) ;
+                    out = all(dz_log) ;
+                case 'end_effector_location'
+                    % get the joint locations
+                    z = z(:,end) ;
+                    J = agent_info.get_joint_locations(z) ;
+                    
+                    % check how far the end effector is from the goal
+                    % location
+                    dz = vecnorm(J(:,end) - W.goal_in_workspace) ;
+                    out = dz <= W.goal_radius ;
+                otherwise
+                    error(['The goal type ',W.goal_type,' is not supported!'])
+            end
+            %                 error('not implemented yet!');
+            %%%PATRICK HACK FOR 1 LINK
+            %                 z_agent = agent_info.state(W.arm_joint_state_indices,end) ;
+            %                 z_goal = W.goal;
+            %                 x_agent = make_orientation(z_agent(1), 3)*make_orientation(z_agent(2), 2)*[0.33; 0; 0];
+            %                 x_goal = make_orientation(z_goal(1), 3)*make_orientation(z_goal(2), 2)*[0.33; 0; 0];
+            %                 dz = min(sqrt(sum((x_agent - x_goal).^2)));
+            %                 out = dz <= W.goal_radius;
+            
                 %%%PATRICK HACK FOR FETCH
 %                 z_agent = agent_info.state(W.arm_joint_state_indices,end) ;
 %                 z_goal = W.goal;
@@ -409,7 +465,7 @@ classdef fetch_base_world_static < world
 %                 
 %                 dz = min(sqrt(sum((x_agent - x_goal).^2)));
 %                 out = dz <= W.goal_radius;
-            end
+%             end
             
         end
         
@@ -442,25 +498,33 @@ classdef fetch_base_world_static < world
                 hold on ;
             end
             
-            G = W.goal_plot_patch_data ;
-            
-            if ~check_if_plot_is_available(W,'goal') && ~isempty(W.goal)
-                switch W.dimension
-                    case 2
-                        data = plot(G(1,:),G(2,:),'Color',W.goal_plot_edge_color,...
-                            'LineStyle',W.goal_plot_edge_style) ;
-                    case 3
-                        data = patch(G,...
-                            'LineStyle',W.goal_plot_edge_style,...
-                            'FaceColor',W.goal_plot_face_color,...
-                            'FaceAlpha',W.goal_plot_face_alpha,...
-                            'EdgeColor',W.goal_plot_edge_color,...
-                            'EdgeAlpha',W.goal_plot_edge_alpha) ;
-                end
-                
-                W.plot_data.goal = data ;
+            switch W.goal_type
+                case 'configuration'
+                    G = W.goal_plot_patch_data ;
+                    if ~check_if_plot_is_available(W,'goal') && ~isempty(W.goal)
+                        switch W.dimension
+                            case 2
+                                data = plot(G(1,:),G(2,:),'Color',W.goal_plot_edge_color,...
+                                    'LineStyle',W.goal_plot_edge_style) ;
+                            case 3
+                                data = patch(G,...
+                                    'LineStyle',W.goal_plot_edge_style,...
+                                    'FaceColor',W.goal_plot_face_color,...
+                                    'FaceAlpha',W.goal_plot_face_alpha,...
+                                    'EdgeColor',W.goal_plot_edge_color,...
+                                    'EdgeAlpha',W.goal_plot_edge_alpha) ;
+                        end
+                        
+                        W.plot_data.goal = data ;
+                    end
+                case 'end_effector_location'
+                    g = W.goal ;
+                    if ~check_if_plot_is_available(W,'goal') && ~isempty(W.goal)
+                        data = plot_path(g,'p','Color',W.goal_plot_edge_color,'LineWidth',2) ;
+                        W.plot_data.goal = data ;
+                    end
             end
-            
+        
             if hold_check
                 hold off
             end
