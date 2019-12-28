@@ -1,0 +1,272 @@
+... logging to /home/daphna/.ros/log/b0427a94-1fb6-11ea-981c-9cb6d01d3df9/roslaunch-daphna-Blade-8817.log
+Checking log directory for disk usage. This may take awhile.
+Press Ctrl-C to interrupt
+Done checking log file disk usage. Usage is <1GB.
+]2;/home/daphna/ws_moveit/src/fetch_moveit_config/launch/demo_chomp.launch
+[1mstarted roslaunch server http://daphna-Blade:41351/[0m
+
+SUMMARY
+========
+
+PARAMETERS
+ * /joint_state_publisher/use_gui: False
+ * /move_group/add_randomness: False
+ * /move_group/allow_trajectory_execution: True
+ * /move_group/allowed_execution_duration_scaling: 1.2
+ * /move_group/allowed_goal_duration_margin: 0.5
+ * /move_group/animate_endeffector: False
+ * /move_group/animate_endeffector_segment: r_gripper_tool_frame
+ * /move_group/animate_path: True
+ * /move_group/capabilities: move_group/MoveGr...
+ * /move_group/collision_clearence: 0.2
+ * /move_group/collision_threshold: 0.07
+ * /move_group/controller_list: [{'joints': ['sho...
+ * /move_group/enable_failure_recovery: False
+ * /move_group/hmc_annealing_factor: 0.99
+ * /move_group/hmc_discretization: 0.01
+ * /move_group/hmc_stochasticity: 0.01
+ * /move_group/jiggle_fraction: 0.05
+ * /move_group/joint_update_limit: 0.1
+ * /move_group/learning_rate: 0.01
+ * /move_group/max_iterations: 200
+ * /move_group/max_iterations_after_collision_free: 5
+ * /move_group/max_recovery_attepmts: 5
+ * /move_group/max_safe_path_cost: 1
+ * /move_group/moveit_controller_manager: moveit_fake_contr...
+ * /move_group/moveit_manage_controllers: True
+ * /move_group/obstacle_cost_weight: 1.0
+ * /move_group/planning_plugin: chomp_interface/C...
+ * /move_group/planning_scene_monitor/publish_geometry_updates: True
+ * /move_group/planning_scene_monitor/publish_planning_scene: True
+ * /move_group/planning_scene_monitor/publish_state_updates: True
+ * /move_group/planning_scene_monitor/publish_transforms_updates: True
+ * /move_group/planning_time_limit: 10.0
+ * /move_group/pseudo_inverse_ridge_factor: 1e-4
+ * /move_group/random_jump_amount: 1.0
+ * /move_group/request_adapters: default_planner_r...
+ * /move_group/ridge_factor: 0.0
+ * /move_group/smoothness_cost_acceleration: 1.0
+ * /move_group/smoothness_cost_jerk: 0.0
+ * /move_group/smoothness_cost_velocity: 0.0
+ * /move_group/smoothness_cost_weight: 0.1
+ * /move_group/start_state_max_bounds_error: 0.1
+ * /move_group/trajectory_initialization_method: quintic-spline
+ * /move_group/use_hamiltonian_monte_carlo: False
+ * /move_group/use_pseudo_inverse: False
+ * /move_group/use_stochastic_descent: True
+ * /robot_description: <robot name="fetc...
+ * /robot_description_kinematics/arm/kinematics_solver: fetch_arm/IKFastK...
+ * /robot_description_kinematics/arm/kinematics_solver_attempts: 3
+ * /robot_description_kinematics/arm/kinematics_solver_search_resolution: 0.005
+ * /robot_description_kinematics/arm/kinematics_solver_timeout: 0.005
+ * /robot_description_kinematics/arm_with_torso/kinematics_solver: kdl_kinematics_pl...
+ * /robot_description_kinematics/arm_with_torso/kinematics_solver_attempts: 3
+ * /robot_description_kinematics/arm_with_torso/kinematics_solver_search_resolution: 0.005
+ * /robot_description_kinematics/arm_with_torso/kinematics_solver_timeout: 0.005
+ * /robot_description_planning/joint_limits/elbow_flex_joint/has_acceleration_limits: True
+ * /robot_description_planning/joint_limits/elbow_flex_joint/has_velocity_limits: True
+ * /robot_description_planning/joint_limits/elbow_flex_joint/max_acceleration: 1.5
+ * /robot_description_planning/joint_limits/elbow_flex_joint/max_velocity: 1.5
+ * /robot_description_planning/joint_limits/forearm_roll_joint/has_acceleration_limits: True
+ * /robot_description_planning/joint_limits/forearm_roll_joint/has_velocity_limits: True
+ * /robot_description_planning/joint_limits/forearm_roll_joint/max_acceleration: 1.5
+ * /robot_description_planning/joint_limits/forearm_roll_joint/max_velocity: 1.57
+ * /robot_description_planning/joint_limits/left_gripper_joint/has_acceleration_limits: False
+ * /robot_description_planning/joint_limits/left_gripper_joint/has_velocity_limits: False
+ * /robot_description_planning/joint_limits/left_gripper_joint/max_acceleration: 0
+ * /robot_description_planning/joint_limits/left_gripper_joint/max_velocity: 0
+ * /robot_description_planning/joint_limits/right_gripper_joint/has_acceleration_limits: False
+ * /robot_description_planning/joint_limits/right_gripper_joint/has_velocity_limits: False
+ * /robot_description_planning/joint_limits/right_gripper_joint/max_acceleration: 0
+ * /robot_description_planning/joint_limits/right_gripper_joint/max_velocity: 0
+ * /robot_description_planning/joint_limits/shoulder_lift_joint/has_acceleration_limits: True
+ * /robot_description_planning/joint_limits/shoulder_lift_joint/has_velocity_limits: True
+ * /robot_description_planning/joint_limits/shoulder_lift_joint/max_acceleration: 1.0
+ * /robot_description_planning/joint_limits/shoulder_lift_joint/max_velocity: 1.0
+ * /robot_description_planning/joint_limits/shoulder_pan_joint/has_acceleration_limits: True
+ * /robot_description_planning/joint_limits/shoulder_pan_joint/has_velocity_limits: True
+ * /robot_description_planning/joint_limits/shoulder_pan_joint/max_acceleration: 1.5
+ * /robot_description_planning/joint_limits/shoulder_pan_joint/max_velocity: 1.256
+ * /robot_description_planning/joint_limits/torso_lift_joint/has_acceleration_limits: True
+ * /robot_description_planning/joint_limits/torso_lift_joint/has_velocity_limits: True
+ * /robot_description_planning/joint_limits/torso_lift_joint/max_acceleration: 0.5
+ * /robot_description_planning/joint_limits/torso_lift_joint/max_velocity: 0.1
+ * /robot_description_planning/joint_limits/upperarm_roll_joint/has_acceleration_limits: True
+ * /robot_description_planning/joint_limits/upperarm_roll_joint/has_velocity_limits: True
+ * /robot_description_planning/joint_limits/upperarm_roll_joint/max_acceleration: 1.5
+ * /robot_description_planning/joint_limits/upperarm_roll_joint/max_velocity: 1.57
+ * /robot_description_planning/joint_limits/wrist_flex_joint/has_acceleration_limits: True
+ * /robot_description_planning/joint_limits/wrist_flex_joint/has_velocity_limits: True
+ * /robot_description_planning/joint_limits/wrist_flex_joint/max_acceleration: 2.5
+ * /robot_description_planning/joint_limits/wrist_flex_joint/max_velocity: 2.26
+ * /robot_description_planning/joint_limits/wrist_roll_joint/has_acceleration_limits: True
+ * /robot_description_planning/joint_limits/wrist_roll_joint/has_velocity_limits: True
+ * /robot_description_planning/joint_limits/wrist_roll_joint/max_acceleration: 2.5
+ * /robot_description_planning/joint_limits/wrist_roll_joint/max_velocity: 2.26
+ * /robot_description_semantic: <?xml version="1....
+ * /rosdistro: melodic
+ * /rosversion: 1.14.3
+ * /rviz_daphna_Blade_8817_3834902989014892467/arm/kinematics_solver: fetch_arm/IKFastK...
+ * /rviz_daphna_Blade_8817_3834902989014892467/arm/kinematics_solver_attempts: 3
+ * /rviz_daphna_Blade_8817_3834902989014892467/arm/kinematics_solver_search_resolution: 0.005
+ * /rviz_daphna_Blade_8817_3834902989014892467/arm/kinematics_solver_timeout: 0.005
+ * /rviz_daphna_Blade_8817_3834902989014892467/arm_with_torso/kinematics_solver: kdl_kinematics_pl...
+ * /rviz_daphna_Blade_8817_3834902989014892467/arm_with_torso/kinematics_solver_attempts: 3
+ * /rviz_daphna_Blade_8817_3834902989014892467/arm_with_torso/kinematics_solver_search_resolution: 0.005
+ * /rviz_daphna_Blade_8817_3834902989014892467/arm_with_torso/kinematics_solver_timeout: 0.005
+ * /source_list: ['/move_group/fak...
+
+NODES
+  /
+    joint_state_publisher (joint_state_publisher/joint_state_publisher)
+    move_group (moveit_ros_move_group/move_group)
+    robot_state_publisher (robot_state_publisher/robot_state_publisher)
+    rviz_daphna_Blade_8817_3834902989014892467 (rviz/rviz)
+
+auto-starting new master
+[1mprocess[master]: started with pid [8828][0m
+[1mROS_MASTER_URI=http://localhost:11311[0m
+]2;/home/daphna/ws_moveit/src/fetch_moveit_config/launch/demo_chomp.launch http://localhost:11311
+[1msetting /run_id to b0427a94-1fb6-11ea-981c-9cb6d01d3df9[0m
+[1mprocess[rosout-1]: started with pid [8839][0m
+started core service [/rosout]
+running rosparERROR: parameter [/move_group/sensors] is not set
+[33m[ WARN] [1576468009.942245591]: The root link base_link has an inertia specified in the URDF, but KDL does not support a root link with an inertia.  As a workaround, you can add an extra dummy link to your URDF.[0m
+[33m[ WARN] [1576468010.058046165]: Kinematics solver doesn't support #attempts anymore, but only a timeout.
+Please remove the parameter '/robot_description_kinematics/arm/kinematics_solver_attempts' from your configuration.[0m
+[33m[ WARN] [1576468010.068453188]: The root link base_link has an inertia specified in the URDF, but KDL does not support a root link with an inertia.  As a workaround, you can add an extra dummy link to your URDF.[0m
+[33m[ WARN] [1576468010.246312375]: Resolution not specified for Octomap. Assuming resolution = 0.1 instead[0m
+[0m[ INFO] [1576468009.981417908]: Loading robot model 'fetch'...[0m
+[0m[ INFO] [1576468009.982778151]: No root/virtual joint specified in SRDF. Assuming fixed joint[0m
+[0m[ INFO] [1576468010.236909381]: Publishing maintained planning scene on 'monitored_planning_scene'[0m
+[0m[ INFO] [1576468010.241557469]: MoveGroup debug mode is ON[0m
+[96mStarting planning scene monitors...
+[0m[0m[ INFO] [1576468010.241579242]: Starting planning scene monitor[0m
+[0m[ INFO] [1576468010.243007785]: Listening to '/planning_scene'[0m
+[0m[ INFO] [1576468010.243024697]: Starting world geometry update monitor for collision objects, attached objects, octomap updates.[0m
+[0m[ INFO] [1576468010.244529253]: Listening to '/collision_object'[0m
+[0m[ INFO] [1576468010.246037810]: Listening to '/planning_scene_world' for planning scene world geometry[0m
+[0m[ INFO] [1576468010.288092877]: Listening to '/attached_collision_object' for attached collision objects[0m
+[96mPlanning scene monitors started.
+[0m[0m[ INFO] [1576468010.313098214]: Using planning interface 'CHOMP'[0m
+[0m[ INFO] [1576468010.315473000]: Param 'default_workspace_bounds' was not set. Using default value: 10[0m
+[0m[ INFO] [1576468010.315808822]: Param 'start_state_max_bounds_error' was set to 0.1[0m
+[0m[ INFO] [1576468010.316051347]: Param 'start_state_max_dt' was not set. Using default value: 0.5[0m
+[0m[ INFO] [1576468010.316353863]: Param 'start_state_max_dt' was not set. Using default value: 0.5[0m
+[0m[ INFO] [1576468010.316604472]: Param 'jiggle_fraction' was set to 0.05[0m
+[0m[ INFO] [1576468010.316817811]: Param 'max_sampling_attempts' was not set. Using default value: 100[0m
+[0m[ INFO] [1576468010.316860820]: Using planning request adapter 'Fix Workspace Bounds'[0m
+[0m[ INFO] [1576468010.316895654]: Using planning request adapter 'Fix Start State Bounds'[0m
+[0m[ INFO] [1576468010.316903897]: Using planning request adapter 'Fix Start State In Collision'[0m
+[0m[ INFO] [1576468010.316909349]: Using planning request adapter 'Fix Start State Path Constraints'[0m
+[0m[ INFO] [1576468010.316914640]: Using planning request adapter 'Resolve constraint frames to robot links'[0m
+[0m[ INFO] [1576468010.316919678]: Using planning request adapter 'Add Time Parameterization'[0m
+[0m[ INFO] [1576468010.321610397]: Fake controller 'fake_arm_controller' with joints [ shoulder_pan_joint shoulder_lift_joint upperarm_roll_joint elbow_flex_joint forearm_roll_joint wrist_flex_joint wrist_roll_joint ][0m
+[0m[ INFO] [1576468010.322034106]: Fake controller 'fake_arm_with_torso_controller' with joints [ torso_lift_joint shoulder_pan_joint shoulder_lift_joint upperarm_roll_joint elbow_flex_joint forearm_roll_joint wrist_flex_joint wrist_roll_joint ][0m
+[0m[ INFO] [1576468010.322442119]: Fake controller 'fake_gripper_controller' with joints [ l_gripper_finger_joint r_gripper_finger_joint ][0m
+[0m[ INFO] [1576468010.322989603]: Returned 3 controllers in list[0m
+[0m[ INFO] [1576468010.336719011]: Trajectory execution is managing controllers[0m
+[96mLoading 'move_group/ApplyPlanningSceneService'...
+[0m[96mLoading 'move_group/ClearOctomapService'...
+[0m[96mLoading 'move_group/MoveGroupCartesianPathService'...
+[0m[96mLoading 'move_group/MoveGroupExecuteTrajectoryAction'...
+[0m[96mLoading 'move_group/MoveGroupGetPlanningSceneService'...
+[0m[96mLoading 'move_group/MoveGroupKinematicsService'...
+[0m[96mLoading 'move_group/MoveGroupMoveAction'...
+[0m[96mLoading 'move_group/MoveGroupPickPlaceAction'...
+[0m[96mLoading 'move_group/MoveGroupPlanService'...
+[0m[96mLoading 'move_group/MoveGroupQueryPlannersService'...
+[0m[96mLoading 'move_group/MoveGroupStateValidationService'...
+[0m[0m[ INFO] [1576468010.389247414]: 
+
+********************************************************
+* MoveGroup using: 
+*     - ApplyPlanningSceneService
+*     - ClearOctomapService
+*     - CartesianPathService
+*     - ExecuteTrajectoryAction
+*     - GetPlanningSceneService
+*     - KinematicsService
+*     - MoveAction
+*     - PickPlaceAction
+*     - MotionPlanService
+*     - QueryPlannersService
+*     - StateValidationService
+********************************************************
+[0m
+[0m[ INFO] [1576468010.389367738]: MoveGroup context using planning plugin chomp_interface/CHOMPPlanner[0m
+[0m[ INFO] [1576468010.389420890]: MoveGroup context initialization complete[0m
+[92m
+You can start planning now!
+
+[0m[33m[ WARN] [1576468013.567563213]: Kinematics solver doesn't support #attempts anymore, but only a timeout.
+Please remove the parameter '/rviz_daphna_Blade_8817_3834902989014892467/arm/kinematics_solver_attempts' from your configuration.[0m
+[33m[ WARN] [1576468013.577330180]: The root link base_link has an inertia specified in the URDF, but KDL does not support a root link with an inertia.  As a workaround, you can add an extra dummy link to your URDF.[0m
+[33m[ WARN] [1576468014.913154088]: The root link base_link has an inertia specified in the URDF, but KDL does not support a root link with an inertia.  As a workaround, you can add an extra dummy link to your URDF.[0m
+[33m[ WARN] [1576468014.913371824]: The root link base_link has an inertia specified in the URDF, but KDL does not support a root link with an inertia.  As a workaround, you can add an extra dummy link to your URDF.[0m
+[0m[ INFO] [1576468018.491674046]: Combined planning and execution request received for MoveGroup action. Forwarding to planning and execution pipeline.[0m
+[0m[ INFO] [1576468018.492029145]: Planning attempt 1 of at most 1[0m
+[0m[ INFO] [1576468020.037690283]: Start is 0 end -2.5859 short -2.5859[0m
+[0m[ INFO] [1576468020.037740438]: Start is 0 end -2.2384 short -2.2384[0m
+[0m[ INFO] [1576468020.037748636]: Start is 0 end 0 short 0[0m
+[0m[ INFO] [1576468020.037793823]: CHOMP trajectory initialized using method: quintic-spline [0m
+[0m[ INFO] [1576468020.037893660]: The following collision detectors are available in the planning scene.[0m
+[0m[ INFO] [1576468020.037903193]: HYBRID[0m
+[0m[ INFO] [1576468020.037928817]: Active collision detector is: HYBRID[0m
+[0m[ INFO] [1576468020.143636556]: First coll check took 0.105659136[0m
+[0m[ INFO] [1576468020.160543049]: iteration: 0[0m
+[0m[ INFO] [1576468020.163630826]: Chomp Got mesh to mesh safety at iter 0. Breaking out early.[0m
+[0m[ INFO] [1576468020.163667167]: Chomp path is collision free[0m
+[0m[ INFO] [1576468020.163676219]: Terminated after 1 iterations, using path from iteration 0[0m
+[0m[ INFO] [1576468020.163707546]: Optimization core finished in 0.006485 sec[0m
+[0m[ INFO] [1576468020.163719078]: Time per iteration 0.00651928[0m
+[0m[ INFO] [1576468020.167380635]: Disabling trajectory recording[0m
+[0m[ INFO] [1576468020.191826242]: Fake execution of trajectory[0m
+[0m[ INFO] [1576468023.591454859]: Completed trajectory execution with status SUCCEEDED ...[0m
+[0m[ INFO] [1576468023.602417271]: Received event 'stop'[0m
+[0m[ INFO] [1576468029.391803999]: Combined planning and execution request received for MoveGroup action. Forwarding to planning and execution pipeline.[0m
+[0m[ INFO] [1576468029.392156298]: Planning attempt 1 of at most 1[0m
+[0m[ INFO] [1576468030.798726929]: Start is -2.5859 end 0.57213 short -3.12516[0m
+[0m[ INFO] [1576468030.798760584]: Start is -2.2384 end 0.5717 short 2.8101[0m
+[0m[ INFO] [1576468030.798770354]: Start is 0 end 0 short 0[0m
+[0m[ INFO] [1576468030.798781637]: CHOMP trajectory initialized using method: quintic-spline [0m
+[0m[ INFO] [1576468030.798793652]: The following collision detectors are available in the planning scene.[0m
+[0m[ INFO] [1576468030.798814189]: HYBRID[0m
+[0m[ INFO] [1576468030.798822775]: Active collision detector is: HYBRID[0m
+[0m[ INFO] [1576468030.903110077]: First coll check took 0.104263348[0m
+[0m[ INFO] [1576468030.919117278]: iteration: 0[0m
+[0m[ INFO] [1576468030.921944391]: Chomp Got mesh to mesh safety at iter 0. Breaking out early.[0m
+[0m[ INFO] [1576468030.921988416]: Chomp path is collision free[0m
+[0m[ INFO] [1576468030.921998037]: Terminated after 1 iterations, using path from iteration 0[0m
+[0m[ INFO] [1576468030.922006942]: Optimization core finished in 0.006295 sec[0m
+[0m[ INFO] [1576468030.922018321]: Time per iteration 0.00630727[0m
+[0m[ INFO] [1576468030.991870684]: Fake execution of trajectory[0m
+[0m[ INFO] [1576468035.091344031]: Completed trajectory execution with status SUCCEEDED ...[0m
+[0m[ INFO] [1576468010.076630511]: rviz version 1.13.5[0m
+[0m[ INFO] [1576468010.076657804]: compiled against Qt version 5.9.5[0m
+[0m[ INFO] [1576468010.076663479]: compiled against OGRE version 1.9.0 (Ghadamon)[0m
+[0m[ INFO] [1576468010.080172585]: Forcing OpenGl version 0.[0m
+[0m[ INFO] [1576468010.200029599]: Stereo is NOT SUPPORTED[0m
+[0m[ INFO] [1576468010.200104608]: OpenGl version: 3 (GLSL 1.3).[0m
+[0m[ INFO] [1576468013.504513487]: Loading robot model 'fetch'...[0m
+[0m[ INFO] [1576468013.504566824]: No root/virtual joint specified in SRDF. Assuming fixed joint[0m
+[0m[ INFO] [1576468013.732451635]: Starting planning scene monitor[0m
+[0m[ INFO] [1576468013.734864588]: Listening to '/move_group/monitored_planning_scene'[0m
+[0m[ INFO] [1576468014.914832775]: Constructing new MoveGroup connection for group 'arm' in namespace ''[0m
+[0m[ INFO] [1576468016.090604605]: Ready to take commands for planning group arm.[0m
+[0m[ INFO] [1576468016.090661001]: Looking around: no[0m
+[0m[ INFO] [1576468016.090697097]: Replanning: no[0m
+am delete /move_group/sensors
+[1mprocess[joint_state_publisher-2]: started with pid [8851][0m
+[1mprocess[robot_state_publisher-3]: started with pid [8852][0m
+[1mprocess[move_group-4]: started with pid [8853][0m
+[1mprocess[rviz_daphna_Blade_8817_3834902989014892467-5]: started with pid [8859][0m
+[rviz_daphna_Blade_8817_3834902989014892467-5] killing on exit
+[move_group-4] killing on exit
+[robot_state_publisher-3] killing on exit
+[joint_state_publisher-2] killing on exit
+[rosout-1] killing on exit
+[master] killing on exit
+shutting down processing monitor...
+... shutting down processing monitor complete
+[1mdone[0m
