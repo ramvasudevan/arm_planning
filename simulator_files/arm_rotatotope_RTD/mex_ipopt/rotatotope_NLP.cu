@@ -364,12 +364,13 @@ void rotatotope_NLP::finalize_solution(
    // here is where we would store the solution to variables, or write to a file, etc
    // so we could use the solution.
 
+   /*
    // For this example, we write the solution to the console
    mexPrintf("\nSolution of the primal variables, x\n\n");
    for( Index i = 0; i < n; i++ ) {
       mexPrintf( "x[%d] = %f\n", i, x[i]);
    }
-   /*
+   
    mexPrintf("\nSolution of the bound multipliers, z_L and z_U\n");
    for( Index i = 0; i < n; i++ )
    {
@@ -389,6 +390,12 @@ void rotatotope_NLP::finalize_solution(
       std::cout << "g(" << i << ") = " << g[i] << std::endl;
    }
    */
+
+   for(Index i = 0; i < m; i++) {
+      if(g[i] >= 0){
+         mexPrintf("g(%d) = %f\n", i, g[i]);
+      }
+   }
 
    // store the solution
    solution = new double[n];

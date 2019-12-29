@@ -581,6 +581,19 @@ __global__ void polytope(uint32_t link_id, double* buff_obstacles, double* frs_k
 	double A_2 = buff_obstacles[first_base + 2] * buff_obstacles[second_base] - buff_obstacles[first_base] * buff_obstacles[second_base + 2];
 	double A_3 = buff_obstacles[first_base] * buff_obstacles[second_base + 1] - buff_obstacles[first_base + 1] * buff_obstacles[second_base];
 	
+	/*
+	double A_s_q = sqrt(A_1 * A_1 + A_2 * A_2 + A_3 * A_3);
+	if(A_s_q >= TOO_SMALL_POLYTOPE_JUDGE){
+		A_1 /= A_s_q;
+		A_2 /= A_s_q;
+		A_3 /= A_s_q;
+	}
+	else{
+		A_1 = 0;
+		A_2 = 0;
+		A_3 = 0;
+	}
+	*/
 	if (A_1 != 0 || A_2 != 0 || A_3 != 0) {
 		double A_s_q = sqrt(A_1 * A_1 + A_2 * A_2 + A_3 * A_3);
 		A_1 /= A_s_q;
@@ -728,7 +741,7 @@ __global__ void evaluate_gradient_kernel(double* con_result, uint32_t link_id, d
 				maximum = con_result[max_idx];
 			}
 		}
-		con[con_base] = -maximum;
+		con[con_base] = -maximum + CONSERVATIVE_BUFFER;
 	}
 
 	__shared__ double shared_lambda[6];
@@ -841,7 +854,7 @@ rotatotopeArray::~rotatotopeArray() {
 		delete[] debug_2;
 	}
 
-	if(con != nullptr){
+	if (con != nullptr) {
 		delete[] con;
 		delete[] grad_con;
 	}
