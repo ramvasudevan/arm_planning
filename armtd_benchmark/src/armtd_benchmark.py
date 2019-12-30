@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import sys
+import os
 import csv
 import copy
 import rospy
@@ -40,7 +41,7 @@ class PythonBenchmarkInterface(object):
 
 		#------------ Instantiate interfaces with various aspects of Robot and Scene --------------
 
-		# probably here to support cooperative multiple inheritance in a dynamic environment
+		# to support cooperative multiple inheritance 
 		super(PythonBenchmarkInterface, self).__init__()
 
 		# Initialize moveit_commander and a rospy node
@@ -107,6 +108,7 @@ class PythonBenchmarkInterface(object):
 		display_trajectory.trajectory_start = start
 		display_trajectory.trajectory.append(plan)
 		self.display_trajectory_publisher.publish(display_trajectory)
+		
 	def add_scene_obstacle(self, obstacle, obstacle_num):
 
 		obstacle_name = "obstacle" + str(obstacle_num)
@@ -131,6 +133,9 @@ class PythonBenchmarkInterface(object):
 			self.add_scene_obstacle(obstacle, obstacle_tag)
 			obstacle_tag += 1
 
+	def set_tolerance_for_goal(self, tol):
+		self.move_group.set_goal_joint_tolerance(tol)
+		return
 
 def list_string_to_float(my_list):
 	float_list = []
@@ -146,7 +151,11 @@ def list_string_to_float(my_list):
 def main():
 	try:
 
-		filename = sys.argv[1]
+		# Read filename as system arg if you are testing 
+		# this script independently
+		
+		#filename = sys.argv[1]
+		filename = os.environ['FILE_IN']
 		test_scene = open(filename, 'r')
 
 		reader = csv.reader(test_scene)
@@ -159,6 +168,9 @@ def main():
 		obstacles = list_string_to_float(data[3:])
 
 		my_group = PythonBenchmarkInterface()
+
+		# To set tolerance, uncomment this line with desired value
+		# my_group.set_tolerance_for_goal(0.2)
 
 		default_wrist_roll = 0.0
 		start_position.append(default_wrist_roll)
@@ -176,45 +188,10 @@ def main():
 
 		my_group.add_scene_obstacle(first_obstacle, 0)
 
-		#TODO probably should add a wait here!
 		rospy.sleep(1.5)
 		#print "Press enter to continue"
-		#print len(obstacles)
 		#raw_input()
-		#goal_position[0] = 1.6
 		my_group.go_to_joint_state(goal_position)
-
-
-		
-
-		#print my_group.robot.get_current_state()
-		'''
-		print "press enter to add box to Origin"
-		raw_input()
-# 0.119525 0 0.34858
-		box_name_origin = "boxOrigin"
-		box_pose_origin = geometry_msgs.msg.PoseStamped()
-		box_pose_origin.header.frame_id = my_group.move_group.get_planning_frame()
-		box_pose_origin.pose.orientation.w = 1.0
-		
-		# adding together torso_lift_joint and shoulder_pan_joint
-		# gives origin at shoulder pan joint
-		box_pose_origin.pose.position.x = -0.03265
-		box_pose_origin.pose.position.y = 0
-		box_pose_origin.pose.position.z = 0.72601
-		
-
-		box_size_origin = (0.1, 0.1, 0.1)
-
-		my_group.add_box(box_name_origin, box_pose_origin, box_size_origin)
-
-		'''
-		#print "Press enter to close"
-		#raw_input()
-
-
-
-
 
 	except rospy.ROSInterruptException:
 		return
