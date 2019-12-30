@@ -127,12 +127,12 @@ P4.	solve the NLP
     // Note: The following choices are only examples, they might not be
     //       suitable for your optimization problem.
 	app->Options()->SetNumericValue("tol", 1e-7);
-	app->Options()->SetNumericValue("max_cpu_time", 1);
+	app->Options()->SetNumericValue("max_cpu_time", 0.5);
 	app->Options()->SetNumericValue("print_level", 0);
     app->Options()->SetStringValue("mu_strategy", "adaptive");
     app->Options()->SetStringValue("output_file", "ipopt.out");
-    app->Options()->SetStringValue("hessian_approximation", "limited-memory");
-	app->Options()->SetStringValue("limited_memory_update_type", "bfgs");
+    //app->Options()->SetStringValue("hessian_approximation", "limited-memory");
+	//app->Options()->SetStringValue("limited_memory_update_type", "bfgs");
 	//app->Options()->SetStringValue("derivative_test", "first-order");
 	//app->Options()->SetNumericValue("derivative_test_perturbation", 0.0001);
 
@@ -146,7 +146,7 @@ P4.	solve the NLP
     // Ask Ipopt to solve the problem
     status = app->OptimizeTNLP(mynlp);
 
-	nlhs = 3;
+	nlhs = 4;
     if( status == Solve_Succeeded ) {
         plhs[0] = mxCreateNumericMatrix(n_links * 2, 1, mxDOUBLE_CLASS, mxREAL);
 		double *output0 = (double*)mxGetData(plhs[0]);
@@ -185,7 +185,19 @@ P5. handle the output, release the memory
 		for (uint32_t j = 0; j < n_links; j++) {
 			for (uint32_t k = 0; k < n_time_steps; k++) {
 				for (uint32_t p = 0; p < n_links * 2; p++) {
-					output1[((i * n_links + j) * n_time_steps + k) * n_links * 2 + p] = links.grad_con[((j * n_obstacles + i) * n_time_steps + k) * n_links * 2 + p];
+					output1[((i * n_links + j) * n_time_steps + k) * n_links * 2 + p] = links.jaco_con[((j * n_obstacles + i) * n_time_steps + k) * n_links * 2 + p];
+				}
+			}
+		}
+	}
+
+	plhs[3] = mxCreateNumericMatrix(n_links * (n_links * 2 - 1), n_links * n_obstacles * n_time_steps, mxDOUBLE_CLASS, mxREAL);
+	double *output2 = (double*)mxGetData(plhs[3]);
+	for (uint32_t i = 0; i < n_obstacles; i++) {
+		for (uint32_t j = 0; j < n_links; j++) {
+			for (uint32_t k = 0; k < n_time_steps; k++) {
+				for (uint32_t p = 0; p < n_links * (n_links * 2 - 1); p++) {
+					output2[((i * n_links + j) * n_time_steps + k) * n_links * (n_links * 2 - 1) + p] = links.hess_con[((j * n_obstacles + i) * n_time_steps + k) * n_links * (n_links * 2 - 1) + p];
 				}
 			}
 		}

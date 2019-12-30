@@ -28,7 +28,7 @@ a cuda array for a cluster of rotatotopes
 #define max_RZ_length 130
 #define A_BIG_NUMBER 100000.0
 #define TOO_SMALL_POLYTOPE_JUDGE 0.00001
-#define CONSERVATIVE_BUFFER 0.01
+#define CONSERVATIVE_BUFFER 0.001
 
 class rotatotopeArray {
 public:
@@ -144,7 +144,8 @@ public:
 	// current constraints info
 	double* current_k_opt; // current k
 	double* con; // value of constraints at k
-	double* grad_con; // value of gradient of constraints at k
+	double* jaco_con; // value of jacobian of constraints at k
+	double* hess_con; // value of hessian of constraints at k
 
 	// timing
 	std::clock_t start_t, end_t; 
@@ -307,7 +308,7 @@ __global__ void evaluate_constraints_kernel(double* lambda, uint32_t link_id, do
 /*
 Instruction:
 	first find the maximum of the constraints
-	evaluate the gradient of constraint with that maximum
+	evaluate the jacobian and hessian of constraint with that maximum
 Requires:
 	1. con_result
 	2. link_id
@@ -319,8 +320,9 @@ Requires:
 	8. n_links
 Modifies:
 	1. con
-	2. grad_con
+	2. jaco_con
+	3. hess_con
 */
-__global__ void evaluate_gradient_kernel(double* con_result, uint32_t link_id, double* lambda, double* g_k, double* A_con, uint32_t A_con_width, bool* k_con, uint8_t* k_con_num, uint32_t n_links, double* con, double* grad_con);
+__global__ void evaluate_gradient_kernel(double* con_result, uint32_t link_id, double* lambda, double* g_k, double* A_con, uint32_t A_con_width, bool* k_con, uint8_t* k_con_num, uint32_t n_links, double* con, double* jaco_con, double* hess_con);
 
 #endif // !ROTATOTOPE_ARRAY_H

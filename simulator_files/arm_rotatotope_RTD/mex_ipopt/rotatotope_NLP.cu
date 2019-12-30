@@ -310,7 +310,7 @@ bool rotatotope_NLP::eval_jac_g(
       // return the values of the Jacobian of the constraints
       for(Index i = 0; i < m; i++){
           for(Index j = 0; j < n; j++){
-              values[i * n + j] = ra_info->grad_con[i * n + j];
+              values[i * n + j] = ra_info->jaco_con[i * n + j];
           }
       }
    }
@@ -341,6 +341,72 @@ bool rotatotope_NLP::eval_h(
    if(m != ra_info->n_links * n_obstacles * ra_info->n_time_steps){
       mexErrMsgIdAndTxt("MyProg:ConvertString", "*** Error wrong value of m in eval_h!");
    }
+
+   if (values == NULL) {
+      // return the structure. This is a symmetric matrix, fill the lower left
+      // triangle only.
+  
+      // the Hessian for this problem is actually dense
+      Index idx = 0;
+      for (Index row = 0; row < n; row++) {
+        for (Index col = 0; col <= row; col++) {
+          iRow[idx] = row; 
+          jCol[idx] = col;
+          idx++;
+        }
+      }
+      
+      if(idx != nele_hess){
+         mexErrMsgIdAndTxt("MyProg:ConvertString", "*** Error wrong size of hessian in eval_h!");
+      }
+    }
+    else {
+      bool compute_new_constraints;
+      if(ra_info->current_k_opt != nullptr){
+         compute_new_constraints = false;
+         for(uint32_t i = 0; i < n; i++){
+            if(ra_info->current_k_opt[i] != x[i]){
+               compute_new_constraints = true;
+               break;
+            }
+         }
+      }
+      else{
+         compute_new_constraints = true;
+      }
+   
+      if(compute_new_constraints){
+         double* x_double = new double[n];
+         for(uint32_t i = 0; i < n; i++){
+            x_double[i] = (double)x[i];
+         }
+         ra_info->evaluate_constraints(x_double);
+         delete[] x_double;
+      }
+
+      Index idx = 0;
+      for (Index row = 0; row < n; row++) {
+         for (Index col = 0; col <= row; col++) {
+            if(row == col){
+               values[idx] = obj_factor * t_plan * t_plan * t_plan * t_plan / 2;
+            }
+            else{
+               values[idx] = 0;
+            }
+            idx++;
+         }
+      }
+
+      for(Index i = 0; i < m; i++){
+         idx = 0;
+         for (Index row = 0; row < n; row++) {
+            for (Index col = 0; col < row; col++) {
+               values[idx] += lambda[i] * ra_info->hess_con[i * n * (n - 1) / 2 + idx];
+               idx++;
+            }
+         }
+      }
+    }
 
    return true;
 }
@@ -390,12 +456,6 @@ void rotatotope_NLP::finalize_solution(
       std::cout << "g(" << i << ") = " << g[i] << std::endl;
    }
    */
-
-   for(Index i = 0; i < m; i++) {
-      if(g[i] >= 0){
-         mexPrintf("g(%d) = %f\n", i, g[i]);
-      }
-   }
 
    // store the solution
    solution = new double[n];
