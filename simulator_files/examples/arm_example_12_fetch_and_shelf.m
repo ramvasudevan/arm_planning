@@ -4,7 +4,7 @@
 %
 % Authors: Shreyas Kousik and Patrick Holmes
 % Created: 23 Dec 2019
-% Updated: 25 Dec 2019
+% Updated: 30 Dec 2019
 %
 %% user parameters
 %%% WORLD PARAMETERS %%%
@@ -13,20 +13,20 @@ start = [0;-0.5;0;0.5;0;0] ; % on top of shelf 1 (in front of robot)
 
 % manually create goal
 goal_radius = 0.1 ;
-goal_type = 'end_effector_location' ; % 'configuration' or 'end_effector_location'
+goal_type = 'configuration' ; % 'configuration' or 'end_effector_location'
 
-% configuration goals:
+% configuration goals (set goal_type to 'configuration')
 % goal = [0;+1;0;-1;0;0] ; % bottom of front shelf
 % goal = [0.5;-0.5;0;0.5;0;0] ; % left of front shelf
 % goal = [0.5;+1;0;-1;0;0] ; bottom left of front shelf
-% goal = [pi/2 ; -0.5;0;0.5;0;0] ; % top of left shelf
+goal = [pi/2 ; -0.5;0;0.5;0;0] ; % top of left shelf
 % goal = [pi/2 ;+1;0;-1;0;0] ; % bottom of left shelf
 
-% end effector location goals:
+% end effector location goals (set goal_type to 'end_effector_location')
 % goal = [0; 1 ; 0.4] ; bottom middle of left shelf
 % goal = [0.25 ; 1 ; 1] ; top right of left shelf
 % goal = [1 ; -0.4 ; 0.6] ; % bottom right of front shelf
-goal = [-0.3 ; 1 ; 0.6] ; % bottom of left shelf
+% goal = [-0.3 ; 1 ; 0.6] ; % bottom of left shelf
 
 % shelf parameters
 shelf_center_1 = [1.1 ; 0 ; 0.7] ;
@@ -51,7 +51,7 @@ simulated_t_plan = 0.5 ;
 time_discretization = 0.01 ;
 T = 1 ;
 first_iter_pause_flag = false ; 
-run_simulation_flag = true ;
+run_simulation_flag = false ;
 HLP_timeout = 2 ; 
 HLP_grow_tree_mode = 'new' ;
 plot_while_sampling_flag = false ;
@@ -61,6 +61,7 @@ plot_waypoint_flag = true ; % for HLP
 plot_waypoint_arm_flag  = true ; % for HLP
 lookahead_distance = 0.2 ;
 use_end_effector_for_cost_flag = false ;
+csv_filename = 'fetch_shelf_scene_example.csv' ;
 %%% END OTHER PARAMETERS %%%
 
 %% automated from here
@@ -144,7 +145,7 @@ plot(A)
 plot(W)
 
 %% create .csv file for MoveIt!
-% write_fetch_scene_to_csv(W);
+write_fetch_scene_to_csv(W,csv_filename);
 
 %% run simulation
 if run_simulation_flag
