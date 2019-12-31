@@ -629,7 +629,7 @@ void rotatotopeArray::evaluate_constraints(double* k_opt) {
 		delete[] jaco_con;
 		delete[] hess_con;
 	}
-
+	start_t = clock();
 	current_k_opt = k_opt;
 
 	con = new double[n_links * n_obstacles * n_time_steps];
@@ -690,6 +690,10 @@ void rotatotopeArray::evaluate_constraints(double* k_opt) {
 	cudaFree(dev_lambda);
 
 	cudaFree(dev_g_k);
+
+	end_t = clock();
+	//mexPrintf("constraint evaluation time: %.6f\n", (end_t - start_t) / (double)(CLOCKS_PER_SEC));
+
 }
 
 __global__ void evaluate_constraints_kernel(double* lambda, uint32_t link_id, double* A_con, uint32_t A_con_width, double* b_con, bool* k_con, uint8_t* k_con_num, double* con_result) {
@@ -745,19 +749,20 @@ __global__ void evaluate_gradient_kernel(double* con_result, uint32_t link_id, d
 
 	__shared__ double shared_lambda[6];
 
-	if (joint_id_sec == 0 && joint_id == 0) {
-		double maximum = FLT_MIN;
-		max_idx = 0;
-		for (uint32_t i = 0; i < constraint_length; i++) {
-			if (maximum < con_result[con_result_base + i]) {
-				max_idx = con_result_base + i;
-				maximum = con_result[max_idx];
+	if (joint_id_sec == 0) {
+		if(joint_id == 0){
+			double maximum = FLT_MIN;
+			max_idx = 0;
+			for (uint32_t i = 0; i < constraint_length; i++) {
+				if (maximum < con_result[con_result_base + i]) {
+					max_idx = con_result_base + i;
+					maximum = con_result[max_idx];
+				}
 			}
+			con[con_base] = -maximum + CONSERVATIVE_BUFFER;
 		}
-		con[con_base] = -maximum + CONSERVATIVE_BUFFER;
-
-		if (joint_id < 2 * (link_id + 1)) {
-			shared_lambda[joint_id] = lambda[joint_id];
+		else if (joint_id <= 2 * (link_id + 1)) {
+			shared_lambda[joint_id - 1] = lambda[joint_id - 1];
 		}
 	}
 

@@ -146,7 +146,7 @@ P4.	solve the NLP
     // Ask Ipopt to solve the problem
     status = app->OptimizeTNLP(mynlp);
 
-	nlhs = 4;
+	nlhs = 1;
     if( status == Solve_Succeeded ) {
         plhs[0] = mxCreateNumericMatrix(n_links * 2, 1, mxDOUBLE_CLASS, mxREAL);
 		double *output0 = (double*)mxGetData(plhs[0]);
@@ -166,7 +166,7 @@ P4.	solve the NLP
 	/*
 P5. handle the output, release the memory
 	*/
-	
+	/*
 	links.evaluate_constraints(k_opt);
 	
 	plhs[1] = mxCreateNumericMatrix(n_links * n_obstacles * n_time_steps, 1, mxDOUBLE_CLASS, mxREAL);
@@ -202,7 +202,7 @@ P5. handle the output, release the memory
 			}
 		}
 	}
-	
+	*/
 	
 	/*
 	mxArray* output1 = mxCreateCellMatrix(1, n_obstacles);
