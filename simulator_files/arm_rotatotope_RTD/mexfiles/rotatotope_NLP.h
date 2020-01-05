@@ -13,6 +13,8 @@ ipopt nlp for rotatotopes
 #include "rotatotopeArray.h"
 
 #define t_plan 1.0
+#define t_total 1.0
+#define t_move 0.5
 
 using namespace Ipopt;
 
@@ -145,6 +147,8 @@ public:
    );
    //@}
 
+   void compute_max_min_states(const Number* k, double* &q_min, double* &q_max, double* &q_dot_min, double* &q_dot_max, double* &grad_q_min, double* &grad_q_max, double* &grad_q_dot_min, double* &grad_q_dot_max);
+
    double* solution;
 
 private:
@@ -180,6 +184,16 @@ private:
    double* g_k;
 
    uint32_t n_obstacles;
+
+   double* q_max;
+   double* q_min;
+   double* q_dot_max;
+   double* q_dot_min;
+   
+   double* grad_q_max;
+   double* grad_q_min;
+   double* grad_q_dot_max;
+   double* grad_q_dot_min;
 
    //@}
 };

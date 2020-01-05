@@ -24,15 +24,31 @@ rotatotope_NLP::rotatotope_NLP()
     q_dot = nullptr;
     q_des = nullptr;
     n_obstacles = 0;
+    q_max = nullptr;
+   q_min = nullptr;
+   q_dot_max = nullptr;
+   q_dot_min = nullptr;
+   grad_q_max = nullptr;
+   grad_q_min = nullptr;
+   grad_q_dot_max = nullptr;
+   grad_q_dot_min = nullptr;
     solution = nullptr;
 }
 
 // destructor
 rotatotope_NLP::~rotatotope_NLP()
 {
-    if(solution != nullptr){
-       delete[] solution;
-    }
+   delete[] q_max;
+   delete[] q_min;
+   delete[] q_dot_max;
+   delete[] q_dot_min;
+   
+   delete[] grad_q_max;
+   delete[] grad_q_min;
+   delete[] grad_q_dot_max;
+   delete[] grad_q_dot_min;
+
+   delete[] solution;
 }
 
  // [set_parameters]
@@ -54,6 +70,16 @@ rotatotope_NLP::~rotatotope_NLP()
     c_k = c_k_input;
     g_k = g_k_input;
     n_obstacles = n_obstacles_input;
+    uint32_t n_angles = ra_info->n_links * 2;
+    q_max = new double[n_angles];
+   q_min = new double[n_angles];
+   q_dot_max = new double[n_angles];
+   q_dot_min = new double[n_angles];
+   
+   grad_q_max = new double[n_angles];
+   grad_q_min = new double[n_angles];
+   grad_q_dot_max = new double[n_angles];
+   grad_q_dot_min = new double[n_angles];
     return true;
  };
 
@@ -71,7 +97,7 @@ bool rotatotope_NLP::get_nlp_info(
    n = ra_info->n_links * 2;
 
    // number of inequality constraint
-   m = ra_info->n_links * n_obstacles * ra_info->n_time_steps;
+   m = ra_info->n_links * n_obstacles * ra_info->n_time_steps + ra_info->n_links * 8;
 
    nnz_jac_g = m * n;
    nnz_h_lag = n * (n + 1) / 2;
@@ -99,7 +125,7 @@ bool rotatotope_NLP::get_bounds_info(
    if(n != ra_info->n_links * 2){
       mexErrMsgIdAndTxt("MyProg:ConvertString", "*** Error wrong value of n in get_bounds_info!");
    }
-   if(m != ra_info->n_links * n_obstacles * ra_info->n_time_steps){
+   if(m != ra_info->n_links * n_obstacles * ra_info->n_time_steps + ra_info->n_links * 8){
       mexErrMsgIdAndTxt("MyProg:ConvertString", "*** Error wrong value of m in get_bounds_info!");
    }
 
@@ -171,7 +197,7 @@ bool rotatotope_NLP::eval_f(
       mexErrMsgIdAndTxt("MyProg:ConvertString", "*** Error wrong value of n in eval_f!");
    }
 
-   // q_plan = q_0 + q_dot_0*P.t_plan + (1/2)*k*P.t_plan^2;
+   // q_plan = q + q_dot*P.t_plan + 0.5*k*P.t_plan^2;
    // obj_value = sum((q_plan - q_des).^2);
    obj_value = 0; 
    for(Index i = 0; i < ra_info->n_links * 2; i++){
@@ -218,7 +244,7 @@ bool rotatotope_NLP::eval_g(
    if(n != ra_info->n_links * 2){
       mexErrMsgIdAndTxt("MyProg:ConvertString", "*** Error wrong value of n in eval_g!");
    }
-   if(m != ra_info->n_links * n_obstacles * ra_info->n_time_steps){
+   if(m != ra_info->n_links * n_obstacles * ra_info->n_time_steps + n * 4){
       mexErrMsgIdAndTxt("MyProg:ConvertString", "*** Error wrong value of m in eval_g!");
    }
    
@@ -243,10 +269,28 @@ bool rotatotope_NLP::eval_g(
         }
         ra_info->evaluate_constraints(x_double);
         delete[] x_double;
+
+        compute_max_min_states(x, q_min, q_max, q_dot_min, q_dot_max, grad_q_min, grad_q_max, grad_q_dot_min, grad_q_dot_max);
     }
 
-   for(Index i = 0; i < m; i++) {
-        g[i] = ra_info->con[i];
+   Index offset = ra_info->n_links * n_obstacles * ra_info->n_time_steps;
+   for(Index i = 0; i < offset; i++) {
+      g[i] = ra_info->con[i];
+   }
+   for(Index i = offset; i < offset + n; i++) {
+      g[i] = q_min[i - offset];
+   }
+   offset += n;
+   for(Index i = offset; i < offset + n; i++) {
+      g[i] = q_max[i - offset];
+   }
+   offset += n;
+   for(Index i = offset; i < offset + n; i++) {
+      g[i] = q_dot_min[i - offset];
+   }
+   offset += n;
+   for(Index i = offset; i < offset + n; i++) {
+      g[i] = q_dot_max[i - offset];
    }
 
    return true;
@@ -269,7 +313,7 @@ bool rotatotope_NLP::eval_jac_g(
    if(n != ra_info->n_links * 2){
       mexErrMsgIdAndTxt("MyProg:ConvertString", "*** Error wrong value of n in eval_jac_g!");
    }
-   if(m != ra_info->n_links * n_obstacles * ra_info->n_time_steps){
+   if(m != ra_info->n_links * n_obstacles * ra_info->n_time_steps + ra_info->n_links * 8){
       mexErrMsgIdAndTxt("MyProg:ConvertString", "*** Error wrong value of m in eval_jac_g!");
    }
 
@@ -308,10 +352,54 @@ bool rotatotope_NLP::eval_jac_g(
       }
       
       // return the values of the Jacobian of the constraints
-      for(Index i = 0; i < m; i++){
-          for(Index j = 0; j < n; j++){
-              values[i * n + j] = ra_info->jaco_con[i * n + j];
-          }
+      Index offset = ra_info->n_links * n_obstacles * ra_info->n_time_steps;
+      for(Index i = 0; i < offset; i++){
+         for(Index j = 0; j < n; j++){
+            values[i * n + j] = ra_info->jaco_con[i * n + j];
+         }
+      }
+      for(Index i = offset; i < offset + n; i++) {
+         for(Index j = 0; j < n; j++){
+            if(i - offset == j){
+               values[i * n + j] = grad_q_min[j];
+            }  
+            else{
+               values[i * n + j] = 0;
+            }
+         }
+      }
+      offset += n;
+      for(Index i = offset; i < offset + n; i++) {
+         for(Index j = 0; j < n; j++){
+            if(i - offset == j){
+               values[i * n + j] = grad_q_max[j];
+            }  
+            else{
+               values[i * n + j] = 0;
+            }
+         }
+      }
+      offset += n;
+      for(Index i = offset; i < offset + n; i++) {
+         for(Index j = 0; j < n; j++){
+            if(i - offset == j){
+               values[i * n + j] = grad_q_dot_min[j];
+            }  
+            else{
+               values[i * n + j] = 0;
+            }
+         }
+      }
+      offset += n;
+      for(Index i = offset; i < offset + n; i++) {
+         for(Index j = 0; j < n; j++){
+            if(i - offset == j){
+               values[i * n + j] = grad_q_dot_max[j];
+            }  
+            else{
+               values[i * n + j] = 0;
+            }
+         }
       }
    }
 
@@ -338,7 +426,7 @@ bool rotatotope_NLP::eval_h(
    if(n != ra_info->n_links * 2){
       mexErrMsgIdAndTxt("MyProg:ConvertString", "*** Error wrong value of n in eval_h!");
    }
-   if(m != ra_info->n_links * n_obstacles * ra_info->n_time_steps){
+   if(m != ra_info->n_links * n_obstacles * ra_info->n_time_steps + ra_info->n_links * 8){
       mexErrMsgIdAndTxt("MyProg:ConvertString", "*** Error wrong value of m in eval_h!");
    }
 
@@ -397,7 +485,7 @@ bool rotatotope_NLP::eval_h(
          }
       }
 
-      for(Index i = 0; i < m; i++){
+      for(Index i = 0; i < ra_info->n_links * n_obstacles * ra_info->n_time_steps; i++){
          idx = 0;
          for (Index row = 0; row < n; row++) {
             for (Index col = 0; col < row; col++) {
@@ -461,6 +549,158 @@ void rotatotope_NLP::finalize_solution(
    solution = new double[n];
    for( Index i = 0; i < n; i++ ) {
       solution[i] = (double)x[i];
+   }
+}
+
+void rotatotope_NLP::compute_max_min_states(const Number* k, double* &q_min, double* &q_max, double* &q_dot_min, double* &q_dot_max, double* &grad_q_min, double* &grad_q_max, double* &grad_q_dot_min, double* &grad_q_dot_max) {
+   uint32_t n_angles = ra_info->n_links * 2;
+   double t_to_stop = t_total - t_move;
+
+   for (uint32_t i = 0; i < n_angles; i++){
+      double q_peak = q[i] + q_dot[i] * t_move + k[i] * t_move * t_move * 0.5;
+      double q_dot_peak = q_dot[i] + k[i] * t_move;
+      double q_ddot_to_stop = -q_dot_peak / t_to_stop;
+      double q_stop = q_peak + q_dot_peak * t_to_stop + 0.5 * q_ddot_to_stop * t_to_stop * t_to_stop;
+      double t_max_min_to_peak = -q_dot[i] / k[i];
+
+      double q_max_to_peak;
+      double q_min_to_peak;
+      double q_dot_max_to_peak;
+      double q_dot_min_to_peak;
+      
+      double grad_q_max_to_peak;
+      double grad_q_min_to_peak;
+      double grad_q_dot_max_to_peak;
+      double grad_q_dot_min_to_peak;
+      
+      double q_max_to_stop;
+      double q_min_to_stop;
+      double q_dot_max_to_stop;
+      double q_dot_min_to_stop;
+      
+      double grad_q_max_to_stop;
+      double grad_q_min_to_stop;
+      double grad_q_dot_max_to_stop;
+      double grad_q_dot_min_to_stop;
+
+      double q_endpoints_ordered[2];
+      double grad_q_endpoints_ordered[2];
+
+      if (q_peak >= q[i]){
+         q_endpoints_ordered[0] = q[i]; 
+         q_endpoints_ordered[1] = q_peak;
+         grad_q_endpoints_ordered[0] = 0; 
+         grad_q_endpoints_ordered[0] = 0.5 * t_move * t_move;
+      }
+      else{
+         q_endpoints_ordered[0] = q_peak; 
+         q_endpoints_ordered[1] = q[i];
+         grad_q_endpoints_ordered[0] = 0.5 * t_move * t_move; 
+         grad_q_endpoints_ordered[1] = 0;
+      }
+      
+      if (t_max_min_to_peak > 0 && t_max_min_to_peak < t_move){
+         if (k[i] >= 0){
+            q_min_to_peak = q[i] + q_dot[i] * t_max_min_to_peak + 0.5 * k[i] * t_max_min_to_peak * t_max_min_to_peak;
+            q_max_to_peak  = q_endpoints_ordered[1];
+            grad_q_min_to_peak = (0.5 * q_dot[i] * q_dot[i]) / (k[i] * k[i]);
+            grad_q_max_to_peak = grad_q_endpoints_ordered[1];
+         }
+         else{
+            q_min_to_peak = q_endpoints_ordered[0];
+            q_max_to_peak = q[i] + q_dot[i] * t_max_min_to_peak + 0.5 * k[i] * t_max_min_to_peak * t_max_min_to_peak;
+            grad_q_min_to_peak = grad_q_endpoints_ordered[0];
+            grad_q_max_to_peak = (0.5 * q_dot[i] * q_dot[i]) / (k[i] * k[i]);
+         }
+      }
+      else{
+         q_min_to_peak = q_endpoints_ordered[0];
+         q_max_to_peak = q_endpoints_ordered[1];
+         
+         grad_q_min_to_peak = grad_q_endpoints_ordered[0];
+         grad_q_max_to_peak = grad_q_endpoints_ordered[1];
+      }
+      
+      if( q_dot_peak >= q_dot[i]){
+         q_dot_min_to_peak = q_dot[i];
+         q_dot_max_to_peak = q_dot_peak;
+         
+         grad_q_dot_min_to_peak = 0;
+         grad_q_dot_max_to_peak = t_move;
+      }
+      else{
+         q_dot_min_to_peak = q_dot_peak;
+         q_dot_max_to_peak = q_dot[i];
+         
+         grad_q_dot_min_to_peak = t_move;
+         grad_q_dot_max_to_peak = 0;
+      }
+
+      if( q_stop >= q_peak){
+         q_min_to_stop = q_peak;
+         q_max_to_stop = q_stop;
+         
+         grad_q_min_to_stop = 0.5 * t_move * t_move;
+         grad_q_max_to_stop = 0.5 * t_move * t_move + 0.5 * t_move * t_to_stop;
+      }
+      else{
+         q_min_to_stop = q_stop;
+         q_max_to_stop = q_peak;
+         
+         grad_q_min_to_stop = 0.5 * t_move * t_move + 0.5 * t_move * t_to_stop;
+         grad_q_max_to_stop = 0.5 * t_move * t_move;
+      }
+      
+      if(q_dot_peak >= 0){
+         q_dot_min_to_stop = 0;
+         q_dot_max_to_stop = q_dot_peak;
+         
+         grad_q_dot_min_to_stop = 0;
+         grad_q_dot_max_to_stop = t_move;
+      }
+      else{
+         q_dot_min_to_stop = q_dot_peak;
+         q_dot_max_to_stop = 0;
+         
+         grad_q_dot_min_to_stop = t_move;
+         grad_q_dot_max_to_stop = 0;
+      }
+      
+      if (q_min_to_peak <= q_min_to_stop){
+         q_min[i] = q_min_to_peak;
+         grad_q_min[i] = grad_q_min_to_peak;
+      }
+      else{
+         q_min[i] = q_min_to_stop;
+         grad_q_min[i] = grad_q_min_to_stop;
+      }
+      
+      if (q_max_to_peak >= q_max_to_stop){
+         q_max[i] = q_max_to_peak;
+         grad_q_max[i] = grad_q_max_to_peak;
+      }
+      else{
+         q_max[i] = q_max_to_stop;
+         grad_q_max[i] = grad_q_max_to_stop;
+      }
+      
+      if (q_dot_min_to_peak <= q_dot_min_to_stop){
+         q_dot_min[i] = q_dot_min_to_peak;
+         grad_q_dot_min[i] = grad_q_dot_min_to_peak;
+      }
+      else{
+         q_dot_min[i] = q_dot_min_to_stop;
+         grad_q_dot_min[i] = grad_q_dot_min_to_stop;
+      }
+      
+      if (q_dot_max_to_peak >= q_dot_max_to_stop){
+         q_dot_max[i] = q_dot_max_to_peak;
+         grad_q_dot_max[i] = grad_q_dot_max_to_peak;
+      }
+      else{
+         q_dot_max[i] = q_dot_max_to_stop;
+         grad_q_dot_max[i] = grad_q_dot_max_to_stop;
+      }
    }
 }
 
