@@ -714,19 +714,24 @@ __global__ void evaluate_constraints_kernel(double* lambda, uint32_t link_id, do
 
 	__syncthreads();
 
-	double result = 0;
-	for (uint32_t p = 0; p < k_con_num[k_con_num_base]; p++){
-		double prod = 1.0;
-		for (uint32_t j = 0; j < 2 * (link_id + 1); j++) {
-			if (k_con[(j * n_time_steps + time_id) * RZ_length + p]) {
-				prod *= shared_lambda[j];
+	if (b_con[con_base] == A_BIG_NUMBER){
+		con_result[con_base] = -A_BIG_NUMBER;
+	}
+	else{
+		double result = 0;
+		for (uint32_t p = 0; p < k_con_num[k_con_num_base]; p++){
+			double prod = 1.0;
+			for (uint32_t j = 0; j < 2 * (link_id + 1); j++) {
+				if (k_con[(j * n_time_steps + time_id) * RZ_length + p]) {
+					prod *= shared_lambda[j];
+				}
 			}
+
+			result += prod * A_con[con_base * A_con_width + p];
 		}
 
-		result += prod * A_con[con_base * A_con_width + p];
+		con_result[con_base] = result - b_con[con_base];
 	}
-
-	con_result[con_base] = result - b_con[con_base];
 }
 
 __global__ void evaluate_gradient_kernel(double* con_result, uint32_t link_id, double* lambda, double* g_k, double* A_con, uint32_t A_con_width, bool* k_con, uint8_t* k_con_num, uint32_t n_links, double* con, double* jaco_con, double* hess_con) {
