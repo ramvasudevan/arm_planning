@@ -692,7 +692,7 @@ void rotatotopeArray::evaluate_constraints(double* k_opt) {
 	cudaFree(dev_g_k);
 
 	end_t = clock();
-	//mexPrintf("constraint evaluation time: %.6f\n", (end_t - start_t) / (double)(CLOCKS_PER_SEC));
+	mexPrintf("constraint evaluation time: %.6f\n", (end_t - start_t) / (double)(CLOCKS_PER_SEC));
 
 }
 

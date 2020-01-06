@@ -134,7 +134,7 @@ P4.	solve the NLP
     //app->Options()->SetStringValue("hessian_approximation", "limited-memory");
 	//app->Options()->SetStringValue("limited_memory_update_type", "bfgs");
 	//app->Options()->SetStringValue("derivative_test", "first-order");
-	//app->Options()->SetNumericValue("derivative_test_perturbation", 0.0001);
+	//app->Options()->SetNumericValue("derivative_test_perturbation", 0.000001);
 
     // Initialize the IpoptApplication and process the options
     ApplicationReturnStatus status;
@@ -166,7 +166,7 @@ P4.	solve the NLP
 	/*
 P5. handle the output, release the memory
 	*/
-	/*
+	
 	links.evaluate_constraints(k_opt);
 	
 	plhs[1] = mxCreateNumericMatrix(n_links * n_obstacles * n_time_steps, 1, mxDOUBLE_CLASS, mxREAL);
@@ -202,7 +202,7 @@ P5. handle the output, release the memory
 			}
 		}
 	}
-	*/
+	
 	
 	/*
 	mxArray* output1 = mxCreateCellMatrix(1, n_obstacles);

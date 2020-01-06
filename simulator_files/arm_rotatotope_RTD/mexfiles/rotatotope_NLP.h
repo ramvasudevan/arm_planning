@@ -15,6 +15,7 @@ ipopt nlp for rotatotopes
 #define t_plan 1.0
 #define t_total 1.0
 #define t_move 0.5
+#define twoHunPi 628.318531
 
 using namespace Ipopt;
 
@@ -147,7 +148,7 @@ public:
    );
    //@}
 
-   void compute_max_min_states(const Number* k, double* &q_min, double* &q_max, double* &q_dot_min, double* &q_dot_max, double* &grad_q_min, double* &grad_q_max, double* &grad_q_dot_min, double* &grad_q_dot_max);
+   void compute_max_min_states(const Number* k);
 
    double* solution;
 
@@ -184,6 +185,12 @@ private:
    double* g_k;
 
    uint32_t n_obstacles;
+
+   double joint_state_limits[12] = {-1.6056, -1.221, -twoHunPi, -2.251, -twoHunPi, -2.16,
+                                     1.6056,  1.518,  twoHunPi,  2.251,  twoHunPi,  2.16};
+
+   double joint_speed_limits[12] = {-twoHunPi, -twoHunPi, -twoHunPi, -twoHunPi, -twoHunPi, -twoHunPi,
+                                     twoHunPi,  twoHunPi,  twoHunPi,  twoHunPi,  twoHunPi,  twoHunPi};                                 
 
    double* q_max;
    double* q_min;

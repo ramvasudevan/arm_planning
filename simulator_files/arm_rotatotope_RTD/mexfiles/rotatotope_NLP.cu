@@ -270,7 +270,7 @@ bool rotatotope_NLP::eval_g(
         ra_info->evaluate_constraints(x_double);
         delete[] x_double;
 
-        compute_max_min_states(x, q_min, q_max, q_dot_min, q_dot_max, grad_q_min, grad_q_max, grad_q_dot_min, grad_q_dot_max);
+        compute_max_min_states(x);
     }
 
    Index offset = ra_info->n_links * n_obstacles * ra_info->n_time_steps;
@@ -278,19 +278,19 @@ bool rotatotope_NLP::eval_g(
       g[i] = ra_info->con[i];
    }
    for(Index i = offset; i < offset + n; i++) {
-      g[i] = q_min[i - offset];
+      g[i] = joint_state_limits[i - offset] - q_min[i - offset];
    }
    offset += n;
    for(Index i = offset; i < offset + n; i++) {
-      g[i] = q_max[i - offset];
+      g[i] = -joint_state_limits[i - offset + n] + q_max[i - offset];
    }
    offset += n;
    for(Index i = offset; i < offset + n; i++) {
-      g[i] = q_dot_min[i - offset];
+      g[i] = joint_speed_limits[i - offset] - q_dot_min[i - offset];
    }
    offset += n;
    for(Index i = offset; i < offset + n; i++) {
-      g[i] = q_dot_max[i - offset];
+      g[i] = -joint_speed_limits[i - offset + n] + q_dot_max[i - offset];
    }
 
    return true;
@@ -349,6 +349,8 @@ bool rotatotope_NLP::eval_jac_g(
          }
          ra_info->evaluate_constraints(x_double);
          delete[] x_double;
+
+         compute_max_min_states(x);
       }
       
       // return the values of the Jacobian of the constraints
@@ -361,7 +363,7 @@ bool rotatotope_NLP::eval_jac_g(
       for(Index i = offset; i < offset + n; i++) {
          for(Index j = 0; j < n; j++){
             if(i - offset == j){
-               values[i * n + j] = grad_q_min[j];
+               values[i * n + j] = -grad_q_min[j];
             }  
             else{
                values[i * n + j] = 0;
@@ -383,7 +385,7 @@ bool rotatotope_NLP::eval_jac_g(
       for(Index i = offset; i < offset + n; i++) {
          for(Index j = 0; j < n; j++){
             if(i - offset == j){
-               values[i * n + j] = grad_q_dot_min[j];
+               values[i * n + j] = -grad_q_dot_min[j];
             }  
             else{
                values[i * n + j] = 0;
@@ -552,7 +554,7 @@ void rotatotope_NLP::finalize_solution(
    }
 }
 
-void rotatotope_NLP::compute_max_min_states(const Number* k, double* &q_min, double* &q_max, double* &q_dot_min, double* &q_dot_max, double* &grad_q_min, double* &grad_q_max, double* &grad_q_dot_min, double* &grad_q_dot_max) {
+void rotatotope_NLP::compute_max_min_states(const Number* k) {
    uint32_t n_angles = ra_info->n_links * 2;
    double t_to_stop = t_total - t_move;
 

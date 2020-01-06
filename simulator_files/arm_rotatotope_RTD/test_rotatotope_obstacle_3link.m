@@ -29,22 +29,21 @@ obs_center = [0.6; -0.4; -0.7];
 obs_width = [0.1];
 O{5} = box_obstacle_zonotope('center', obs_center(:), 'side_lengths', [obs_width, obs_width, obs_width]);
 
-%O = W.obstacles;
 
 % get current state of robot
-q = [-0.9321;
-    2.0787;
-    0.5357;
-    0.3124;
-    2.6213;
-   -1.3456] ;
+q = [0.7885;
+    0.7956;
+    0.3887;
+   -1.4218;
+    0.6108;
+   -0.8643] ;
 q_dot = zeros(6, 1) ;
-q_des = [-0.8855;
-    2.1199;
-    0.4092;
-    0.2857;
-    2.4190;
-   -1.1769];
+q_des = [0.6441;
+        0.6902;
+        0.5426;
+       -1.4591;
+        0.4469;
+       -0.9425];
 good_k = -pi/6*ones(6, 1) ;
 bad_k = [pi/6 - 0.001; pi/6 - 0.001; pi/12; pi/24; -pi/36; pi/48];
 
