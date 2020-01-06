@@ -1,7 +1,7 @@
 %% user parameters
 % filename = 'trial_20190410_0262.mat' ;
 clear;
-filename = '/Users/pdholmes/Documents/MATLAB/arm_planning/simulator_files/testing/trial_data/20191205/trial_scene_010_005.mat';
+filename = '/Users/pdholmes/Documents/MATLAB/arm_planning/simulator_files/testing/trial_data/20191205/trial_scene_010_009.mat';
 
 % obs_color = [1 0.7 0.7] ;
 % obs_opacity = 0.5 ;

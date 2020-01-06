@@ -95,11 +95,11 @@ classdef robot_arm_rotatotope_RTD_planner_3D_fetch < robot_arm_generic_planner
 %             [~, k_lim, k_unsafe_A, k_unsafe_b] = compute_unsafe_parameters_3D(P.R, P.phi_dot_0, O, P.FRS_options);
             
             P.vdisp('Replan is calling trajopt!',8)
-            try
+%             try
                 [k_opt, trajopt_failed] = P.trajopt(q_0, q_dot_0, q_des);
-            catch
-                trajopt_failed = true ;
-            end
+%             catch
+%                 trajopt_failed = true ;
+%             end
 %             disp(k_opt);
 %             pause;
             
@@ -168,7 +168,8 @@ classdef robot_arm_rotatotope_RTD_planner_3D_fetch < robot_arm_generic_planner
             initial_guess = (lb + ub)/2;
            
 %             options = optimoptions('fmincon','SpecifyConstraintGradient',true, 'Algorithm', 'interior-point');
-            options = optimoptions('fmincon','SpecifyConstraintGradient',true);
+%             options = optimoptions('fmincon','SpecifyConstraintGradient',true);
+            options = optimoptions('fmincon','SpecifyConstraintGradient',true, 'CheckGradients', true);
 %             options = optimoptions('fmincon');
             [k_opt, ~, exitflag, ~] = fmincon(cost_func, initial_guess, [], [], [], [], lb, ub, constraint_func, options) ;
             
@@ -180,7 +181,7 @@ classdef robot_arm_rotatotope_RTD_planner_3D_fetch < robot_arm_generic_planner
            q_plan = compute_q_plan(P, q_0, q_dot_0, k);
            cost = sum((q_plan - q_des).^2);
            
-           error_if_out_of_time(P.trajopt_start_tic,P.t_plan)
+%            error_if_out_of_time(P.trajopt_start_tic,P.t_plan)
         end
         
         function c = eval_cost_end_effector(P, k, q_0, q_dot_0, ee_des)
@@ -188,7 +189,7 @@ classdef robot_arm_rotatotope_RTD_planner_3D_fetch < robot_arm_generic_planner
             ee_plan = P.forward_kinematics_end_effector(q_plan(:,end)) ;
             c = sum((ee_plan - ee_des).^2) ;
             
-            error_if_out_of_time(P.trajopt_start_tic,P.t_plan)
+%             error_if_out_of_time(P.trajopt_start_tic,P.t_plan)
         end
         
         function [c, ceq, gradc, gradceq] = eval_constraint(P, k_opt, q_0, q_dot_0)
@@ -206,8 +207,8 @@ classdef robot_arm_rotatotope_RTD_planner_3D_fetch < robot_arm_generic_planner
             c_joint = [c_joint; P.arm_joint_speed_limits(1, :)' - q_dot_min];
             c_joint = [c_joint; -P.arm_joint_speed_limits(2, :)' + q_dot_max];
             
-            grad_c_joint = [grad_q_min, grad_q_max];
-            grad_c_joint = [grad_q_min, grad_q_max, grad_q_dot_min, grad_q_dot_max];
+%             grad_c_joint = [grad_q_min, grad_q_max];
+            grad_c_joint = [-grad_q_min, grad_q_max, -grad_q_dot_min, grad_q_dot_max];
             
             c = [c; c_joint];
             gradc = [gradc, grad_c_joint];
@@ -222,7 +223,7 @@ classdef robot_arm_rotatotope_RTD_planner_3D_fetch < robot_arm_generic_planner
 %                     lambda = c_param + (k_param./g_param);
                     lambda = (k_param - c_param)./g_param;
                     for k = 1:length(idx) % for each time step
-                        lambdas_prod = P.R.k_con{i}{j}{idx(k)}.*lambda;
+                        lambdas_prod = double(P.R.k_con{i}{j}{idx(k)}).*lambda;
                         lambdas_prod(~P.R.k_con{i}{j}{idx(k)}) = 1;
                         lambdas_prod = prod(lambdas_prod, 1)';
                         
@@ -239,10 +240,10 @@ classdef robot_arm_rotatotope_RTD_planner_3D_fetch < robot_arm_generic_planner
                         if nargout > 2
                             maxidx = find(c_obs == c_obs_max);
                             k_con_temp = P.R.k_con{i}{j}{idx(k)}';
-                            lambdas_grad = k_con_temp;
+                            lambdas_grad = double(k_con_temp);
                             cols = 1:length(lambda);
                             for l = 1:length(lambda)
-                                lambdas_grad_temp = k_con_temp(:, l);
+                                lambdas_grad_temp = double(k_con_temp(:, l));
                                 lambdas_grad_temp = lambdas_grad_temp*lambda(l);
                                 lambdas_grad_temp(~k_con_temp(:, l)) = 1;
                                 lambdas_grad(:, cols ~= l) = lambdas_grad_temp.*lambdas_grad(:, cols ~= l);
@@ -258,7 +259,7 @@ classdef robot_arm_rotatotope_RTD_planner_3D_fetch < robot_arm_generic_planner
                     end
                 end
                 
-                error_if_out_of_time(P.trajopt_start_tic,P.t_plan)
+%                 error_if_out_of_time(P.trajopt_start_tic,P.t_plan)
             end
             
             %%% Self-intersection constraint generation:
@@ -290,16 +291,16 @@ classdef robot_arm_rotatotope_RTD_planner_3D_fetch < robot_arm_generic_planner
                     if nargout > 2
                         maxidx = find(c_obs == c_obs_max);
                         k_con_temp = P.R.k_con_self{i}{idx(j)}';
-                        lambdas_grad = k_con_temp;
+                        lambdas_grad = double(k_con_temp);
                         cols = 1:length(lambda);
                         for l = 1:length(lambda)
-                            lambdas_grad_temp = k_con_temp(:, l);
+                            lambdas_grad_temp = double(k_con_temp(:, l));
                             lambdas_grad_temp = lambdas_grad_temp*lambda(l);
                             lambdas_grad_temp(~k_con_temp(:, l)) = 1;
                             lambdas_grad(:, cols ~= l) = lambdas_grad_temp.*lambdas_grad(:, cols ~= l);
                         end
                         if length(maxidx) > 1
-                            %                                 disp('ahhh');
+                                                            disp('ahhh');
                             tempgradc = P.R.A_con_self{i}{idx(j)}(maxidx, :)*lambdas_grad;
                             gradc = [gradc, (-max(tempgradc)')./g_param];
                         else
