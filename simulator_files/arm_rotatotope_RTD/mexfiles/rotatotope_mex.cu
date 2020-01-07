@@ -132,8 +132,8 @@ P4.	solve the NLP
     app->Options()->SetStringValue("output_file", "ipopt.out");
     //app->Options()->SetStringValue("hessian_approximation", "limited-memory");
 	//app->Options()->SetStringValue("limited_memory_update_type", "bfgs");
-	//app->Options()->SetStringValue("derivative_test", "first-order");
-	//app->Options()->SetNumericValue("derivative_test_perturbation", 0.00001);
+	//app->Options()->SetStringValue("derivative_test", "only-second-order");
+	//app->Options()->SetNumericValue("derivative_test_perturbation", 0.000001);
 
     // Initialize the IpoptApplication and process the options
     ApplicationReturnStatus status;

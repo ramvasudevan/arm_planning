@@ -314,8 +314,10 @@ void rotatotopeArray::stack(rotatotopeArray &EEs) {
 			dim3 grid2(n_time_steps, 1, 1);
 			dim3 block2(reduce_order, Z_width, 1);
 			stack_kernel << < grid2, block2 >> > (link_id, EE_id, dev_RZ_stack[link_id], EEs.dev_RZ, dev_c_idx_stack[link_id], EEs.dev_c_idx, dev_k_idx_stack[link_id], EEs.dev_k_idx);
+		
+			
 		}
-
+		/*
 		if (link_id == 0) {
 			debug_RZ = new double[n_time_steps * RZ_length * Z_width];
 			cudaMemcpy(debug_RZ, dev_RZ_stack[link_id], n_time_steps * RZ_length * Z_width * sizeof(double), cudaMemcpyDeviceToHost);
@@ -326,6 +328,7 @@ void rotatotopeArray::stack(rotatotopeArray &EEs) {
 			debug_k_idx = new bool[2 * (link_id + 1) * n_time_steps * RZ_length];
 			cudaMemcpy(debug_k_idx, dev_k_idx_stack[link_id], 2 * (link_id + 1) * n_time_steps * RZ_length * sizeof(bool), cudaMemcpyDeviceToHost);
 		}
+		*/
 	}
 }
 
@@ -692,7 +695,7 @@ void rotatotopeArray::evaluate_constraints(double* k_opt) {
 	cudaFree(dev_g_k);
 
 	end_t = clock();
-	//mexPrintf("constraint evaluation time: %.6f\n", (end_t - start_t) / (double)(CLOCKS_PER_SEC));
+	mexPrintf("constraint evaluation time: %.6f\n", (end_t - start_t) / (double)(CLOCKS_PER_SEC));
 
 }
 
@@ -793,7 +796,7 @@ __global__ void evaluate_gradient_kernel(double* con_result, uint32_t link_id, d
 	else if(joint_id > joint_id_sec){
 		double result = 0;
 		for (uint32_t p = 0; p < k_con_num[k_con_num_base]; p++) {
-			if(k_con[(joint_id * n_time_steps + time_id) * RZ_length + p]){
+			if(k_con[(joint_id * n_time_steps + time_id) * RZ_length + p] && k_con[(joint_id_sec * n_time_steps + time_id) * RZ_length + p]){
 				double prod = 1.0;
 				for (uint32_t j = 0; j < 2 * (link_id + 1); j++) {
 					if (j != joint_id && j != joint_id_sec && k_con[(j * n_time_steps + time_id) * RZ_length + p]) {
