@@ -592,7 +592,7 @@ void rotatotope_NLP::compute_max_min_states(const Number* k) {
          q_endpoints_ordered[0] = q[i]; 
          q_endpoints_ordered[1] = q_peak;
          grad_q_endpoints_ordered[0] = 0; 
-         grad_q_endpoints_ordered[0] = 0.5 * t_move * t_move;
+         grad_q_endpoints_ordered[1] = 0.5 * t_move * t_move;
       }
       else{
          q_endpoints_ordered[0] = q_peak; 
@@ -704,6 +704,70 @@ void rotatotope_NLP::compute_max_min_states(const Number* k) {
          grad_q_dot_max[i] = grad_q_dot_max_to_stop;
       }
    }
+}
+
+void rotatotope_NLP::try_joint_limits(double* k){
+   compute_max_min_states(k);
+ /*
+   mexPrintf("values:\n");
+   for(Index i = 0; i < 6; i++) {
+      mexPrintf("%f\n", joint_state_limits[i] - q_min[i]);
+   }
+   for(Index i = 0; i < 6; i++) {
+      mexPrintf("%f\n", -joint_state_limits[i + 6] + q_max[i]);
+   }
+   for(Index i = 0; i < 6; i++) {
+      mexPrintf("%f\n", joint_speed_limits[i] - q_dot_min[i]);
+   }
+   for(Index i = 0; i < 6; i++) {
+      mexPrintf("%f\n", -joint_speed_limits[i + 6] + q_dot_max[i]);
+   }*/
+   
+   for(Index i = 0; i < 6; i++) {
+      for(Index j = 0; j < 6; j++){
+         if(i == j){
+            std::cout<<-grad_q_min[j]<<" ";
+         }  
+         else{
+            std::cout<<0<<" ";
+         }
+      }
+      std::cout<<std::endl;
+   }
+   for(Index i = 0; i < 6; i++) {
+      for(Index j = 0; j < 6; j++){
+         if(i == j){
+            std::cout<<grad_q_max[j]<<" ";
+         }  
+         else{
+            std::cout<<0<<" ";
+         }
+      }
+      std::cout<<std::endl;
+   }
+   for(Index i = 0; i < 6; i++) {
+      for(Index j = 0; j < 6; j++){
+         if(i == j){
+            std::cout<<-grad_q_dot_min[j]<<" ";
+         }  
+         else{
+            std::cout<<0<<" ";
+         }
+      }
+      std::cout<<std::endl;
+   }
+   for(Index i = 0; i < 6; i++) {
+      for(Index j = 0; j < 6; j++){
+         if(i == j){
+            std::cout<<grad_q_dot_max[j]<<" ";
+         }  
+         else{
+            std::cout<<0<<" ";
+         }
+      }
+      std::cout<<std::endl;
+   }
+
 }
 
 #endif

@@ -132,8 +132,8 @@ P4.	solve the NLP
     app->Options()->SetStringValue("output_file", "ipopt.out");
     //app->Options()->SetStringValue("hessian_approximation", "limited-memory");
 	//app->Options()->SetStringValue("limited_memory_update_type", "bfgs");
-	app->Options()->SetStringValue("derivative_test", "first-order");
-	app->Options()->SetNumericValue("derivative_test_perturbation", 0.0000001);
+	//app->Options()->SetStringValue("derivative_test", "first-order");
+	//app->Options()->SetNumericValue("derivative_test_perturbation", 0.00001);
 
     // Initialize the IpoptApplication and process the options
     ApplicationReturnStatus status;
@@ -145,7 +145,7 @@ P4.	solve the NLP
     // Ask Ipopt to solve the problem
     status = app->OptimizeTNLP(mynlp);
 
-	nlhs = 4;
+	nlhs = 1;
     if( status == Solve_Succeeded ) {
         plhs[0] = mxCreateNumericMatrix(n_links * 2, 1, mxDOUBLE_CLASS, mxREAL);
 		double *output0 = (double*)mxGetData(plhs[0]);
@@ -157,7 +157,7 @@ P4.	solve the NLP
 		plhs[0] = mxCreateNumericMatrix(1, 1, mxINT32_CLASS, mxREAL);
 		int *output0 = (int*)mxGetData(plhs[0]);
 		*output0 = -12345;
-    }
+	}
 
 	end_t = clock();
 	mexPrintf("IPOPT NLP time: %.6f\n", (end_t - start_t) / (double)(CLOCKS_PER_SEC));
@@ -165,6 +165,7 @@ P4.	solve the NLP
 	/*
 P5. handle the output, release the memory
 	*/
+	/*
 	uint32_t link_id = 0;
 	uint32_t RZ_length = ((reduce_order - 1) * (link_id + 1) + 1);
 	mxArray* output1 = mxCreateCellMatrix(1, n_time_steps);
@@ -325,6 +326,7 @@ P5. handle the output, release the memory
 			}
 		}
 	}
+	*/
 
 	cudaFree(dev_R);
 	cudaFree(dev_rot_axes);

@@ -150,6 +150,8 @@ public:
 
    void compute_max_min_states(const Number* k);
 
+   void try_joint_limits(double* k);
+
    double* solution;
 
 private:
