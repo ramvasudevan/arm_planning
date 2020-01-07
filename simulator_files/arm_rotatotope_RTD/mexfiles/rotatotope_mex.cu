@@ -46,7 +46,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 	/*
 P0.	process the input
 	*/
-	if (nrhs != 9) {
+	if (nrhs != 7) {
 		mexErrMsgIdAndTxt("MyProg:ConvertString","*** Incorrect number of input!");
 	}
 
@@ -62,27 +62,37 @@ P0.	process the input
 	cudaMalloc((void**)&dev_R, R_width * R_length * sizeof(double));
 	cudaMemcpy(dev_R, R, R_width * R_length * sizeof(double), cudaMemcpyHostToDevice);
 
-	double* link_Z = mxGetPr(prhs[1]);
-	uint32_t link_Z_width = (uint32_t)mxGetM(prhs[1]);
-	uint32_t link_Z_length = (uint32_t)mxGetN(prhs[1]);
-	
-	double* EE_Z = mxGetPr(prhs[2]);
-	uint32_t EE_Z_width = (uint32_t)mxGetM(prhs[2]);
-	uint32_t EE_Z_length = (uint32_t)mxGetN(prhs[2]);
+	uint32_t n_obstacles = (uint32_t)(*mxGetPr(prhs[1]));
 
-	uint32_t n_obstacles = (uint32_t)(*mxGetPr(prhs[3]));
+	double* OZ = mxGetPr(prhs[2]);
+	uint32_t OZ_width = (uint32_t)mxGetM(prhs[2]);
+	uint32_t OZ_length = (uint32_t)mxGetN(prhs[2]);
 
-	double* OZ = mxGetPr(prhs[4]);
-	uint32_t OZ_width = (uint32_t)mxGetM(prhs[4]);
-	uint32_t OZ_length = (uint32_t)mxGetN(prhs[4]);
+	double* k_opt = mxGetPr(prhs[3]);
 
-	double* k_opt = mxGetPr(prhs[5]);
+	double* q = mxGetPr(prhs[4]);
 
-	double* q = mxGetPr(prhs[6]);
+	double* q_dot = mxGetPr(prhs[5]);
 
-	double* q_dot = mxGetPr(prhs[7]);
+	double* q_des = mxGetPr(prhs[6]);
 
-	double* q_des = mxGetPr(prhs[8]);
+	double link_Z[18] =  {  0.1778,         0,         0,
+							0.1778,         0,         0,
+							0.1651,         0,         0,
+							0.1651,         0,         0,
+							0.1651,         0,         0,
+							0.1651,         0,         0};
+	uint32_t link_Z_width = 3;
+	uint32_t link_Z_length = 6;
+
+	double EE_Z[6] =  {     0.3556,         0,         0,
+		                    0.3302,         0,         0};
+	uint32_t EE_Z_width = 3;
+	uint32_t EE_Z_length = 2;
+
+	double base_Z[3] =  {   0.1206,         0,         0.0825};
+	uint32_t base_Z_width = 3;
+	uint32_t base_Z_length = 1;
 
 	start_t = clock();
 
@@ -97,6 +107,7 @@ P1.	generate all the rotatotopes
 
 	rotatotopeArray links = rotatotopeArray(n_links, n_time_steps, R, dev_R, R_unit_length, dev_rot_axes, link_Z, link_Z_width, link_Z_length);
 	rotatotopeArray EEs = rotatotopeArray(n_links - 1, n_time_steps, R, dev_R, R_unit_length, dev_rot_axes, EE_Z, EE_Z_width, EE_Z_length);
+	rotatotopeArray base = rotatotopeArray(n_links - 2, n_time_steps, R, dev_R, R_unit_length, dev_rot_axes, base_Z, base_Z_width, base_Z_length);
 
 	/*
 P2.	stack the rotatotopes

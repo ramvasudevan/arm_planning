@@ -12,7 +12,7 @@ a cuda array for a cluster of rotatotopes
 
 #include "rotatotopeArray.h"
 
-rotatotopeArray::rotatotopeArray(uint32_t n_links_input, uint32_t n_time_steps_input, double* &R_input, double* &dev_R_input, uint32_t R_unit_length_input, uint8_t* &dev_rot_axes_input, double* &Z_input, uint32_t Z_width_input, uint32_t Z_length_input) {
+rotatotopeArray::rotatotopeArray(uint32_t n_links_input, uint32_t n_time_steps_input, double* R_input, double* dev_R_input, uint32_t R_unit_length_input, uint8_t* dev_rot_axes_input, double* Z_input, uint32_t Z_width_input, uint32_t Z_length_input) {
 	n_links = n_links_input;
 	n_time_steps = n_time_steps_input;
 	dev_R = dev_R_input;
@@ -412,6 +412,71 @@ __global__ void stack_kernel(uint32_t link_id, uint32_t EE_id, double* RZ_stack,
 				}
 
 				EE_k += EE_k_step;
+			}
+		}
+	}
+}
+
+__global__ void add_kernel(uint32_t link_offset, double* link_RZ, double* EE_RZ, bool* link_c_idx, bool* EE_c_idx, bool* link_k_idx, bool* EE_k_idx, double* RZ_new, bool* c_idx_new, bool* k_idx_new) {
+	uint32_t link_id = blockIdx.x + link_offset;
+	uint32_t time_id = blockIdx.y;
+	uint32_t n_time_steps = gridDim.y;
+	uint32_t Z_id = threadIdx.x;
+	uint32_t z_id = threadIdx.y;
+
+	uint32_t add_link_Z = (link_id * n_time_steps + time_id) * reduce_order + Z_id;
+	uint32_t add_EE_Z = (blockIdx.x * n_time_steps + time_id) * reduce_order + Z_id;
+	uint32_t add_Z = (link_id * n_time_steps + time_id) * (2 * reduce_order - 1) + Z_id;
+
+	uint32_t EE_k_start = ((blockIdx.x * (blockIdx.x + 1)) * n_time_steps + time_id) * reduce_order + Z_id;
+	uint32_t EE_k_end = (((blockIdx.x + 1) * (blockIdx.x + 2)) * n_time_steps + time_id) * reduce_order + Z_id;
+	uint32_t link_k_start = ((link_id * (link_id + 1)) * n_time_steps + time_id) * reduce_order + Z_id;
+	uint32_t link_k_end = (((link_id + 1) * (link_id + 2)) * n_time_steps + time_id) * reduce_order + Z_id;
+	uint32_t k_step = n_time_steps * reduce_order;
+	uint32_t add_k_start = ((link_id * (link_id + 1)) * n_time_steps + time_id) * (2 * reduce_order - 1)+ Z_id;
+	uint32_t add_k_step = n_time_steps * (2 * reduce_order - 1);
+
+	if (Z_id == 0) { // add the center
+		RZ_new[add_Z * 3 + z_id] = link_RZ[add_link_Z * 3 + z_id] + EE_RZ[add_EE_Z * 3 + z_id];
+
+		if (z_id == 0) {
+			c_idx_new[add_Z] = true;
+
+			uint32_t add_k = add_k_start, EE_k = EE_k_start;
+			for (uint32_t link_k = link_k_start; link_k < link_k_end; link_k += k_step) {
+				if (EE_k < EE_k_end) {
+					k_idx_new[add_k] = link_k_idx[link_k] | EE_k_idx[EE_k];
+				}
+				else {
+					k_idx_new[add_k] = link_k_idx[link_k];
+				}
+
+				add_k += add_k_step;
+				EE_k += k_step;
+			}
+		}
+	}
+	else { // stack the generators
+		RZ_new[add_Z * 3 + z_id] = link_RZ[add_link_Z * 3 + z_id];
+		RZ_new[(add_Z + reduce_order - 1) * 3 + z_id] = EE_RZ[add_EE_Z * 3 + z_id];
+
+		if (z_id == 0) {
+			c_idx_new[add_Z] = link_c_idx[add_Z];
+			c_idx_new[add_Z + reduce_order - 1] = EE_c_idx[add_EE_Z];
+
+			uint32_t add_k = add_k_start, EE_k = EE_k_start;
+			for (uint32_t link_k = link_k_start; link_k < link_k_end; link_k += k_step) {
+				k_idx_new[add_k] = link_k_idx[link_k];
+
+				if (EE_k < EE_k_end) {
+					k_idx_new[add_k + reduce_order - 1] = EE_k_idx[EE_k];
+				}
+				else {
+					k_idx_new[add_k + reduce_order - 1] = false;
+				}
+
+				add_k += add_k_step;
+				EE_k += k_step;
 			}
 		}
 	}

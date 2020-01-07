@@ -46,7 +46,7 @@ public:
 		8. Z_width
 		9. Z_length
 	*/
-	rotatotopeArray(uint32_t n_links_input, uint32_t n_time_steps_input, double* &R_input, double* &dev_R_input, uint32_t R_unit_length_input, uint8_t* &dev_rot_axes_input, double* &Z_input, uint32_t Z_width_input, uint32_t Z_length_input);
+	rotatotopeArray(uint32_t n_links_input, uint32_t n_time_steps_input, double* R_input, double* dev_R_input, uint32_t R_unit_length_input, uint8_t* dev_rot_axes_input, double* Z_input, uint32_t Z_width_input, uint32_t Z_length_input);
 
 	/*
 	Instruction:
