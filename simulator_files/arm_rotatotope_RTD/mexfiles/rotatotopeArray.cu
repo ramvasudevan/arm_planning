@@ -708,8 +708,8 @@ __global__ void evaluate_constraints_kernel(double* lambda, uint32_t link_id, do
 
 	__shared__ double shared_lambda[6];
 
-	if (c_id < 2 * (link_id + 1)) {
-		shared_lambda[c_id] = lambda[c_id];
+	if (time_id < 2 * (link_id + 1)) {
+		shared_lambda[time_id] = lambda[time_id];
 	}
 
 	__syncthreads();
@@ -756,7 +756,7 @@ __global__ void evaluate_gradient_kernel(double* con_result, uint32_t link_id, d
 
 	if (joint_id_sec == 0) {
 		if(joint_id == 0){
-			double maximum = FLT_MIN;
+			double maximum = -A_BIG_NUMBER - A_BIG_NUMBER;
 			max_idx = 0;
 			for (uint32_t i = 0; i < constraint_length; i++) {
 				if (maximum < con_result[con_result_base + i]) {
