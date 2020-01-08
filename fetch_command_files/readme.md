@@ -1,7 +1,7 @@
 // copied and pasted from Corina's tutorial:
 
-#How to run Fetch controllers
-###You will need an Ubuntu Computer for this step
+# How to run Fetch controllers
+### You will need an Ubuntu Computer for this step
 
 1. Power on Fetch: press the round button on the side of the robot.
 
