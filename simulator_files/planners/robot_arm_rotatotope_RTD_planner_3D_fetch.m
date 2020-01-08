@@ -274,7 +274,7 @@ classdef robot_arm_rotatotope_RTD_planner_3D_fetch < robot_arm_generic_planner
                     
                     % dumb way to do this... want to multiply rows of lambdas
                     % together, replacing zeros with ones
-                    lambdas_prod = P.R.k_con_self{i}{idx(j)}.*lambda;
+                    lambdas_prod = double(P.R.k_con_self{i}{idx(j)}).*lambda;
                     lambdas_prod(~P.R.k_con_self{i}{idx(j)}) = 1;
                     lambdas_prod = prod(lambdas_prod, 1)';
                     
