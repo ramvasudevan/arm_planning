@@ -24,17 +24,13 @@ classdef robot_arm_FRS_rotatotope_fetch_cuda
         obstacles = [];
         k_opt = [];
         
-        mex_RZ = [];
-        mex_c_idx = [];
-        mex_k_idx = [];
+        RZ = [];
+        c_idx = [];
+        k_idx = [];
         
-        mex_A_con = [];
-        mex_b_con = [];
-        mex_k_con = [];
-        
-        deb_RZ = [];
-        deb_c_idx = [];
-        deb_k_idx = [];
+        A_con = [];
+        b_con = [];
+        k_con = [];
         
         eval_output = [];
         eval_grad_output = [];
@@ -95,16 +91,6 @@ classdef robot_arm_FRS_rotatotope_fetch_cuda
             
             fprintf("cuda time\n");
             tic;
-            % SUOPPOSE ALL THE INPUT HAVE THE SAME SIZE !!!
-            
-            mexin_Z = [];
-            mexin_EE = [];
-            for i = 1:obj.n_links
-                mexin_Z = [mexin_Z, obj.link_zonotopes{i}.Z];
-            end
-            for i = 1:obj.n_links-1
-                mexin_EE = [mexin_EE, obj.link_EE_zonotopes{i}.Z];
-            end
             
             % promise that the sizes of obstacles are the same, <= 10
             mexin_OZ = [];
@@ -112,9 +98,8 @@ classdef robot_arm_FRS_rotatotope_fetch_cuda
                 mexin_OZ = [mexin_OZ, obj.obstacles{i}.zono.Z];
             end
             
-            %[obj.mex_A_con, obj.mex_b_con, obj.mex_k_con] = rotatotope_mex(obj.n_links, obj.n_time_steps, mexin_R, mexin_Z, mexin_EE, length(obj.obstacles), mexin_OZ);
-            %[obj.mex_res, obj.eval_output,obj.eval_grad_output,obj.eval_hess_output] = rotatotope_mex(mexin_R, mexin_Z, mexin_EE, length(obj.obstacles), mexin_OZ, obj.k_opt, obj.q, obj.q_dot, obj.q_des);
-            obj.mex_res = rotatotope_mex(mexin_R, mexin_Z, mexin_EE, length(obj.obstacles), mexin_OZ, obj.k_opt, obj.q, obj.q_dot, obj.q_des);
+            [obj.mex_res, obj.RZ, obj.c_idx, obj.k_idx, obj.A_con, obj.b_con, obj.k_con, obj.eval_output, obj.eval_grad_output, obj.eval_hess_output] = rotatotope_mex(mexin_R, length(obj.obstacles), mexin_OZ, obj.k_opt, obj.q, obj.q_dot, obj.q_des);
+            %obj.mex_res = rotatotope_mex(mexin_R, length(obj.obstacles), mexin_OZ, obj.k_opt, obj.q, obj.q_dot, obj.q_des);
             toc;
         end
     end
