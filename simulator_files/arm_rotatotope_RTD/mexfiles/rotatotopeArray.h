@@ -23,12 +23,11 @@ a cuda array for a cluster of rotatotopes
 #include <cfloat>
 
 #define k_dim 2
-#define reduce_order 16
-#define norm_size 160
-#define max_RZ_length 60
+#define max_norm_size 310
+#define max_RZ_length 130
 #define A_BIG_NUMBER 1000000.0
-#define TOO_SMALL_POLYTOPE_JUDGE 0.0001
-#define CONSERVATIVE_BUFFER 0.0001
+#define TOO_SMALL_POLYTOPE_JUDGE 0.00001
+#define CONSERVATIVE_BUFFER 0.00001
 
 class rotatotopeArray {
 public:
@@ -38,15 +37,17 @@ public:
 	Requires:
 		1. n_links
 		2. n_time_steps
-		3. R
-		4. dev_R
-		5. R_unit_length
-		6. dev_rot_axes
-		7. Z
-		8. Z_width
-		9. Z_length
+		3. joint_per_link
+		4. R
+		5. dev_R
+		6. R_unit_length
+		7. dev_rot_axes
+		8. Z
+		9. Z_width
+		10. Z_length
+		11. reduce_order
 	*/
-	rotatotopeArray(uint32_t n_links_input, uint32_t n_time_steps_input, double* R_input, double* dev_R_input, uint32_t R_unit_length_input, uint8_t* dev_rot_axes_input, double* Z_input, uint32_t Z_width_input, uint32_t Z_length_input);
+	rotatotopeArray(uint32_t n_links_input, uint32_t n_time_steps_input, uint32_t joint_per_link_input, double* R_input, double* dev_R_input, uint32_t R_unit_length_input, uint8_t* dev_rot_axes_input, double* Z_input, uint32_t Z_width_input, uint32_t Z_length_input, uint32_t reduce_order_input);
 
 	/*
 	Instruction:
@@ -56,11 +57,12 @@ public:
 
 	/*
 	Instruction:
-		stack the links
+		stack the links with EE and base
 	Requires:
 		1. rotatotope array of EEs
+		1. rotatotope array of base
 	*/
-	void stack(rotatotopeArray &EEs);
+	void stack(rotatotopeArray &EEs, rotatotopeArray &base);
 
 	/*
 	Instruction:
@@ -88,6 +90,9 @@ public:
 	// number of time steps
 	uint32_t n_time_steps;
 
+	// number of rotation for each different zonotopes
+	uint32_t joint_per_link;
+
 	// a pointer to R in gpu
 	double* dev_R;
 	uint32_t R_unit_length;
@@ -107,6 +112,9 @@ public:
 	// the resulting array of rotatotopes without stacking
 	double* dev_RZ;
 
+	// reduce order for each link
+	uint32_t reduce_order;
+
 	// keep track of the center
 	bool* dev_c_idx;
 
@@ -117,6 +125,8 @@ public:
 	double** dev_RZ_stack;
 	bool** dev_c_idx_stack;
 	bool** dev_k_idx_stack;
+
+	uint32_t* RZ_length;
 
 	double* debug_RZ = nullptr;
 	bool* debug_c_idx = nullptr;
@@ -160,11 +170,15 @@ Instruction:
 Requires:
 	1. link_Z
 		--> the Z of zonotopes of links
+	2. link_Z_length
+	3. reduce_order
+	4. RZ
+	5. c_idx
 Modifies:
 	1. RZ
 	2. c_idx
 */
-__global__ void initialize_RZ_kernel(double* link_Z, uint32_t link_Z_length, double* RZ, bool* c_idx);
+__global__ void initialize_RZ_kernel(double* link_Z, uint32_t link_Z_length, uint32_t reduce_order, double* RZ, bool* c_idx);
 
 /*
 Instruction:
@@ -175,24 +189,25 @@ Requires:
 		--> which link should be rotated
 	3. joint_offset
 		--> which joint of link should be rotated
-	4. RZ
+	4. reduce_order
+	5. RZ
 		--> the Z of zonotopes of results from the previous multiplication
-	5. R
+	6. R
 		--> the Z of zonotopes in trig_FRS
-	6. c_idx
-	7. k_idx
-	8. RZ_new
+	7. c_idx
+	8. k_idx
+	9. RZ_new
 		--> the Z of zonotopes after rotation
-	9. c_idx_new
+	10. c_idx_new
 		--> index of who are multiplied with a center
-	10. k_idx_new
+	11. k_idx_new
 		--> index of who are multiplied with a k-dep generator
 Modifies:
 	1. RZ_new
 	2. c_idx_new
 	3. k_idx_new
 */
-__global__ void multiply_kernel(uint8_t* rot_axes, uint32_t link_offset, uint32_t joint_offset, double* RZ, double* R, bool* c_idx, bool* k_idx, double* RZ_new, bool* c_idx_new, bool* k_idx_new);
+__global__ void multiply_kernel(uint8_t* rot_axes, uint32_t link_offset, uint32_t joint_offset, uint32_t reduce_order, double* RZ, double* R, bool* c_idx, bool* k_idx, double* RZ_new, bool* c_idx_new, bool* k_idx_new);
 
 /*
 Instruction:
@@ -204,12 +219,16 @@ Requires:
 	3. k_idx_new
 	4. link_offset
 		--> which link should be reduced
+	5. reduce_order
+	6. RZ
+	7. c_idx
+	8. k_idx
 Modifies:
 	1. RZ
 	2. c_idx
 	3. k_idx
 */
-__global__ void reduce_kernel(double* RZ_new, bool* c_idx_new, bool* k_idx_new, uint32_t link_offset, double* RZ, bool* c_idx, bool* k_idx);
+__global__ void reduce_kernel(double* RZ_new, bool* c_idx_new, bool* k_idx_new, uint32_t link_offset, uint32_t reduce_order, double* RZ, bool* c_idx, bool* k_idx);
 
 /*
 Instruction:
@@ -221,16 +240,18 @@ Requires:
 		--> the Z of zonotopes of links
 	3. link_c_idx
 	4. link_k_idx
-	5. RZ_stack
+	5. link reduce_order
+	6. point reduce_order
+	7. RZ_stack
 		--> for stacking
-	6. c_idx_stack
-	7. k_idx_stack
+	8. c_idx_stack
+	9. k_idx_stack
 Modifies:
 	1. RZ_stack
 	2. c_idx_stack
 	3. k_idx_stack
 */
-__global__ void copy_kernel(uint32_t link_id, double* RZ, bool* c_idx, bool* k_idx, double* RZ_stack, bool* c_idx_stack, bool* k_idx_stack);
+__global__ void copy_kernel(uint32_t link_id, double* RZ, bool* c_idx, bool* k_idx, uint32_t link_reduce_order, uint32_t point_reduce_order, double* RZ_stack, bool* c_idx_stack, bool* k_idx_stack);
 
 /*
 Instruction:
@@ -240,19 +261,23 @@ Requires:
 		--> which in links should be stacked
 	2. EE_id
 		--> which in EE should be stacked
-	3. RZ_stack
+	3. stack_offset
+		--> where should EE be stacked
+	4. link reduce_order
+	5. point reduce_order
+	6. RZ_stack
 		--> the Z of zonotopes of links
-	4. EE_RZ
-	5. c_idx_stack
-	6. EE_c_idx
-	7. k_idx_stack
-	8. EE_k_idx
+	7. EE_RZ
+	8. c_idx_stack
+	9. EE_c_idx
+	10. k_idx_stack
+	11. EE_k_idx
 Modifies:
 	1. RZ_stack
 	2. c_idx_stack
 	3. k_idx_stack
 */
-__global__ void stack_kernel(uint32_t link_id, uint32_t EE_id, double* RZ_stack, double* EE_RZ, bool* c_idx_stack, bool* EE_c_idx, bool* k_idx_stack, bool* EE_k_idx);
+__global__ void stack_kernel(uint32_t link_id, uint32_t EE_id, uint32_t stack_offset, uint32_t link_reduce_order, uint32_t point_reduce_order, double* RZ_stack, double* EE_RZ, bool* c_idx_stack, bool* EE_c_idx, bool* k_idx_stack, bool* EE_k_idx);
 
 /*
 Instruction:
@@ -260,18 +285,23 @@ Instruction:
 Requires:
 	1. link_id
 		--> which link is in operation
-	2. RZ
-	3. c_idx
-	4. k_idx
-	5. OZ
-	6. OZ_unit_length
+	2. RZ_length
+	3. RZ
+	4. c_idx
+	5. k_idx
+	6. OZ
+	7. OZ_unit_length
+	8. buff_obstacles
+	9. frs_k_dep_G
+	10. k_con
+	11. k_con_num
 Modifies:
 	1. buff_obstacles
 	2. frs_k_dep_G
 	3. k_con
 	4. k_con_num
 */
-__global__ void buff_obstacles_kernel(uint32_t link_id, double* RZ, bool* c_idx, bool* k_idx, double* OZ, uint32_t OZ_unit_length, double* buff_obstacles, double* frs_k_dep_G, bool* k_con, uint8_t* k_con_num);
+__global__ void buff_obstacles_kernel(uint32_t link_id, uint32_t RZ_length, double* RZ, bool* c_idx, bool* k_idx, double* OZ, uint32_t OZ_unit_length, double* buff_obstacles, double* frs_k_dep_G, bool* k_con, uint8_t* k_con_num);
 
 /*
 Instruction:
@@ -279,15 +309,18 @@ Instruction:
 Requires:
 	1. link_id
 		--> which link is in operation
-	2. buff_obstacles
-	3. frs_k_dep_G
-	4. k_con_num
-	5. A_con_width = max_k_con_num
+	2. RZ_length
+	3. buff_obstacles
+	4. frs_k_dep_G
+	5. k_con_num
+	6. A_con_width = max_k_con_num
+	7. A_con
+	8. b_con
 Modifies:
 	1. A_con
 	2. b_con
 */
-__global__ void polytope(uint32_t link_id, double* buff_obstacles, double* frs_k_dep_G, uint8_t* k_con_num, uint32_t A_con_width, double* A_con, double* b_con);
+__global__ void polytope(uint32_t link_id, uint32_t RZ_length, double* buff_obstacles, double* frs_k_dep_G, uint8_t* k_con_num, uint32_t A_con_width, double* A_con, double* b_con);
 
 /*
 Instruction:
@@ -295,15 +328,17 @@ Instruction:
 Requires:
 	1. lambda
 	2. link_id
-	3. A_con
-	4. A_con_width
-	5. b_con
-	6. k_con
-	7. k_con_num
+	3. RZ_length
+	4. A_con
+	5. A_con_width
+	6. b_con
+	7. k_con
+	8. k_con_num
+	9. con_result
 Modifies:
 	1. con_result
 */
-__global__ void evaluate_constraints_kernel(double* lambda, uint32_t link_id, double* A_con, uint32_t A_con_width, double* b_con, bool* k_con, uint8_t* k_con_num, double* con_result);
+__global__ void evaluate_constraints_kernel(double* lambda, uint32_t link_id, uint32_t RZ_length, double* A_con, uint32_t A_con_width, double* b_con, bool* k_con, uint8_t* k_con_num, double* con_result);
 
 /*
 Instruction:
@@ -312,17 +347,21 @@ Instruction:
 Requires:
 	1. con_result
 	2. link_id
-	3. lambda
-	4. g_k
-	5. A_con
-	6. k_con
-	7. k_con_num
-	8. n_links
+	3. RZ_length
+	4. lambda
+	5. g_k
+	6. A_con
+	7. k_con
+	8. k_con_num
+	9. n_links
+	10. con
+	11. jaco_con
+	12. hess_con
 Modifies:
 	1. con
 	2. jaco_con
 	3. hess_con
 */
-__global__ void evaluate_gradient_kernel(double* con_result, uint32_t link_id, double* lambda, double* g_k, double* A_con, uint32_t A_con_width, bool* k_con, uint8_t* k_con_num, uint32_t n_links, double* con, double* jaco_con, double* hess_con);
+__global__ void evaluate_gradient_kernel(double* con_result, uint32_t link_id, uint32_t RZ_length, double* lambda, double* g_k, double* A_con, uint32_t A_con_width, bool* k_con, uint8_t* k_con_num, uint32_t n_links, double* con, double* jaco_con, double* hess_con);
 
 #endif // !ROTATOTOPE_ARRAY_H

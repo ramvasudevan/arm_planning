@@ -105,14 +105,17 @@ P1.	generate all the rotatotopes
 	cudaMalloc((void**)&dev_rot_axes, 6 * sizeof(uint8_t));
 	cudaMemcpy(dev_rot_axes, rot_axes, 6 * sizeof(uint8_t), cudaMemcpyHostToDevice);
 
-	rotatotopeArray links = rotatotopeArray(n_links, n_time_steps, R, dev_R, R_unit_length, dev_rot_axes, link_Z, link_Z_width, link_Z_length);
-	rotatotopeArray EEs = rotatotopeArray(n_links - 1, n_time_steps, R, dev_R, R_unit_length, dev_rot_axes, EE_Z, EE_Z_width, EE_Z_length);
-	rotatotopeArray base = rotatotopeArray(n_links - 2, n_time_steps, R, dev_R, R_unit_length, dev_rot_axes, base_Z, base_Z_width, base_Z_length);
+	uint32_t link_reduce_order = 20;
+	uint32_t point_reduce_order = 10;
+	
+	rotatotopeArray links = rotatotopeArray(n_links, n_time_steps, 2, R, dev_R, R_unit_length, dev_rot_axes, link_Z, link_Z_width, link_Z_length, link_reduce_order);
+	rotatotopeArray EEs = rotatotopeArray(n_links - 1, n_time_steps, 2, R, dev_R, R_unit_length, dev_rot_axes, EE_Z, EE_Z_width, EE_Z_length, point_reduce_order);
+	rotatotopeArray base = rotatotopeArray(n_links - 2, n_time_steps, 1, R, dev_R, R_unit_length, dev_rot_axes, base_Z, base_Z_width, base_Z_length, point_reduce_order);
 
 	/*
 P2.	stack the rotatotopes
 	*/
-	links.stack(EEs);
+	links.stack(EEs, base);
 
 	/*
 P3.	generate the constraints
@@ -143,8 +146,8 @@ P4.	solve the NLP
     app->Options()->SetStringValue("output_file", "ipopt.out");
     //app->Options()->SetStringValue("hessian_approximation", "limited-memory");
 	//app->Options()->SetStringValue("limited_memory_update_type", "bfgs");
-	//app->Options()->SetStringValue("derivative_test", "only-second-order");
-	//app->Options()->SetNumericValue("derivative_test_perturbation", 0.000001);
+	app->Options()->SetStringValue("derivative_test", "first-order");
+	app->Options()->SetNumericValue("derivative_test_perturbation", 0.000001);
 
     // Initialize the IpoptApplication and process the options
     ApplicationReturnStatus status;
@@ -176,9 +179,9 @@ P4.	solve the NLP
 	/*
 P5. handle the output, release the memory
 	*/
-	/*
-	uint32_t link_id = 0;
-	uint32_t RZ_length = ((reduce_order - 1) * (link_id + 1) + 1);
+	
+	uint32_t link_id = 2;
+	uint32_t RZ_length = links.RZ_length[link_id];
 	mxArray* output1 = mxCreateCellMatrix(1, n_time_steps);
 	for (uint32_t k = 0; k < n_time_steps; k++) {
 		mxArray* time_step_k = mxCreateNumericMatrix(links.Z_width, RZ_length, mxDOUBLE_CLASS, mxREAL);
@@ -226,7 +229,7 @@ P5. handle the output, release the memory
 	for (uint32_t i = 0; i < n_obstacles; i++) {
 		mxArray* obstacle_i = mxCreateCellMatrix(1, n_links);
 		for (uint32_t j = 0; j < n_links; j++) {
-			uint32_t RZ_length = ((reduce_order - 1) * (j + 1) + 1);
+			uint32_t RZ_length = links.RZ_length[j];
 			uint32_t buff_obstacle_length = RZ_length + 3;
 			uint32_t constraint_length = ((buff_obstacle_length - 1) * (buff_obstacle_length - 2)) / 2;
 			mxArray* link_j = mxCreateCellMatrix(1, n_time_steps);
@@ -254,7 +257,7 @@ P5. handle the output, release the memory
 	for (uint32_t i = 0; i < n_obstacles; i++) {
 		mxArray* obstacle_i = mxCreateCellMatrix(1, n_links);
 		for (uint32_t j = 0; j < n_links; j++) {
-			uint32_t RZ_length = ((reduce_order - 1) * (j + 1) + 1);
+			uint32_t RZ_length = links.RZ_length[j];
 			uint32_t buff_obstacle_length = RZ_length + 3;
 			uint32_t constraint_length = ((buff_obstacle_length - 1) * (buff_obstacle_length - 2)) / 2;
 			mxArray* link_j = mxCreateCellMatrix(1, n_time_steps);
@@ -280,7 +283,7 @@ P5. handle the output, release the memory
 	for (uint32_t i = 0; i < n_obstacles; i++) {
 		mxArray* obstacle_i = mxCreateCellMatrix(1, n_links);
 		for (uint32_t j = 0; j < n_links; j++) {
-			uint32_t RZ_length = ((reduce_order - 1) * (j + 1) + 1);
+			uint32_t RZ_length = links.RZ_length[j];
 			mxArray* link_j = mxCreateCellMatrix(1, n_time_steps);
 			for (uint32_t k = 0; k < n_time_steps; k++) {
 				mxArray* time_step_k = mxCreateLogicalMatrix(2 * (j + 1), links.k_con_num[j][k]);
@@ -337,7 +340,7 @@ P5. handle the output, release the memory
 			}
 		}
 	}
-	*/
+	
 
 	cudaFree(dev_R);
 	cudaFree(dev_rot_axes);
