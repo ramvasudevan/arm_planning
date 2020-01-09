@@ -26,6 +26,7 @@ b) On your computer where you will run external code (!!! in the same network to
            export ROS_MASTER_URI=http://192.168.1.100:11311
 
 6. Perfect!!!! Now you should be able to run the controllers for fetch. So, in the terminal where you are on fetch computer and where you ran the export command execute
+// Patrick's edit 2020/01/08: first cd catkin_ws, then source devel/setup.bash.
 	roslaunch fetch_demos fetch_planning_interface.launch
 
 7. Now the controllers are working and they expect input from the path planner. This has to be send through ROS MESSAGES, of Type: sensor_msgs/JointState (here is the documentation how this data has to be formated http://docs.ros.org/melodic/api/sensor_msgs/html/msg/JointState.html). Also the Name of the topic has to be: "/fetch/des_states".
