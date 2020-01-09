@@ -34,16 +34,30 @@ class FollowTrajectoryClient(object):
                                                    FollowJointTrajectoryAction)
         rospy.loginfo("Waiting for %s..." % name)
         self.client.wait_for_server()
-        self.joint_names = joint_names
+        # self.joint_names = joint_names
+
+        self.trajectory = JointTrajectory()
+        self.trajectory.joint_names = joint_names
+
+        self.trajectory.points[0].positions = np.zeros(NO_DOF)
+        self.trajectory.points[0].velocities = np.zeros(NO_DOF)
+        self.trajectory.points[0].time_from_start = rospy.Duration(2.0)
+
+        self.move_to()
+
+        # set up flag for new trajectory received
+        self.new_trajectory_received_flag = False
 
     def handle_des_states(self, data):
-        self.trajectory = data
-        self.trajectory.joint_names = self.joint_names
+        self.trajectory.points = data.points
+        # self.trajectory.joint_names = self.joint_names
+        self.new_trajectory_received_flag = True
 
     def move_to(self):
         follow_goal = FollowJointTrajectoryGoal()
         follow_goal.trajectory = self.trajectory
-
+        self.new_trajectory_received_flag = False
+        
         self.client.send_goal(follow_goal)
         self.client.wait_for_result()
 
@@ -62,4 +76,6 @@ if __name__ == "__main__":
     rospy.loginfo("Moving the arm with position commands")
 
     while not rospy.is_shutdown():
-        arm_action.move_to()
+        if arm_action.new_trajectory_received_flag
+            arm_action.move_to()
+

@@ -12,7 +12,7 @@
 clear ; clc ; figure(1); clf; view(3); grid on;
 
 %% user parameters
-N_random_obstacles = 20 ;
+N_random_obstacles = 10 ;
 dimension = 3 ;
 nLinks = 3 ;
 verbosity = 10 ;
@@ -31,10 +31,10 @@ A.LLC.K_i = 1*A.LLC.K_i;
 A.LLC.K_d = 1*A.LLC.K_d;
 A.joint_input_limits = 1*A.joint_input_limits;
 
+% W = fetch_base_world_static('include_base_obstacle', 1, 'goal_radius', 0.03, 'N_random_obstacles',N_random_obstacles,'dimension',dimension,'workspace_goal_check', 0,...
+%     'verbose',verbosity, 'creation_buffer', 0.1, 'base_creation_buffer', 0.025) ;
 W = fetch_base_world_static('include_base_obstacle', 1, 'goal_radius', 0.03, 'N_random_obstacles',N_random_obstacles,'dimension',dimension,'workspace_goal_check', 0,...
-    'verbose',verbosity, 'creation_buffer', 0.1, 'base_creation_buffer', 0.025) ;
-% W = fetch_base_world_static('include_base_obstacle', 1, 'goal_radius', 0.03, 'N_obstacles',N_obstacles,'dimension',dimension,'workspace_goal_check', 0,...
-%     'verbose',verbosity,'start', [0;0;0;0;0;0], 'goal', [pi;0;0;0;0;0], 'creation_buffer', 0.05) ;
+    'verbose',verbosity, 'creation_buffer', 0.1, 'base_creation_buffer', 0.025, 'start', [0 0 0 0 0 0]) ;
 
 FRS_options = struct();
 % FRS_options.position_dimensions = [1;2;3];
