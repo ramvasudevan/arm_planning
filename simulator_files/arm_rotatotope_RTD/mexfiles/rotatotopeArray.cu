@@ -325,6 +325,9 @@ void rotatotopeArray::stack(rotatotopeArray &EEs, rotatotopeArray &base) {
 		dim3 block3(base.reduce_order, Z_width, 1);
 		stack_kernel << < grid3, block3 >> > (link_id, 0, link_id, reduce_order, base.reduce_order, dev_RZ_stack[link_id], base.dev_RZ, dev_c_idx_stack[link_id], base.dev_c_idx, dev_k_idx_stack[link_id], base.dev_k_idx);
 		
+		// origin shift
+		origin_shift_kernel <<< n_time_steps, 1 >>> (RZ_length[link_id], dev_RZ_stack[link_id]);
+
 		if (link_id == 2) {
 			debug_RZ = new double[n_time_steps * RZ_length[link_id] * Z_width];
 			cudaMemcpy(debug_RZ, dev_RZ_stack[link_id], n_time_steps * RZ_length[link_id] * Z_width * sizeof(double), cudaMemcpyDeviceToHost);
@@ -421,6 +424,15 @@ __global__ void stack_kernel(uint32_t link_id, uint32_t EE_id, uint32_t stack_of
 			}
 		}
 	}
+}
+
+__global__ void origin_shift_kernel(uint32_t RZ_length, double* RZ_stack){
+	uint32_t time_id = blockIdx.x;
+	uint32_t stack_Z = time_id * RZ_length;
+
+	RZ_stack[stack_Z * 3    ] += ORIGIN_SHIFT_X;
+	RZ_stack[stack_Z * 3 + 1] += ORIGIN_SHIFT_Y;
+	RZ_stack[stack_Z * 3 + 2] += ORIGIN_SHIFT_Z;
 }
 
 void rotatotopeArray::generate_constraints(uint32_t n_obstacles_in, double* OZ, uint32_t OZ_width, uint32_t OZ_length) {

@@ -387,7 +387,7 @@ classdef rotatotope
            % ( not entirely sure this is still valid!! )
 %            intersection_possible = 0;
 %            for i = 1:size(options.kV_lambda{link_number}, 2)
-%                lambdas = k_con.*options.kV_lambda{link_number}(:, i);
+%                lambdas = double(k_con).*options.kV_lambda{link_number}(:, i);
 %                lambdas(~k_con) = 1;
 %                lambdas = prod(lambdas, 1)';
 %                
