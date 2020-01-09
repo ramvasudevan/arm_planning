@@ -11,7 +11,7 @@ FRS_options.L = 0.33;
 FRS_options.buffer_dist = 0;
 FRS_options.combs = generate_combinations_upto(200);
 FRS_options.maxcombs = 200;
-FRS_options.origin_shift = zeros(3,1);
+FRS_options.origin_shift = [0.6;0.5;0.4];
 
 % get current obstacles
 obs_center = [0.8; 0.2; -0.2];
@@ -61,7 +61,7 @@ R = robot_arm_FRS_rotatotope_fetch(q, q_dot, FRS_options);
 R = R.generate_constraints(O);
 %% analysis
 % link_id = 3;
-% time_id = 99;
+% time_id = 22;
 % rot = R.link_FRS;
 % data = [rot{link_id}{time_id}.RZ;
 %     [0,any(rot{link_id}{time_id}.k_idx)&rot{link_id}{time_id}.c_idx]];
@@ -78,7 +78,7 @@ R = R.generate_constraints(O);
 
 % test one particular set of constraints
 % default 1, 3, 97
-return;
+
 for obstacle_id = 1:length(O)
     figure(obstacle_id); clf;
     good_diff = [];

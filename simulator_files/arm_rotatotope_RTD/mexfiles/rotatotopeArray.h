@@ -25,6 +25,9 @@ a cuda array for a cluster of rotatotopes
 #define k_dim 2
 #define max_norm_size 310
 #define max_RZ_length 130
+#define ORIGIN_SHIFT_X 0.6
+#define ORIGIN_SHIFT_Y 0.5
+#define ORIGIN_SHIFT_Z 0.4
 #define A_BIG_NUMBER 1000000.0
 #define TOO_SMALL_POLYTOPE_JUDGE 0.00001
 #define CONSERVATIVE_BUFFER 0.00001
@@ -278,6 +281,17 @@ Modifies:
 	3. k_idx_stack
 */
 __global__ void stack_kernel(uint32_t link_id, uint32_t EE_id, uint32_t stack_offset, uint32_t link_reduce_order, uint32_t point_reduce_order, double* RZ_stack, double* EE_RZ, bool* c_idx_stack, bool* EE_c_idx, bool* k_idx_stack, bool* EE_k_idx);
+
+/*
+Instruction:
+	shift the origin
+Requires:
+	1. RZ_length
+	2. RZ_stack
+Modifies:
+	1. RZ_stack
+*/
+__global__ void origin_shift_kernel(uint32_t RZ_length, double* RZ_stack); 
 
 /*
 Instruction:
