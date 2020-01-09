@@ -49,16 +49,16 @@ good_k = -pi/6*ones(6, 1) ;
 bad_k = [pi/6 - 0.001; pi/6 - 0.001; pi/12; pi/24; -pi/36; pi/48];
 
 % generate FRS
+R = robot_arm_FRS_rotatotope_fetch(q, q_dot, FRS_options);
+R = R.generate_constraints(O);
+bad_k = R.c_k;
+
 R_cuda = robot_arm_FRS_rotatotope_fetch_cuda(q, q_dot, q_des, O, bad_k, FRS_options);
 eval_out = R_cuda.eval_output;
 eval_grad_out = R_cuda.eval_grad_output;
 eval_hess_out = R_cuda.eval_hess_output;
 mex_res = R_cuda.mex_res;
 
-
-% map obstacles to trajectory parameter space
-R = robot_arm_FRS_rotatotope_fetch(q, q_dot, FRS_options);
-R = R.generate_constraints(O);
 %% analysis
 % link_id = 3;
 % time_id = 22;
@@ -73,7 +73,7 @@ R = R.generate_constraints(O);
 % [d,id] = sort(vnorm(mex_data(1:3,:)),'descend');
 % disp(mex_data(:,id));
 
-% [c, ceq, gradc, gradceq, moremax] = eval_constraints(R, bad_k);
+[c, ceq, gradc, gradceq] = eval_constraints(R, bad_k, q, q_dot);
 % h=vnorm(gradc-eval_grad_out);
 
 % test one particular set of constraints
@@ -88,25 +88,25 @@ for obstacle_id = 1:length(O)
         bad_diff{link_id} = [];
         for time_step = 1:100
             con_id = ((obstacle_id-1) * R.n_links + link_id-1) * R.n_time_steps + time_step;
-            A_con = R.A_con{obstacle_id}{link_id}{time_step};
-            b_con = R.b_con{obstacle_id}{link_id}{time_step};
-            k_con = R.k_con{obstacle_id}{link_id}{time_step};
-            mex_A_con = R_cuda.A_con{obstacle_id}{link_id}{time_step};
-            mex_b_con = R_cuda.b_con{obstacle_id}{link_id}{time_step};
-            mex_k_con = R_cuda.k_con{obstacle_id}{link_id}{time_step};
-            c_param = R.c_k(R.link_joints{link_id});
-            g_param = R.g_k(R.link_joints{link_id});
+%             A_con = R.A_con{obstacle_id}{link_id}{time_step};
+%             b_con = R.b_con{obstacle_id}{link_id}{time_step};
+%             k_con = R.k_con{obstacle_id}{link_id}{time_step};
+%             mex_A_con = R_cuda.A_con{obstacle_id}{link_id}{time_step};
+%             mex_b_con = R_cuda.b_con{obstacle_id}{link_id}{time_step};
+%             mex_k_con = R_cuda.k_con{obstacle_id}{link_id}{time_step};
+%             c_param = R.c_k(R.link_joints{link_id});
+%             g_param = R.g_k(R.link_joints{link_id});
 
             % for the bad_k
-            k_param = bad_k(R.link_joints{link_id});
-            lambda = c_param + (k_param./g_param);
-            lambdas = double(k_con).*lambda;
-            lambdas(~k_con) = 1;
-            lambdas = prod(lambdas, 1)';
-            c_obs =  A_con*lambdas - b_con;
-            [c_obs_max,bad_idx] = max(c_obs);
-            bad_c_k = -(c_obs_max);
-%             bad_c_k = c(con_id);
+%             k_param = bad_k(R.link_joints{link_id});
+%             lambda = c_param + (k_param./g_param);
+%             lambdas = double(k_con).*lambda;
+%             lambdas(~k_con) = 1;
+%             lambdas = prod(lambdas, 1)';
+%             c_obs =  A_con*lambdas - b_con;
+%             [c_obs_max,bad_idx] = max(c_obs);
+%             bad_c_k = -(c_obs_max);
+            bad_c_k = c(con_id);
 
             % for the mex_bad_k
 %             mex_lambdas = mex_k_con.*lambda;
