@@ -647,7 +647,7 @@ classdef robot_arm_agent < multi_link_agent
             end
             
             % get joint data
-            if length(time_or_config) == 1
+            if size(time_or_config,1) == 1
                 t = time_or_config ;
                 if t > A.time(end)
                     t = A.time(end) ;
@@ -736,13 +736,42 @@ classdef robot_arm_agent < multi_link_agent
             end
         end
         
-        function  J = get_joint_locations(A,time_or_config)
-            % J = A.get_joint_locations(time_or_config)
+        function  J = get_joint_locations(A,times_or_configs)
+            % J = A.get_joint_locations(times_or_configs)
             %
-            % Return the joint locations in 2-D or 3-D space as an d-by-n
-            % array, where n = A.n_links_and_joints and d = A.dimension.
+            % Return the joint locations in 2-D or 3-D space.
+            %
+            % If the input is a single time t \in \R, or a single
+            % configuration q \in Q, the output is a d-by-n array, where
+            % n = A.n_links_and_joints and d = A.dimension.
+            %
+            % If the input is a 1-by-N vector of times or an n-by-N vector
+            % of configurations, the output is a 1-by-N cell array where
+            % each entry is the d-by-n array of joint locations for the
+            % corresponding time or configuration.
             
-            [~,~,J] = A.get_link_rotations_and_translations(time_or_config) ;
+            N = size(times_or_configs,2) ;
+            if N == 1
+                [~,~,J] = A.get_link_rotations_and_translations(times_or_configs) ;
+            else
+                J = cell(1,N) ;
+                n = size(times_or_configs,1) ;
+                
+                if n == 1
+                    % for the case of multiple times, iterate through the
+                    % list and get the joint locations for each time
+                    for idx = 1:N
+                        [~,~,J_idx] = A.get_link_rotations_and_translations(times_or_configs(:,idx)) ;
+                        J{idx} = J_idx ;
+                    end
+                else
+                    % for the case of multiple configurations, make a cell
+                    % array of the configurations and use cellfun like a
+                    % heckin' matlab ninja
+                    Q = mat2cell(times_or_configs, n, ones(1,N)) ;
+                    J = cellfun(@(q) A.get_joint_locations_from_configuration(q),Q,'UniformOutput',false) ;
+                end
+            end
         end
         
         function J = get_joint_locations_from_configuration(A,q)
