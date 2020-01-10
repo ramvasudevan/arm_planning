@@ -1034,6 +1034,11 @@ classdef robot_arm_agent < multi_link_agent
                 t = 0 ;
             end
             
+            A.plot_baselink() ;
+            A.plot_links(t) ;
+        end
+        
+        function plot_baselink(A)
             % plot baselink
             BF = A.link_plot_data.baselink_faces ;
             BV = A.link_plot_data.baselink_vertices ;
@@ -1050,9 +1055,11 @@ classdef robot_arm_agent < multi_link_agent
                     'EdgeAlpha',A.link_plot_edge_opacity) ;
                 A.plot_data.baselink = baselink_data ;
             end
-            
+        end
+        
+        function plot_links(A,time_or_config)
             % get the rotations and translations at the current time
-            [R,T] = A.get_link_rotations_and_translations(t) ;
+            [R,T] = A.get_link_rotations_and_translations(time_or_config) ;
             
             % generate plot data for each link
             link_verts = cell(1,A.n_links_and_joints) ;

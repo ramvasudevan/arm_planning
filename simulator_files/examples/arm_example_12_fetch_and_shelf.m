@@ -4,7 +4,7 @@
 %
 % Authors: Shreyas Kousik and Patrick Holmes
 % Created: 23 Dec 2019
-% Updated: 30 Dec 2019
+% Updated: 10 Jan 2020
 %
 %% user parameters
 %%% WORLD PARAMETERS %%%
@@ -63,12 +63,13 @@ plot_waypoint_arm_flag  = true ; % for HLP
 lookahead_distance = 0.2 ;
 use_end_effector_for_cost_flag = false ;
 csv_filename = 'fetch_shelf_scene_example.csv' ;
+plot_CAD_flag = true ; % plot the faaaaancy arm :)
 %%% END OTHER PARAMETERS %%%
 
 %% automated from here
 % make agent
 A = robot_arm_3D_fetch('verbose',verbosity, 'animation_set_axes_flag',0,...
-    'animation_set_view_flag',0);
+    'animation_set_view_flag',0,'plot_CAD_flag',plot_CAD_flag);
 
 % can adjust tracking controller gains here
 A.LLC.K_p = 1*A.LLC.K_p;

@@ -1,4 +1,25 @@
 classdef robot_arm_3D_fetch < robot_arm_agent
+    %% properties
+    properties
+        % whether or not to plot the CAD version of the arm
+        plot_CAD_flag = false ;
+        link_plot_CAD_data = [] ;
+        
+        % joint axes
+        plot_CAD_joint_axes = [0 0 1 0 1 0 1 1 ;
+            0 1 0 1 0 1 0 0 ;
+            1 0 0 0 0 0 0 0 ] ;
+        
+        % joint locatinos
+        plot_CAD_joint_locations = [-0.03 0.12 0.21 0.13 0.20 0.12 0.14 0.16 ;
+            0.00 0.00 0.00 0.00 0.00 0.00 0.00 0.00 ;
+            0.75 0.06 0.00 0.00 0.00 0.00 0.00 0.00 ;
+            0 0 0 0 0 0 0 0 ;
+            0 0 0 0 0 0 0 0 ;
+            0 0 0 0 0 0 0 0 ] ;
+    end
+    
+    %% methods
     methods
         function A = robot_arm_3D_fetch(varargin)
             dimension = 3 ;
@@ -69,13 +90,92 @@ classdef robot_arm_3D_fetch < robot_arm_agent
                 'animation_view',animation_view,...
                 'buffer_dist', buffer_dist,...
                 varargin{:}) ;
+            
+            if A.plot_CAD_flag
+                A.load_CAD_arm_patch_data()
+                A.link_plot_edge_color = [0 0 1] ;
+                A.link_plot_edge_opacity = 0 ;
+                A.link_plot_face_color = [0.8 0.8 1] ;
+                A.link_plot_face_opacity = 1 ;
+            end
         end
         
+        %% plotting setup
         function [faces,vertices] = create_baselink_plot_patch_data(A)
             % create baselink cone for plotting
             [faces,vertices] = make_cuboid_for_patch(0.025, 0.025, 0.025, [0;0;0]) ;
         end
         
+        function load_CAD_arm_patch_data(A)
+            A.vdisp('Loading CAD files for arm plotting!',1)
+            
+            shoulder_pan = stlread('shoulder_pan_link_collision.STL') ;
+            shoulder_lift = stlread('shoulder_lift_link_collision.STL') ;
+            upper_arm = stlread('upperarm_roll_link_collision.STL') ;
+            elbow = stlread('elbow_flex_link_collision.STL') ;
+            forearm = stlread('forearm_roll_link_collision.STL') ;
+            wrist_flex = stlread('wrist_flex_link_collision.STL') ;
+            wrist_roll = stlread('wrist_roll_link_collision.STL') ;
+            gripper = stlread('gripper_link.STL') ;
+            
+            A.link_plot_CAD_data = {shoulder_pan, shoulder_lift,...
+                upper_arm, elbow, forearm, wrist_flex, wrist_roll, gripper} ;
+        end
+        
+        %% plotting
+        function plot_links(A,time_or_config)
+            if A.plot_CAD_flag
+                % get the rotations and translations at the current time
+                if length(time_or_config) == 1
+                    q = match_trajectories(time_or_config,A.time,A.state(A.joint_state_indices,:)) ;
+                else
+                    q = time_or_config ;
+                end
+                
+                q = [q ; zeros(2,1)] ;
+                
+                % get transformations for the plot links
+                [R,T] = get_link_rotations_and_translations_from_arm_data(q,...
+                    A.plot_CAD_joint_axes,A.plot_CAD_joint_locations) ;
+                
+                % set the number of plot links
+                n = 8 ;
+                
+                % generate plot data for each link
+                link_verts = cell(1,n) ;
+                for idx = 1:n
+                    link_verts{idx} = (R{idx}*A.link_plot_CAD_data{idx}.vertices' + ...
+                        T{idx})' ;
+                end
+                
+                if check_if_plot_is_available(A,'links')
+                    for idx = 1:n
+                        A.plot_data.links(idx).Faces = A.link_plot_CAD_data{idx}.faces ;
+                        A.plot_data.links(idx).Vertices = link_verts{idx} ;
+                    end
+                else
+                    link_array = [] ;
+                    for idx = 1:n
+                        link_data = patch('Faces',A.link_plot_CAD_data{idx}.faces,...
+                            'Vertices',link_verts{idx},...
+                            'FaceColor',A.link_plot_face_color,...
+                            'FaceAlpha',A.link_plot_face_opacity,...
+                            'EdgeColor',A.link_plot_edge_color,...
+                            'LineWidth',A.link_plot_edge_width,...
+                            'EdgeAlpha',A.link_plot_edge_opacity) ;
+                        link_array = [link_array, link_data] ;
+                    end
+                    A.plot_data.links = link_array ;
+                end
+                
+                % turn camlight on
+                camlight
+            else
+                plot_links@robot_arm_agent(A,time_or_config) ;
+            end
+        end
+        
+        %% custom axis limits
         function lims = get_axis_lims(A)
             % figure out the maximum length of the arm
             L = sum(A.link_sizes(1,:)) ;
