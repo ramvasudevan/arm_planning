@@ -12,8 +12,9 @@
 start = [0;-0.5;0;0.5;0;0] ; % on top of shelf 1 (in front of robot)
 
 % manually create goal
-goal_radius = 0.1 ;
-goal_type = 'configuration' ; % 'configuration' or 'end_effector_location'
+goal_radius = 0.03 ;
+% goal_type = 'configuration' ; % 'configuration' or 'end_effector_location'
+goal_type = 'end_effector_location' ;
 
 % configuration goals (set goal_type to 'configuration')
 % goal = [0;+1;0;-1;0;0] ; % bottom of front shelf
@@ -51,7 +52,7 @@ simulated_t_plan = 0.5 ;
 time_discretization = 0.01 ;
 T = 1 ;
 first_iter_pause_flag = false ; 
-run_simulation_flag = false ;
+run_simulation_flag = true ;
 HLP_timeout = 2 ; 
 HLP_grow_tree_mode = 'new' ;
 plot_while_sampling_flag = false ;
@@ -120,10 +121,10 @@ P = robot_arm_rotatotope_RTD_planner_3D_fetch(FRS_options,...
 
 % P.HLP = robot_arm_optimization_HLP() ;
 
-P.HLP = arm_end_effector_RRT_star_HLP('plot_waypoint_flag',plot_waypoint_flag,...
-    'plot_waypoint_arm_flag',plot_waypoint_arm_flag,...
-    'grow_tree_mode',HLP_grow_tree_mode,...
-    'buffer',0.1) ;
+% P.HLP = arm_end_effector_RRT_star_HLP('plot_waypoint_flag',plot_waypoint_flag,...
+%     'plot_waypoint_arm_flag',plot_waypoint_arm_flag,...
+%     'grow_tree_mode',HLP_grow_tree_mode,...
+%     'buffer',0.1) ;
 
 %% set up simulator
 % set up world using arm

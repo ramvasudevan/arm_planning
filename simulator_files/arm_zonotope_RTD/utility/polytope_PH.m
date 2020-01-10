@@ -55,10 +55,6 @@ function [PA, Pb] = polytope_PH(Z, options)
 % end
 
 %obtain number of generators, dimensions
-%Z=deleteAligned(Z);
-% Z=deleteZeros(Z);
-% c=Z.Z(:,1);
-% G=Z.Z(:,2:end);
 c = Z(:, 1);
 G = Z(:, 2:end);
 G(:, ~any(G)) = [];
