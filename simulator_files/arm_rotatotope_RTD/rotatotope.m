@@ -18,7 +18,7 @@ classdef rotatotope
         rot_axes = []; % axes about which we are rotating
         Z; % zonotope representing the set to rotate
         dim double;
-        red_order = 5; % desired order of reduced zonotope
+        red_order = 10; % desired order of reduced zonotope
         
         % hold on to dimensions of first zonotope
         pos_dim = [1, 2];

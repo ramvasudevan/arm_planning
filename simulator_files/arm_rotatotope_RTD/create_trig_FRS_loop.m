@@ -10,7 +10,7 @@ t_total = 1;
 dt = 0.01;
 
 % c_IC = pi/2;
-g = pi/6;
+% g = pi/6;
 L = 0.33;
 
 generate_trig_dynamics(t_plan, t_total)
@@ -31,7 +31,10 @@ for i = 1:length(c_IC)
     options.tFinal = t_plan;
     
     options.x0 = [1;0;0;c_IC(i);0];
-    options.R0 = zonotope([options.x0, diag([0, 0, g, g_IC, 0])]);
+%     const g:
+%     options.R0 = zonotope([options.x0, diag([0, 0, g, g_IC, 0])]); 
+    % change g depdending on IC:
+    options.R0 = zonotope([options.x0, diag([0, 0, max(pi/24, abs(c_IC(i)/3)), g_IC, 0])]);
     
     options.timeStep = dt;
     options.taylorTerms=5; %number of taylor terms for reachable sets

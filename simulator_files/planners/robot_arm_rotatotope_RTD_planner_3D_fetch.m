@@ -85,18 +85,18 @@ classdef robot_arm_rotatotope_RTD_planner_3D_fetch < robot_arm_generic_planner
             q_dot_0 = agent_info.state(P.arm_joint_speed_indices, end) ;
             
             % generate FRS
-%             P.R = robot_arm_FRS_rotatotope_fetch(q_0, q_dot_0, P.FRS_options);
+            P.R = robot_arm_FRS_rotatotope_fetch(q_0, q_dot_0, P.FRS_options);
             
             % map obstacles to trajectory parameter space
-%             P.R = P.R.generate_constraints(O);
+            P.R = P.R.generate_constraints(O);
             
             % protect against self-intersections:
-%             P.R = P.R.generate_self_intersection_constraints;
+            P.R = P.R.generate_self_intersection_constraints;
 %             [~, k_lim, k_unsafe_A, k_unsafe_b] = compute_unsafe_parameters_3D(P.R, P.phi_dot_0, O, P.FRS_options);
             
             P.vdisp('Replan is calling trajopt!',8)
 %             try
-%                 [k_opt, trajopt_failed] = P.trajopt(q_0, q_dot_0, q_des);
+                [k_opt, trajopt_failed] = P.trajopt(q_0, q_dot_0, q_des);
 %             catch
 %                 trajopt_failed = true ;
 %             end
@@ -105,14 +105,14 @@ classdef robot_arm_rotatotope_RTD_planner_3D_fetch < robot_arm_generic_planner
             
             P.vdisp('Processing trajopt result',8)
             
-            R_cuda = robot_arm_FRS_rotatotope_fetch_cuda(q_0, q_dot_0, q_des, O, zeros(6,1), P.FRS_options);
-            disp(R_cuda.mex_res);
-            k_opt = R_cuda.mex_res;
-            if(length(R_cuda.mex_res) == 6)
-                trajopt_failed = false;
-            else
-                trajopt_failed = true;
-            end
+%             R_cuda = robot_arm_FRS_rotatotope_fetch_cuda(q_0, q_dot_0, q_des, O, zeros(6,1), P.FRS_options);
+%             disp(R_cuda.mex_res);
+%             k_opt = R_cuda.mex_res;
+%             if(length(R_cuda.mex_res) == 6)
+%                 trajopt_failed = false;
+%             else
+%                 trajopt_failed = true;
+%             end
             
 %             disp('k from fmincon:');
 %             disp(k_opt);
@@ -316,6 +316,7 @@ classdef robot_arm_rotatotope_RTD_planner_3D_fetch < robot_arm_generic_planner
                         end
                         if length(maxidx) > 1
                                                             disp('ahhh');
+                                                            disp(c_obs(maxidx(1)));
                             tempgradc = P.R.A_con_self{i}{idx(j)}(maxidx, :)*lambdas_grad;
                             gradc = [gradc, (-max(tempgradc)')./g_param];
                         else

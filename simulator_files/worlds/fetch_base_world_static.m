@@ -99,11 +99,11 @@ classdef fetch_base_world_static < world
             switch W.goal_type
                 case 'configuration'
                     W.vdisp('Making goal in workspace using joint locations',5)
-                    J = I.get_joint_locations(W.goal) ;
-                    W.goal_in_workspace = J ;
+                    W.goal_in_workspace = W.goal ;
                 case 'end_effector_location'
                     W.vdisp('Setting end effector position as goal in workspace!',5)
-                    W.goal_in_workspace = W.goal ;
+                    J = I.get_joint_locations(W.goal) ;
+                    W.goal_in_workspace = J(:,end) ;
             end
                     
             
@@ -443,9 +443,9 @@ classdef fetch_base_world_static < world
             
             switch W.goal_type
                 case 'configuration'
-                    dz = min(abs(z - repmat(W.goal,1,size(z,2))),[],2) ;
-                    dz_log = all(dz <= W.goal_radius) ;
-                    out = all(dz_log) ;
+                    dz = abs(z - repmat(W.goal,1,size(z,2))) ;
+                    dz_log = dz <= W.goal_radius ;
+                    out = any(all(dz_log,1)) ;
                 case 'end_effector_location'
                     % get the joint locations
                     z = z(:,end) ;
