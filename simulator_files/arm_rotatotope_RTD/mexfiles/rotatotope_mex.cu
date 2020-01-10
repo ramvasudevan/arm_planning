@@ -157,7 +157,9 @@ P4.	solve the NLP
     }
 
     // Ask Ipopt to solve the problem
-    status = app->OptimizeTNLP(mynlp);
+	status = app->OptimizeTNLP(mynlp);
+	
+	mynlp->try_joint_limits(k_opt);
 
 	nlhs = 1;
 	

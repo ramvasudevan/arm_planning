@@ -3,16 +3,80 @@ clc;
 % code for testing the constraint generation for a 3 link arm
 figure(1); clf; hold on; view(3); axis equal;
 
-% set FRS_options
+%% user parameters
+N_random_obstacles = 20 ;
+dimension = 3 ;
+nLinks = 3 ;
+verbosity = 0 ;
+allow_replan_errors = true ;
+t_plan = 0.5 ;
+time_discretization = 0.01 ;
+T = 1 ;
+
+A = robot_arm_3D_fetch('verbose', verbosity, 'animation_set_axes_flag', 0, 'animation_set_view_flag', 0);
+
+%% automated from here
+
+% can adjust LLC gains here
+A.LLC.K_p = 1*A.LLC.K_p;
+A.LLC.K_i = 1*A.LLC.K_i;
+A.LLC.K_d = 1*A.LLC.K_d;
+A.joint_input_limits = 1*A.joint_input_limits;
+
+W = fetch_base_world_static('include_base_obstacle', 1, 'goal_radius', 0.03, 'N_random_obstacles',N_random_obstacles,'dimension',dimension,'workspace_goal_check', 0,...
+    'verbose',verbosity, 'creation_buffer', 0.1, 'base_creation_buffer', 0.025) ;
+% W = fetch_base_world_static('include_base_obstacle', 1, 'goal_radius', 0.03, 'N_obstacles',N_obstacles,'dimension',dimension,'workspace_goal_check', 0,...
+%     'verbose',verbosity,'start', [0;0;0;0;0;0], 'goal', [pi;0;0;0;0;0], 'creation_buffer', 0.05) ;
+
 FRS_options = struct();
-FRS_options.t_plan = 0.01;
-FRS_options.T = 1;
+% FRS_options.position_dimensions = [1;2;3];
+% FRS_options.extra_position_dimensions = [4;5];
+% FRS_options.IC_dimensions = [6;7];
+% FRS_options.param_dimensions = [8;9];
+% FRS_options.nLinks = nLinks;
+% FRS_options.time_discretization = 0.01;
+
+FRS_options.t_plan = t_plan;
+FRS_options.origin_shift = A.joint_locations(1:3, 1);
+FRS_options.T = T;
 FRS_options.L = 0.33;
-FRS_options.buffer_dist = 0;
+FRS_options.buffer_dist = A.buffer_dist;
 FRS_options.combs = generate_combinations_upto(200);
 FRS_options.maxcombs = 200;
 FRS_options.origin_shift = [ -0.03265;0;0.72601];
+P = robot_arm_rotatotope_RTD_planner_3D_fetch(FRS_options, 'verbose', verbosity, 't_plan', t_plan, 'time_discretization', time_discretization) ;
 
+% set up world using arm
+I = A.get_agent_info ;
+W.setup(I);
+
+% place arm at starting configuration
+% W.start = zeros(6, 1); % put in "home" config
+A.state(A.joint_state_indices) = W.start ;
+
+agent_info = A.get_agent_info() ;
+world_info = W.get_world_info(agent_info,P) ;
+P.setup(agent_info,world_info) ;
+
+% get current state of robot
+q = [0.7885;
+    0.7956;
+    0.3887;
+   -1.4218;
+    0.6108;
+   -0.8643] ;
+q_dot = zeros(6, 1) ;
+q_des = [0.6441;
+        0.6902;
+        0.5426;
+       -1.4591;
+        0.4469;
+       -0.9425];
+
+% generate FRS
+R = robot_arm_FRS_rotatotope_fetch(q, q_dot, FRS_options);
+P.R = R;
+                    
 % get current obstacles
 obs_center = [0.8; 0.2; -0.2];
 obs_width = [0.1];
@@ -30,39 +94,25 @@ obs_center = [0.6; -0.4; -0.7];
 obs_width = [0.1];
 O{5} = box_obstacle_zonotope('center', obs_center(:), 'side_lengths', [obs_width, obs_width, obs_width]);
 
-
-% get current state of robot
-q = [0.7885;
-    0.7956;
-    0.3887;
-   -1.4218;
-    0.6108;
-   -0.8643] ;
-q_dot = zeros(6, 1) ;
-q_des = [0.6441;
-        0.6902;
-        0.5426;
-       -1.4591;
-        0.4469;
-       -0.9425];
-good_k = -pi/6*ones(6, 1) ;
-bad_k = [pi/6 - 0.001; pi/6 - 0.001; pi/12; pi/24; -pi/36; pi/48];
-bad_k = -pi/6*ones(6, 1) ;
-
-% generate FRS
-R = robot_arm_FRS_rotatotope_fetch(q, q_dot, FRS_options);
 R = R.generate_constraints(O);
 
-for i = 1:length(O)
-    plot(O{i});
-end
-R.plot(10);
+good_k = -pi/6*ones(6, 1) ;
+bad_k = [pi/6 - 0.001; pi/6 - 0.001; pi/12; pi/24; -pi/36; pi/48];
+bad_k = R.c_k;
+
+% for i = 1:length(O)
+%     plot(O{i});
+% end
+% R.plot(10);
 
 R_cuda = robot_arm_FRS_rotatotope_fetch_cuda(q, q_dot, q_des, O, bad_k);
 eval_out = R_cuda.eval_output;
 eval_grad_out = R_cuda.eval_grad_output;
 eval_hess_out = R_cuda.eval_hess_output;
-mex_res = R_cuda.mex_res
+mex_res = R_cuda.mex_res;
+
+[c, ceq, gradc, gradceq] = eval_constraint(P, bad_k, q, q_dot);
+return;
 
 %% analysis
 link_id = 1;

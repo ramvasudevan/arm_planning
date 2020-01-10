@@ -12,7 +12,7 @@ ipopt nlp for rotatotopes
 
 #include "rotatotopeArray.h"
 
-#define t_plan 1.0
+#define t_plan 0.5
 #define t_total 1.0
 #define t_move 0.5
 #define twoHunPi 628.318531

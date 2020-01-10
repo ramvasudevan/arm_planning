@@ -708,7 +708,7 @@ void rotatotope_NLP::compute_max_min_states(const Number* k) {
 
 void rotatotope_NLP::try_joint_limits(double* k){
    compute_max_min_states(k);
- /*
+ 
    mexPrintf("values:\n");
    for(Index i = 0; i < 6; i++) {
       mexPrintf("%f\n", joint_state_limits[i] - q_min[i]);
@@ -721,7 +721,7 @@ void rotatotope_NLP::try_joint_limits(double* k){
    }
    for(Index i = 0; i < 6; i++) {
       mexPrintf("%f\n", -joint_speed_limits[i + 6] + q_dot_max[i]);
-   }*/
+   }
    
    for(Index i = 0; i < 6; i++) {
       for(Index j = 0; j < 6; j++){
