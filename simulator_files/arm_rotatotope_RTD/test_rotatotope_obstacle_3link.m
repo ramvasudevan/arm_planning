@@ -1,7 +1,7 @@
 clc;
 
 % code for testing the constraint generation for a 3 link arm
-% figure(1); clf; hold on; view(3); axis equal;
+figure(1); clf; hold on; view(3); axis equal;
 
 % set FRS_options
 FRS_options = struct();
@@ -11,13 +11,13 @@ FRS_options.L = 0.33;
 FRS_options.buffer_dist = 0;
 FRS_options.combs = generate_combinations_upto(200);
 FRS_options.maxcombs = 200;
-FRS_options.origin_shift = [0.6;0.5;0.4];
+FRS_options.origin_shift = [ -0.03265;0;0.72601];
 
 % get current obstacles
 obs_center = [0.8; 0.2; -0.2];
 obs_width = [0.1];
 O{1} = box_obstacle_zonotope('center', obs_center(:), 'side_lengths', [obs_width, obs_width, obs_width]);
-obs_center = [0.6; 0.4; 0.7];
+obs_center = [0.6; 0.4; -0.7];
 obs_width = [0.15];
 O{2} = box_obstacle_zonotope('center', obs_center(:), 'side_lengths', [obs_width, obs_width, obs_width]);
 obs_center = [0.6; -0.4; 0.7];
@@ -47,38 +47,43 @@ q_des = [0.6441;
        -0.9425];
 good_k = -pi/6*ones(6, 1) ;
 bad_k = [pi/6 - 0.001; pi/6 - 0.001; pi/12; pi/24; -pi/36; pi/48];
+bad_k = -pi/6*ones(6, 1) ;
 
 % generate FRS
 R = robot_arm_FRS_rotatotope_fetch(q, q_dot, FRS_options);
 R = R.generate_constraints(O);
-bad_k = R.c_k;
 
-R_cuda = robot_arm_FRS_rotatotope_fetch_cuda(q, q_dot, q_des, O, bad_k, FRS_options);
+for i = 1:length(O)
+    plot(O{i});
+end
+R.plot(10);
+
+R_cuda = robot_arm_FRS_rotatotope_fetch_cuda(q, q_dot, q_des, O, bad_k);
 eval_out = R_cuda.eval_output;
 eval_grad_out = R_cuda.eval_grad_output;
 eval_hess_out = R_cuda.eval_hess_output;
-mex_res = R_cuda.mex_res;
+mex_res = R_cuda.mex_res
 
 %% analysis
-% link_id = 3;
-% time_id = 22;
-% rot = R.link_FRS;
-% data = [rot{link_id}{time_id}.RZ;
-%     [0,any(rot{link_id}{time_id}.k_idx)&rot{link_id}{time_id}.c_idx]];
-% [d,id] = sort(vnorm(data(1:3,:)),'descend');
-% disp(data(:,id));
-% 
-% mex_data = [R_cuda.RZ{time_id};
-%     any(R_cuda.k_idx{time_id})&R_cuda.c_idx{time_id}];
-% [d,id] = sort(vnorm(mex_data(1:3,:)),'descend');
-% disp(mex_data(:,id));
+link_id = 1;
+time_id = 66;
+rot = R.link_FRS;
+data = [rot{link_id}{time_id}.RZ;
+    [0,any(rot{link_id}{time_id}.k_idx)&rot{link_id}{time_id}.c_idx]];
+[d,id] = sort(vnorm(data(1:3,:)),'descend');
+disp(data(:,id));
+
+mex_data = [R_cuda.RZ{time_id};
+    any(R_cuda.k_idx{time_id})&R_cuda.c_idx{time_id}];
+[d,id] = sort(vnorm(mex_data(1:3,:)),'descend');
+disp(mex_data(:,id));
 
 [c, ceq, gradc, gradceq] = eval_constraints(R, bad_k, q, q_dot);
 % h=vnorm(gradc-eval_grad_out);
 
 % test one particular set of constraints
 % default 1, 3, 97
-
+% return;
 for obstacle_id = 1:length(O)
     figure(obstacle_id); clf;
     good_diff = [];

@@ -328,7 +328,8 @@ void rotatotopeArray::stack(rotatotopeArray &EEs, rotatotopeArray &base) {
 		// origin shift
 		origin_shift_kernel <<< n_time_steps, 1 >>> (RZ_length[link_id], dev_RZ_stack[link_id]);
 
-		if (link_id == 2) {
+		
+		if (link_id == 0) {
 			debug_RZ = new double[n_time_steps * RZ_length[link_id] * Z_width];
 			cudaMemcpy(debug_RZ, dev_RZ_stack[link_id], n_time_steps * RZ_length[link_id] * Z_width * sizeof(double), cudaMemcpyDeviceToHost);
 
@@ -338,6 +339,7 @@ void rotatotopeArray::stack(rotatotopeArray &EEs, rotatotopeArray &base) {
 			debug_k_idx = new bool[2 * (link_id + 1) * n_time_steps * RZ_length[link_id]];
 			cudaMemcpy(debug_k_idx, dev_k_idx_stack[link_id], 2 * (link_id + 1) * n_time_steps * RZ_length[link_id] * sizeof(bool), cudaMemcpyDeviceToHost);
 		}
+		
 	}
 }
 

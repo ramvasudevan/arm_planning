@@ -528,7 +528,7 @@ void rotatotope_NLP::finalize_solution(
    }
    
    mexPrintf("\nSolution of the bound multipliers, z_L and z_U\n");
-   for( Index i = 0; i < n; i++ )
+   for( Index i = 0; i < n; i++ )   
    {
       mexPrintf( "z_L[%d] = %f\n", i, z_L[i]);
    }

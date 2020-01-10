@@ -30,7 +30,7 @@ classdef robot_arm_rotatotope_RTD_planner_3D_fetch < robot_arm_generic_planner
         %% constructor
         function P = robot_arm_rotatotope_RTD_planner_3D_fetch(varargin)
             t_move = 0.5;
-            lookahead_distance = 0.3;
+            lookahead_distance = 0.4;
 %             lookahead_distance = 1;
 %             HLP = robot_arm_RRT_HLP('make_new_tree_every_iteration_flag',true) ;
 %             HLP = robot_arm_PRM_HLP( ) ;
@@ -85,10 +85,10 @@ classdef robot_arm_rotatotope_RTD_planner_3D_fetch < robot_arm_generic_planner
             q_dot_0 = agent_info.state(P.arm_joint_speed_indices, end) ;
             
             % generate FRS
-            P.R = robot_arm_FRS_rotatotope_fetch(q_0, q_dot_0, P.FRS_options);
+%             P.R = robot_arm_FRS_rotatotope_fetch(q_0, q_dot_0, P.FRS_options);
             
             % map obstacles to trajectory parameter space
-            P.R = P.R.generate_constraints(O);
+%             P.R = P.R.generate_constraints(O);
             
             % protect against self-intersections:
 %             P.R = P.R.generate_self_intersection_constraints;
@@ -96,7 +96,7 @@ classdef robot_arm_rotatotope_RTD_planner_3D_fetch < robot_arm_generic_planner
             
             P.vdisp('Replan is calling trajopt!',8)
 %             try
-                [k_opt, trajopt_failed] = P.trajopt(q_0, q_dot_0, q_des);
+%                 [k_opt, trajopt_failed] = P.trajopt(q_0, q_dot_0, q_des);
 %             catch
 %                 trajopt_failed = true ;
 %             end
@@ -104,6 +104,18 @@ classdef robot_arm_rotatotope_RTD_planner_3D_fetch < robot_arm_generic_planner
 %             pause;
             
             P.vdisp('Processing trajopt result',8)
+            
+            R_cuda = robot_arm_FRS_rotatotope_fetch_cuda(q_0, q_dot_0, q_des, O, zeros(6,1), P.FRS_options);
+            disp(R_cuda.mex_res);
+            k_opt = R_cuda.mex_res;
+            if(length(R_cuda.mex_res) == 6)
+                trajopt_failed = false;
+            else
+                trajopt_failed = true;
+            end
+            
+%             disp('k from fmincon:');
+%             disp(k_opt);
             if ~trajopt_failed
                 P.vdisp('New trajectory found!',3);
                 
@@ -144,6 +156,9 @@ classdef robot_arm_rotatotope_RTD_planner_3D_fetch < robot_arm_generic_planner
                 end
                 toc(planning_time);
             end
+           
+
+                        
             %             toc;
         end
         
@@ -168,8 +183,8 @@ classdef robot_arm_rotatotope_RTD_planner_3D_fetch < robot_arm_generic_planner
             initial_guess = (lb + ub)/2;
            
 %             options = optimoptions('fmincon','SpecifyConstraintGradient',true, 'Algorithm', 'interior-point');
-%             options = optimoptions('fmincon','SpecifyConstraintGradient',true);
-            options = optimoptions('fmincon','SpecifyConstraintGradient',true, 'CheckGradients', true);
+            options = optimoptions('fmincon','SpecifyConstraintGradient',true);
+%             options = optimoptions('fmincon','SpecifyConstraintGradient',true, 'CheckGradients', true);
 %             options = optimoptions('fmincon');
             [k_opt, ~, exitflag, ~] = fmincon(cost_func, initial_guess, [], [], [], [], lb, ub, constraint_func, options) ;
             

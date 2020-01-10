@@ -25,12 +25,12 @@ a cuda array for a cluster of rotatotopes
 #define k_dim 2
 #define max_norm_size 310
 #define max_RZ_length 130
-#define ORIGIN_SHIFT_X 0.6
-#define ORIGIN_SHIFT_Y 0.5
-#define ORIGIN_SHIFT_Z 0.4
+#define ORIGIN_SHIFT_X -0.03265
+#define ORIGIN_SHIFT_Y 0.0
+#define ORIGIN_SHIFT_Z 0.72601
 #define A_BIG_NUMBER 1000000.0
 #define TOO_SMALL_POLYTOPE_JUDGE 0.00001
-#define CONSERVATIVE_BUFFER 0.00001
+#define CONSERVATIVE_BUFFER 0.0001
 
 class rotatotopeArray {
 public:

@@ -105,8 +105,8 @@ P1.	generate all the rotatotopes
 	cudaMalloc((void**)&dev_rot_axes, 6 * sizeof(uint8_t));
 	cudaMemcpy(dev_rot_axes, rot_axes, 6 * sizeof(uint8_t), cudaMemcpyHostToDevice);
 
-	uint32_t link_reduce_order = 20;
-	uint32_t point_reduce_order = 10;
+	uint32_t link_reduce_order = 12;
+	uint32_t point_reduce_order = 8;
 	
 	rotatotopeArray links = rotatotopeArray(n_links, n_time_steps, 2, R, dev_R, R_unit_length, dev_rot_axes, link_Z, link_Z_width, link_Z_length, link_reduce_order);
 	rotatotopeArray EEs = rotatotopeArray(n_links - 1, n_time_steps, 2, R, dev_R, R_unit_length, dev_rot_axes, EE_Z, EE_Z_width, EE_Z_length, point_reduce_order);
@@ -139,8 +139,8 @@ P4.	solve the NLP
     // Change some options
     // Note: The following choices are only examples, they might not be
     //       suitable for your optimization problem.
-	app->Options()->SetNumericValue("tol", 1e-3);
-	app->Options()->SetNumericValue("max_cpu_time", 1);
+	app->Options()->SetNumericValue("tol", 1e-7);
+	//app->Options()->SetNumericValue("max_cpu_time", 1);
 	app->Options()->SetNumericValue("print_level", 0);
     app->Options()->SetStringValue("mu_strategy", "adaptive");
     app->Options()->SetStringValue("output_file", "ipopt.out");
@@ -160,6 +160,7 @@ P4.	solve the NLP
     status = app->OptimizeTNLP(mynlp);
 
 	nlhs = 1;
+	
     if( status == Solve_Succeeded ) {
         plhs[0] = mxCreateNumericMatrix(n_links * 2, 1, mxDOUBLE_CLASS, mxREAL);
 		double *output0 = (double*)mxGetData(plhs[0]);
@@ -179,8 +180,8 @@ P4.	solve the NLP
 	/*
 P5. handle the output, release the memory
 	*/
-	
-	uint32_t link_id = 2;
+	/*
+	uint32_t link_id = 0;
 	uint32_t RZ_length = links.RZ_length[link_id];
 	mxArray* output1 = mxCreateCellMatrix(1, n_time_steps);
 	for (uint32_t k = 0; k < n_time_steps; k++) {
@@ -340,7 +341,7 @@ P5. handle the output, release the memory
 			}
 		}
 	}
-	
+	*/	
 
 	cudaFree(dev_R);
 	cudaFree(dev_rot_axes);
