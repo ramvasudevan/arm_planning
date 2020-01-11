@@ -6,17 +6,17 @@
             c = [];
             gradc = [];
             %%% Joint limit constraints:
-            [q_min, q_max, q_dot_min, q_dot_max, grad_q_min, grad_q_max, grad_q_dot_min, grad_q_dot_max] = compute_max_min_states(q_0, q_dot_0, k_opt);
-            c_joint = [];
-            c_joint = [c_joint; P.arm_joint_state_limits(1, :)' - q_min];
-            c_joint = [c_joint; -P.arm_joint_state_limits(2, :)' + q_max];
-            c_joint = [c_joint; P.arm_joint_speed_limits(1, :)' - q_dot_min];
-            c_joint = [c_joint; -P.arm_joint_speed_limits(2, :)' + q_dot_max];
-
-            grad_c_joint = [-grad_q_min, grad_q_max, -grad_q_dot_min, grad_q_dot_max];
-            
-            c = [c; c_joint];
-            gradc = [gradc, grad_c_joint];
+%             [q_min, q_max, q_dot_min, q_dot_max, grad_q_min, grad_q_max, grad_q_dot_min, grad_q_dot_max] = compute_max_min_states(q_0, q_dot_0, k_opt);
+%             c_joint = [];
+%             c_joint = [c_joint; P.arm_joint_state_limits(1, :)' - q_min];
+%             c_joint = [c_joint; -P.arm_joint_state_limits(2, :)' + q_max];
+%             c_joint = [c_joint; P.arm_joint_speed_limits(1, :)' - q_dot_min];
+%             c_joint = [c_joint; -P.arm_joint_speed_limits(2, :)' + q_dot_max];
+% 
+%             grad_c_joint = [-grad_q_min, grad_q_max, -grad_q_dot_min, grad_q_dot_max];
+%            
+%             c = [c; c_joint];
+%             gradc = [gradc, grad_c_joint];
                         
             %%% Obstacle constraint generation:
             for i = 1:length(R.A_con) % for each obstacle
