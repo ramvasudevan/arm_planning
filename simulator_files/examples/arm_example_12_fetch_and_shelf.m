@@ -60,7 +60,7 @@ make_new_graph_every_iteration = false ;
 plot_HLP_flag = true ; % for planner
 plot_waypoint_flag = true ; % for HLP
 plot_waypoint_arm_flag  = true ; % for HLP
-lookahead_distance = 0.2 ;
+lookahead_distance = 0.3 ;
 use_end_effector_for_cost_flag = false ;
 csv_filename = 'fetch_shelf_scene_example.csv' ;
 plot_CAD_flag = true ; % plot the faaaaancy arm :)
@@ -122,10 +122,10 @@ P = robot_arm_rotatotope_RTD_planner_3D_fetch(FRS_options,...
 
 % P.HLP = robot_arm_optimization_HLP() ;
 
-% P.HLP = arm_end_effector_RRT_star_HLP('plot_waypoint_flag',plot_waypoint_flag,...
-%     'plot_waypoint_arm_flag',plot_waypoint_arm_flag,...
-%     'grow_tree_mode',HLP_grow_tree_mode,...
-%     'buffer',0.1) ;
+P.HLP = arm_end_effector_RRT_star_HLP('plot_waypoint_flag',plot_waypoint_flag,...
+    'plot_waypoint_arm_flag',plot_waypoint_arm_flag,...
+    'grow_tree_mode',HLP_grow_tree_mode,...
+    'buffer',0.1) ;
 
 %% set up simulator
 % set up world using arm

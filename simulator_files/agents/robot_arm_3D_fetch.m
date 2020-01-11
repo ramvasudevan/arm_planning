@@ -166,10 +166,10 @@ classdef robot_arm_3D_fetch < robot_arm_agent
                         link_array = [link_array, link_data] ;
                     end
                     A.plot_data.links = link_array ;
+                    
+                    % turn camlight on
+                    camlight
                 end
-                
-                % turn camlight on
-                camlight
             else
                 plot_links@robot_arm_agent(A,time_or_config) ;
             end
