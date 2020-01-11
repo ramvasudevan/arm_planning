@@ -94,6 +94,8 @@ P0.	process the input
 	uint32_t base_Z_width = 3;
 	uint32_t base_Z_length = 1;
 
+	
+
 	start_t = clock();
 
 	/*
@@ -105,12 +107,16 @@ P1.	generate all the rotatotopes
 	cudaMalloc((void**)&dev_rot_axes, 6 * sizeof(uint8_t));
 	cudaMemcpy(dev_rot_axes, rot_axes, 6 * sizeof(uint8_t), cudaMemcpyHostToDevice);
 
-	uint32_t link_reduce_order = 12;
-	uint32_t point_reduce_order = 8;
+	uint32_t link_reduce_order = 20;
+	uint32_t point_reduce_order = 10;
 	
 	rotatotopeArray links = rotatotopeArray(n_links, n_time_steps, 2, R, dev_R, R_unit_length, dev_rot_axes, link_Z, link_Z_width, link_Z_length, link_reduce_order);
 	rotatotopeArray EEs = rotatotopeArray(n_links - 1, n_time_steps, 2, R, dev_R, R_unit_length, dev_rot_axes, EE_Z, EE_Z_width, EE_Z_length, point_reduce_order);
 	rotatotopeArray base = rotatotopeArray(n_links - 2, n_time_steps, 1, R, dev_R, R_unit_length, dev_rot_axes, base_Z, base_Z_width, base_Z_length, point_reduce_order);
+
+	// comment here if you don't want to debug
+	bool debugMode = false;
+	links.debugMode = debugMode;
 
 	/*
 P2.	stack the rotatotopes
@@ -140,14 +146,14 @@ P4.	solve the NLP
     // Note: The following choices are only examples, they might not be
     //       suitable for your optimization problem.
 	app->Options()->SetNumericValue("tol", 1e-7);
-	//app->Options()->SetNumericValue("max_cpu_time", 1);
+	app->Options()->SetNumericValue("max_cpu_time", 1);
 	app->Options()->SetNumericValue("print_level", 0);
     app->Options()->SetStringValue("mu_strategy", "adaptive");
     app->Options()->SetStringValue("output_file", "ipopt.out");
-    //app->Options()->SetStringValue("hessian_approximation", "limited-memory");
-	//app->Options()->SetStringValue("limited_memory_update_type", "bfgs");
-	//app->Options()->SetStringValue("derivative_test", "first-order");
-	//app->Options()->SetNumericValue("derivative_test_perturbation", 0.000001);
+	if(debugMode){
+		app->Options()->SetStringValue("derivative_test", "first-order");
+		app->Options()->SetNumericValue("derivative_test_perturbation", 0.000001);
+	}
 
     // Initialize the IpoptApplication and process the options
     ApplicationReturnStatus status;
@@ -159,7 +165,7 @@ P4.	solve the NLP
     // Ask Ipopt to solve the problem
 	status = app->OptimizeTNLP(mynlp);
 	
-	mynlp->try_joint_limits(k_opt);
+	//mynlp->try_joint_limits(k_opt);
 
 	nlhs = 1;
 	
@@ -182,169 +188,203 @@ P4.	solve the NLP
 	/*
 P5. handle the output, release the memory
 	*/
-	/*
-	uint32_t link_id = 0;
-	uint32_t RZ_length = links.RZ_length[link_id];
-	mxArray* output1 = mxCreateCellMatrix(1, n_time_steps);
-	for (uint32_t k = 0; k < n_time_steps; k++) {
-		mxArray* time_step_k = mxCreateNumericMatrix(links.Z_width, RZ_length, mxDOUBLE_CLASS, mxREAL);
-		double *pt = (double*)mxGetData(time_step_k);
+	if(debugMode){
+		uint32_t link_id = 0;
+		uint32_t RZ_length = links.RZ_length[link_id];
 
-		for (uint32_t t = 0; t < RZ_length; t++) {
-			for (uint32_t p = 0; p < links.Z_width; p++) {
-				pt[t * links.Z_width + p] = links.debug_RZ[(k * RZ_length + t) * links.Z_width + p];
+		if(links.debug_RZ == nullptr){
+			mexErrMsgIdAndTxt("MyProg:ConvertString","*** debug_RZ is empty!");
+		}
+
+		mxArray* output1 = mxCreateCellMatrix(1, n_time_steps);
+		for (uint32_t k = 0; k < n_time_steps; k++) {
+			mxArray* time_step_k = mxCreateNumericMatrix(links.Z_width, RZ_length, mxDOUBLE_CLASS, mxREAL);
+			double *pt = (double*)mxGetData(time_step_k);
+
+			for (uint32_t t = 0; t < RZ_length; t++) {
+				for (uint32_t p = 0; p < links.Z_width; p++) {
+					pt[t * links.Z_width + p] = links.debug_RZ[(k * RZ_length + t) * links.Z_width + p];
+				}
+			}
+
+			mxSetCell(output1, k, time_step_k);
+		}
+		plhs[1] = output1;
+
+		mxArray* output2 = mxCreateCellMatrix(1, n_time_steps);
+		for (uint32_t k = 0; k < n_time_steps; k++) {
+			mxArray* time_step_k = mxCreateLogicalMatrix(1, RZ_length);
+			bool *pt = (bool*)mxGetData(time_step_k);
+
+			for (uint32_t t = 0; t < RZ_length; t++) {
+				pt[t] = links.debug_c_idx[k * RZ_length + t];
+			}
+
+			mxSetCell(output2, k, time_step_k);
+		}
+		plhs[2] = output2;
+
+		mxArray* output3 = mxCreateCellMatrix(1, n_time_steps);
+		for (uint32_t k = 0; k < n_time_steps; k++) {
+			mxArray* time_step_k = mxCreateLogicalMatrix(2 * (link_id + 1), RZ_length);
+			bool *pt = (bool*)mxGetData(time_step_k);
+
+			for (uint32_t t = 0; t < RZ_length; t++) {
+				for (uint32_t p = 0; p < 2 * (link_id + 1); p++) {
+					pt[t * 2 * (link_id + 1) + p] = links.debug_k_idx[(p * n_time_steps + k) * RZ_length + t];
+				}
+			}
+
+			mxSetCell(output3, k, time_step_k);
+		}
+		plhs[3] = output3;
+		
+		if(links.A_con[0] == nullptr){
+			mexErrMsgIdAndTxt("MyProg:ConvertString","*** A_con is empty!");
+		}
+
+		mxArray* output4 = mxCreateCellMatrix(1, n_obstacles);
+		for (uint32_t i = 0; i < n_obstacles; i++) {
+			mxArray* obstacle_i = mxCreateCellMatrix(1, n_links);
+			for (uint32_t j = 0; j < n_links; j++) {
+				uint32_t RZ_length = links.RZ_length[j];
+				uint32_t buff_obstacle_length = RZ_length + 3;
+				uint32_t constraint_length = ((buff_obstacle_length - 1) * (buff_obstacle_length - 2)) / 2;
+				mxArray* link_j = mxCreateCellMatrix(1, n_time_steps);
+				for (uint32_t k = 0; k < n_time_steps; k++) {
+					mxArray* time_step_k = mxCreateNumericMatrix(constraint_length, links.k_con_num[j][k], mxDOUBLE_CLASS, mxREAL);
+					double *pt = (double*)mxGetData(time_step_k);
+
+					for (uint32_t t = 0; t < links.k_con_num[j][k]; t++) {
+						for (uint32_t p = 0; p < constraint_length; p++) {
+							pt[t * constraint_length + p] = links.A_con[j][((i * n_time_steps + k) * constraint_length + p) * links.max_k_con_num[j] + t];
+						}
+					}
+
+					mxSetCell(link_j, k, time_step_k);
+				}
+
+				mxSetCell(obstacle_i, j, link_j);
+			}
+
+			mxSetCell(output4, i, obstacle_i);
+		}
+		plhs[4] = output4;
+
+		mxArray* output5 = mxCreateCellMatrix(1, n_obstacles);
+		for (uint32_t i = 0; i < n_obstacles; i++) {
+			mxArray* obstacle_i = mxCreateCellMatrix(1, n_links);
+			for (uint32_t j = 0; j < n_links; j++) {
+				uint32_t RZ_length = links.RZ_length[j];
+				uint32_t buff_obstacle_length = RZ_length + 3;
+				uint32_t constraint_length = ((buff_obstacle_length - 1) * (buff_obstacle_length - 2)) / 2;
+				mxArray* link_j = mxCreateCellMatrix(1, n_time_steps);
+				for (uint32_t k = 0; k < n_time_steps; k++) {
+					mxArray* time_step_k = mxCreateNumericMatrix(constraint_length, 1, mxDOUBLE_CLASS, mxREAL);
+					double *pt = (double*)mxGetData(time_step_k);
+
+					for (uint32_t p = 0; p < constraint_length; p++) {
+						pt[p] = links.d_con[j][(i * n_time_steps + k) * constraint_length + p];
+					}
+
+					mxSetCell(link_j, k, time_step_k);
+				}
+
+				mxSetCell(obstacle_i, j, link_j);
+			}
+
+			mxSetCell(output5, i, obstacle_i);
+		}
+		plhs[5] = output5;
+
+		mxArray* output6 = mxCreateCellMatrix(1, n_obstacles);
+		for (uint32_t i = 0; i < n_obstacles; i++) {
+			mxArray* obstacle_i = mxCreateCellMatrix(1, n_links);
+			for (uint32_t j = 0; j < n_links; j++) {
+				uint32_t RZ_length = links.RZ_length[j];
+				uint32_t buff_obstacle_length = RZ_length + 3;
+				uint32_t constraint_length = ((buff_obstacle_length - 1) * (buff_obstacle_length - 2)) / 2;
+				mxArray* link_j = mxCreateCellMatrix(1, n_time_steps);
+				for (uint32_t k = 0; k < n_time_steps; k++) {
+					mxArray* time_step_k = mxCreateNumericMatrix(constraint_length, 1, mxDOUBLE_CLASS, mxREAL);
+					double *pt = (double*)mxGetData(time_step_k);
+
+					for (uint32_t p = 0; p < constraint_length; p++) {
+						pt[p] = links.delta_con[j][(i * n_time_steps + k) * constraint_length + p];
+					}
+
+					mxSetCell(link_j, k, time_step_k);
+				}
+
+				mxSetCell(obstacle_i, j, link_j);
+			}
+
+			mxSetCell(output6, i, obstacle_i);
+		}
+		plhs[6] = output6;
+
+		mxArray* output7 = mxCreateCellMatrix(1, n_obstacles);
+		for (uint32_t i = 0; i < n_obstacles; i++) {
+			mxArray* obstacle_i = mxCreateCellMatrix(1, n_links);
+			for (uint32_t j = 0; j < n_links; j++) {
+				uint32_t RZ_length = links.RZ_length[j];
+				mxArray* link_j = mxCreateCellMatrix(1, n_time_steps);
+				for (uint32_t k = 0; k < n_time_steps; k++) {
+					mxArray* time_step_k = mxCreateLogicalMatrix(2 * (j + 1), links.k_con_num[j][k]);
+					bool *pt = mxGetLogicals(time_step_k);
+
+					for (uint32_t t = 0; t < links.k_con_num[j][k]; t++) {
+						for (uint32_t p = 0; p < 2 * (j + 1); p++) {
+							pt[t * 2 * (j + 1) + p] = links.k_con[j][(p * n_time_steps + k) * RZ_length + t];
+						}
+					}
+
+					mxSetCell(link_j, k, time_step_k);
+				}
+
+				mxSetCell(obstacle_i, j, link_j);
+			}
+
+			mxSetCell(output7, i, obstacle_i);
+		}
+		plhs[7] = output7;
+		
+		links.evaluate_constraints(k_opt);
+		
+		plhs[8] = mxCreateNumericMatrix(n_links * n_obstacles * n_time_steps, 1, mxDOUBLE_CLASS, mxREAL);
+		double *output8 = (double*)mxGetData(plhs[8]);
+		for (uint32_t i = 0; i < n_obstacles; i++) {
+			for (uint32_t j = 0; j < n_links; j++) {
+				for (uint32_t k = 0; k < n_time_steps; k++) {
+					output8[(i * n_links + j) * n_time_steps + k] = links.con[(j * n_obstacles + i) * n_time_steps + k];
+				}
 			}
 		}
-
-		mxSetCell(output1, k, time_step_k);
-	}
-	plhs[1] = output1;
-
-	mxArray* output2 = mxCreateCellMatrix(1, n_time_steps);
-	for (uint32_t k = 0; k < n_time_steps; k++) {
-		mxArray* time_step_k = mxCreateLogicalMatrix(1, RZ_length);
-		bool *pt = (bool*)mxGetData(time_step_k);
-
-		for (uint32_t t = 0; t < RZ_length; t++) {
-			pt[t] = links.debug_c_idx[k * RZ_length + t];
-		}
-
-		mxSetCell(output2, k, time_step_k);
-	}
-	plhs[2] = output2;
-
-	mxArray* output3 = mxCreateCellMatrix(1, n_time_steps);
-	for (uint32_t k = 0; k < n_time_steps; k++) {
-		mxArray* time_step_k = mxCreateLogicalMatrix(2 * (link_id + 1), RZ_length);
-		bool *pt = (bool*)mxGetData(time_step_k);
-
-		for (uint32_t t = 0; t < RZ_length; t++) {
-			for (uint32_t p = 0; p < 2 * (link_id + 1); p++) {
-				pt[t * 2 * (link_id + 1) + p] = links.debug_k_idx[(p * n_time_steps + k) * RZ_length + t];
-			}
-		}
-
-		mxSetCell(output3, k, time_step_k);
-	}
-	plhs[3] = output3;
-	
-	mxArray* output4 = mxCreateCellMatrix(1, n_obstacles);
-	for (uint32_t i = 0; i < n_obstacles; i++) {
-		mxArray* obstacle_i = mxCreateCellMatrix(1, n_links);
-		for (uint32_t j = 0; j < n_links; j++) {
-			uint32_t RZ_length = links.RZ_length[j];
-			uint32_t buff_obstacle_length = RZ_length + 3;
-			uint32_t constraint_length = ((buff_obstacle_length - 1) * (buff_obstacle_length - 2)) / 2;
-			mxArray* link_j = mxCreateCellMatrix(1, n_time_steps);
-			for (uint32_t k = 0; k < n_time_steps; k++) {
-				mxArray* time_step_k = mxCreateNumericMatrix(constraint_length * 2, links.k_con_num[j][k], mxDOUBLE_CLASS, mxREAL);
-				double *pt = (double*)mxGetData(time_step_k);
-
-				for (uint32_t t = 0; t < links.k_con_num[j][k]; t++) {
-					for (uint32_t p = 0; p < constraint_length * 2; p++) {
-						pt[t * constraint_length * 2 + p] = links.A_con[j][((i * n_time_steps + k) * constraint_length * 2 + p) * links.max_k_con_num[j] + t];
+		
+		plhs[9] = mxCreateNumericMatrix(n_links * 2, n_links * n_obstacles * n_time_steps, mxDOUBLE_CLASS, mxREAL);
+		double *output9 = (double*)mxGetData(plhs[9]);
+		for (uint32_t i = 0; i < n_obstacles; i++) {
+			for (uint32_t j = 0; j < n_links; j++) {
+				for (uint32_t k = 0; k < n_time_steps; k++) {
+					for (uint32_t p = 0; p < n_links * 2; p++) {
+						output9[((i * n_links + j) * n_time_steps + k) * n_links * 2 + p] = links.jaco_con[((j * n_obstacles + i) * n_time_steps + k) * n_links * 2 + p];
 					}
 				}
-
-				mxSetCell(link_j, k, time_step_k);
 			}
-
-			mxSetCell(obstacle_i, j, link_j);
 		}
 
-		mxSetCell(output4, i, obstacle_i);
-	}
-	plhs[4] = output4;
-
-	mxArray* output5 = mxCreateCellMatrix(1, n_obstacles);
-	for (uint32_t i = 0; i < n_obstacles; i++) {
-		mxArray* obstacle_i = mxCreateCellMatrix(1, n_links);
-		for (uint32_t j = 0; j < n_links; j++) {
-			uint32_t RZ_length = links.RZ_length[j];
-			uint32_t buff_obstacle_length = RZ_length + 3;
-			uint32_t constraint_length = ((buff_obstacle_length - 1) * (buff_obstacle_length - 2)) / 2;
-			mxArray* link_j = mxCreateCellMatrix(1, n_time_steps);
-			for (uint32_t k = 0; k < n_time_steps; k++) {
-				mxArray* time_step_k = mxCreateNumericMatrix(constraint_length * 2, 1, mxDOUBLE_CLASS, mxREAL);
-				double *pt = (double*)mxGetData(time_step_k);
-
-				for (uint32_t p = 0; p < constraint_length * 2; p++) {
-					pt[p] = links.b_con[j][(i * n_time_steps + k) * constraint_length * 2 + p];
-				}
-
-				mxSetCell(link_j, k, time_step_k);
-			}
-
-			mxSetCell(obstacle_i, j, link_j);
-		}
-
-		mxSetCell(output5, i, obstacle_i);
-	}
-	plhs[5] = output5;
-
-	mxArray* output6 = mxCreateCellMatrix(1, n_obstacles);
-	for (uint32_t i = 0; i < n_obstacles; i++) {
-		mxArray* obstacle_i = mxCreateCellMatrix(1, n_links);
-		for (uint32_t j = 0; j < n_links; j++) {
-			uint32_t RZ_length = links.RZ_length[j];
-			mxArray* link_j = mxCreateCellMatrix(1, n_time_steps);
-			for (uint32_t k = 0; k < n_time_steps; k++) {
-				mxArray* time_step_k = mxCreateLogicalMatrix(2 * (j + 1), links.k_con_num[j][k]);
-				bool *pt = mxGetLogicals(time_step_k);
-
-				for (uint32_t t = 0; t < links.k_con_num[j][k]; t++) {
-					for (uint32_t p = 0; p < 2 * (j + 1); p++) {
-						pt[t * 2 * (j + 1) + p] = links.k_con[j][(p * n_time_steps + k) * RZ_length + t];
+		plhs[10] = mxCreateNumericMatrix(n_links * (n_links * 2 - 1), n_links * n_obstacles * n_time_steps, mxDOUBLE_CLASS, mxREAL);
+		double *output10 = (double*)mxGetData(plhs[10]);
+		for (uint32_t i = 0; i < n_obstacles; i++) {
+			for (uint32_t j = 0; j < n_links; j++) {
+				for (uint32_t k = 0; k < n_time_steps; k++) {
+					for (uint32_t p = 0; p < n_links * (n_links * 2 - 1); p++) {
+						output10[((i * n_links + j) * n_time_steps + k) * n_links * (n_links * 2 - 1) + p] = links.hess_con[((j * n_obstacles + i) * n_time_steps + k) * n_links * (n_links * 2 - 1) + p];
 					}
 				}
-
-				mxSetCell(link_j, k, time_step_k);
-			}
-
-			mxSetCell(obstacle_i, j, link_j);
-		}
-
-		mxSetCell(output6, i, obstacle_i);
-	}
-	plhs[6] = output6;
-	
-	links.evaluate_constraints(k_opt);
-	
-	plhs[7] = mxCreateNumericMatrix(n_links * n_obstacles * n_time_steps, 1, mxDOUBLE_CLASS, mxREAL);
-	double *output7 = (double*)mxGetData(plhs[7]);
-	for (uint32_t i = 0; i < n_obstacles; i++) {
-		for (uint32_t j = 0; j < n_links; j++) {
-			for (uint32_t k = 0; k < n_time_steps; k++) {
-				output7[(i * n_links + j) * n_time_steps + k] = links.con[(j * n_obstacles + i) * n_time_steps + k];
 			}
 		}
 	}
-	
-	plhs[8] = mxCreateNumericMatrix(n_links * 2, n_links * n_obstacles * n_time_steps, mxDOUBLE_CLASS, mxREAL);
-	double *output8 = (double*)mxGetData(plhs[8]);
-	for (uint32_t i = 0; i < n_obstacles; i++) {
-		for (uint32_t j = 0; j < n_links; j++) {
-			for (uint32_t k = 0; k < n_time_steps; k++) {
-				for (uint32_t p = 0; p < n_links * 2; p++) {
-					output8[((i * n_links + j) * n_time_steps + k) * n_links * 2 + p] = links.jaco_con[((j * n_obstacles + i) * n_time_steps + k) * n_links * 2 + p];
-				}
-			}
-		}
-	}
-
-	plhs[9] = mxCreateNumericMatrix(n_links * (n_links * 2 - 1), n_links * n_obstacles * n_time_steps, mxDOUBLE_CLASS, mxREAL);
-	double *output9 = (double*)mxGetData(plhs[9]);
-	for (uint32_t i = 0; i < n_obstacles; i++) {
-		for (uint32_t j = 0; j < n_links; j++) {
-			for (uint32_t k = 0; k < n_time_steps; k++) {
-				for (uint32_t p = 0; p < n_links * (n_links * 2 - 1); p++) {
-					output9[((i * n_links + j) * n_time_steps + k) * n_links * (n_links * 2 - 1) + p] = links.hess_con[((j * n_obstacles + i) * n_time_steps + k) * n_links * (n_links * 2 - 1) + p];
-				}
-			}
-		}
-	}
-	*/	
-
 	cudaFree(dev_R);
 	cudaFree(dev_rot_axes);
 }

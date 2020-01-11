@@ -87,6 +87,8 @@ public:
 	*/
 	void evaluate_constraints(double* k_opt);
 
+	bool debugMode;
+
 	// number of different zonotopes
 	uint32_t n_links;
 
@@ -142,8 +144,11 @@ public:
 	double** A_con;
 	double** dev_A_con;
 
-	double** b_con;
-	double** dev_b_con;
+	double** d_con;
+	double** dev_d_con;
+
+	double** delta_con;
+	double** dev_delta_con;
 
 	bool** k_con;
 	bool** dev_k_con;
@@ -329,12 +334,14 @@ Requires:
 	5. k_con_num
 	6. A_con_width = max_k_con_num
 	7. A_con
-	8. b_con
+	8. d_con
+	9. delta_con
 Modifies:
 	1. A_con
-	2. b_con
+	2. d_con
+	3. delta_con
 */
-__global__ void polytope(uint32_t link_id, uint32_t RZ_length, double* buff_obstacles, double* frs_k_dep_G, uint8_t* k_con_num, uint32_t A_con_width, double* A_con, double* b_con);
+__global__ void polytope(uint32_t link_id, uint32_t RZ_length, double* buff_obstacles, double* frs_k_dep_G, uint8_t* k_con_num, uint32_t A_con_width, double* A_con, double* d_con, double* delta_con);
 
 /*
 Instruction:
@@ -345,14 +352,15 @@ Requires:
 	3. RZ_length
 	4. A_con
 	5. A_con_width
-	6. b_con
-	7. k_con
-	8. k_con_num
-	9. con_result
+	6. d_con
+	7. delta_con
+	8. k_con
+	9. k_con_num
+	10. con_result
 Modifies:
 	1. con_result
 */
-__global__ void evaluate_constraints_kernel(double* lambda, uint32_t link_id, uint32_t RZ_length, double* A_con, uint32_t A_con_width, double* b_con, bool* k_con, uint8_t* k_con_num, double* con_result);
+__global__ void evaluate_constraints_kernel(double* lambda, uint32_t link_id, uint32_t RZ_length, double* A_con, uint32_t A_con_width, double* d_con, double* delta_con, bool* k_con, uint8_t* k_con_num, double* con_result);
 
 /*
 Instruction:
