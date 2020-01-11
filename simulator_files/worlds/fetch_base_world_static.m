@@ -448,13 +448,20 @@ classdef fetch_base_world_static < world
                     out = any(all(dz_log,1)) ;
                 case 'end_effector_location'
                     % get the joint locations
-                    z = z(:,end) ;
                     J = agent_info.get_joint_locations(z) ;
+                    
+                    % concatenate all the end effector locations into one
+                    % array
+                    N_J = length(J) ;
+                    J_ee = nan(3,N_J) ;
+                    for idx = 1:N_J
+                        J_ee(:,idx) = J{idx}(:,end) ;
+                    end
                     
                     % check how far the end effector is from the goal
                     % location
-                    dz = vecnorm(J(:,end) - W.goal_in_workspace) ;
-                    out = dz <= W.goal_radius ;
+                    dz = vecnorm(J_ee - repmat(W.goal_in_workspace,1,N_J)) ;
+                    out = any(dz <= W.goal_radius) ;
                 otherwise
                     error(['The goal type ',W.goal_type,' is not supported!'])
             end
@@ -538,7 +545,7 @@ classdef fetch_base_world_static < world
                         W.plot_data.goal = data ;
                     end
                 case 'end_effector_location'
-                    g = W.goal ;
+                    g = W.goal_in_workspace ;
                     if ~check_if_plot_is_available(W,'goal') && ~isempty(W.goal)
                         data = plot_path(g,'p','Color',W.goal_plot_edge_color,'LineWidth',2) ;
                         W.plot_data.goal = data ;
