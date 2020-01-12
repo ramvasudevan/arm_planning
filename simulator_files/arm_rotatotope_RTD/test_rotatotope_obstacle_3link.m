@@ -15,7 +15,7 @@ FRS_options.t_plan = 0.5;
 FRS_options.origin_shift = [-0.0326;0;0.7260];
 FRS_options.T = 1;
 FRS_options.L = 0.33;
-FRS_options.buffer_dist = 0;
+FRS_options.buffer_dist = 0.1460;
 FRS_options.combs = generate_combinations_upto(200);
 FRS_options.maxcombs = 200;
 
@@ -64,12 +64,11 @@ bad_k = [pi/6 - 0.001; pi/6 - 0.001; pi/12; pi/24; -pi/36; pi/48];
 % end
 % R.plot(10);
 
-R_cuda = robot_arm_FRS_rotatotope_fetch_cuda(q, q_dot, q_des, O, bad_k);
+R_cuda = robot_arm_FRS_rotatotope_fetch_cuda(q, q_dot, q_des, O, bad_k, FRS_options);
 eval_out = R_cuda.eval_output;
 eval_grad_out = R_cuda.eval_grad_output;
 eval_hess_out = R_cuda.eval_hess_output;
 mex_res = R_cuda.mex_res;
-return
 
 %% analysis
 % link_id = 1;
@@ -162,8 +161,7 @@ for obstacle_id = 1:length(O)
         max(abs(bad_diff{link_id}))
         subplot(1,3,link_id);
         plot(1:1:100,bad_diff{link_id},'b.');
-%         hold on;
-%         plot(1:1:100,good_diff{link_id},'r.');
+        
         xlabel('time steps');
         ylabel('difference');
         title(['link ', int2str(link_id)]);

@@ -94,10 +94,7 @@ P0.	process the input
 	uint32_t base_Z_width = 3;
 	uint32_t base_Z_length = 1;
 
-	
-
 	start_t = clock();
-
 	/*
 P1.	generate all the rotatotopes
 	*/
@@ -107,15 +104,15 @@ P1.	generate all the rotatotopes
 	cudaMalloc((void**)&dev_rot_axes, 6 * sizeof(uint8_t));
 	cudaMemcpy(dev_rot_axes, rot_axes, 6 * sizeof(uint8_t), cudaMemcpyHostToDevice);
 
-	uint32_t link_reduce_order = 20;
-	uint32_t point_reduce_order = 10;
+	uint32_t link_reduce_order = 15;
+	uint32_t point_reduce_order = 15;
 	
 	rotatotopeArray links = rotatotopeArray(n_links, n_time_steps, 2, R, dev_R, R_unit_length, dev_rot_axes, link_Z, link_Z_width, link_Z_length, link_reduce_order);
 	rotatotopeArray EEs = rotatotopeArray(n_links - 1, n_time_steps, 2, R, dev_R, R_unit_length, dev_rot_axes, EE_Z, EE_Z_width, EE_Z_length, point_reduce_order);
 	rotatotopeArray base = rotatotopeArray(n_links - 2, n_time_steps, 1, R, dev_R, R_unit_length, dev_rot_axes, base_Z, base_Z_width, base_Z_length, point_reduce_order);
 
 	// comment here if you don't want to debug
-	bool debugMode = false;
+	bool debugMode = true;
 	links.debugMode = debugMode;
 
 	/*
@@ -128,7 +125,7 @@ P3.	generate the constraints
 	*/
 	links.generate_constraints(n_obstacles, OZ, OZ_width, OZ_length);
 	end_t = clock();
-	mexPrintf("Construct rotatotopes time: %.6f\n", (end_t - start_t) / (double)(CLOCKS_PER_SEC));
+	mexPrintf("CUDA: Construct rotatotopes time: %.6f ms\n", 1000.0 * (end_t - start_t) / (double)(CLOCKS_PER_SEC));
 	start_t = clock();
 	/*
 P4.	solve the NLP
@@ -183,7 +180,7 @@ P4.	solve the NLP
 	}
 
 	end_t = clock();
-	mexPrintf("IPOPT NLP time: %.6f\n", (end_t - start_t) / (double)(CLOCKS_PER_SEC));
+	mexPrintf("CUDA: IPOPT solve time: %.6f ms\n", 1000.0 * (end_t - start_t) / (double)(CLOCKS_PER_SEC));
 
 	/*
 P5. handle the output, release the memory

@@ -96,13 +96,11 @@ classdef robot_arm_FRS_rotatotope_fetch_cuda
             % promise that the sizes of obstacles are the same, <= 10
             mexin_OZ = [];
             for i = 1:length(obj.obstacles)
-                myZ = obj.obstacles{i}.zono.Z;
-                myZ(:, 2:end) = myZ(:, 2:end) + obj.FRS_options.buffer_dist/2*eye(3,3);
-                mexin_OZ = [mexin_OZ, myZ];
+                mexin_OZ = [mexin_OZ, obj.obstacles{i}.zono.Z]; 
             end
            
-            %[obj.mex_res, obj.RZ, obj.c_idx, obj.k_idx, obj.A_con, obj.d_con, obj.delta_con, obj.k_con, obj.eval_output, obj.eval_grad_output, obj.eval_hess_output] = rotatotope_mex(mexin_R, length(obj.obstacles), mexin_OZ, obj.k_opt, obj.q, obj.q_dot, obj.q_des);
-            obj.mex_res = rotatotope_mex(mexin_R, length(obj.obstacles), mexin_OZ, obj.k_opt, obj.q, obj.q_dot, obj.q_des);
+            [obj.mex_res, obj.RZ, obj.c_idx, obj.k_idx, obj.A_con, obj.d_con, obj.delta_con, obj.k_con, obj.eval_output, obj.eval_grad_output, obj.eval_hess_output] = rotatotope_mex(mexin_R, length(obj.obstacles), mexin_OZ, obj.k_opt, obj.q, obj.q_dot, obj.q_des);
+            %obj.mex_res = rotatotope_mex(mexin_R, length(obj.obstacles), mexin_OZ, obj.k_opt, obj.q, obj.q_dot, obj.q_des);
             toc;
         end
     end

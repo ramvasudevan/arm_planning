@@ -21,6 +21,7 @@ a cuda array for a cluster of rotatotopes
 #include <cstdint>
 #include <ctime>
 #include <cfloat>
+#include <vector>
 
 #define k_dim 2
 #define max_norm_size 310
@@ -29,8 +30,11 @@ a cuda array for a cluster of rotatotopes
 #define ORIGIN_SHIFT_Y 0.0
 #define ORIGIN_SHIFT_Z 0.72601
 #define A_BIG_NUMBER 1000000.0
-#define TOO_SMALL_POLYTOPE_JUDGE 0.00001
-#define CONSERVATIVE_BUFFER 0.0001
+#define BUFFER_DIST 0.1460
+#define TOO_SMALL_POLYTOPE_JUDGE 0.000001
+#define CONSERVATIVE_BUFFER 0.001
+
+using std::vector;
 
 class rotatotopeArray {
 public:
@@ -98,6 +102,12 @@ public:
 	// number of rotation for each different zonotopes
 	uint32_t joint_per_link;
 
+	// number of pairs of self intersection check
+	uint32_t n_pairs = 1;
+
+	// self intersection pairs
+	uint32_t self_pairs[2] = {0, 2};
+
 	// a pointer to R in gpu
 	double* dev_R;
 	uint32_t R_unit_length;
@@ -127,8 +137,13 @@ public:
 	bool* dev_k_idx;
 
 	// stacking results
+	double** RZ_stack;
 	double** dev_RZ_stack;
+
+	bool** c_idx_stack;
 	bool** dev_c_idx_stack;
+
+	bool** k_idx_stack;
 	bool** dev_k_idx_stack;
 
 	uint32_t* RZ_length;

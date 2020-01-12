@@ -300,15 +300,24 @@ __global__ void reduce_kernel(double* RZ_new, bool* c_idx_new, bool* k_idx_new, 
 }
 
 void rotatotopeArray::stack(rotatotopeArray &EEs, rotatotopeArray &base) {
+	RZ_stack = new double*[n_links];
 	dev_RZ_stack = new double*[n_links];
+	c_idx_stack = new bool*[n_links];
 	dev_c_idx_stack = new bool*[n_links];
+	k_idx_stack = new bool*[n_links];
 	dev_k_idx_stack = new bool*[n_links];
 	RZ_length = new uint32_t[n_links];
 
 	for (uint32_t link_id = 0; link_id < n_links; link_id++) {
 		RZ_length[link_id] = reduce_order + link_id * (EEs.reduce_order - 1) + base.reduce_order - 1;
+
+		RZ_stack[link_id] = nullptr;
 		cudaMalloc((void**)&(dev_RZ_stack[link_id]), n_time_steps * RZ_length[link_id] * Z_width * sizeof(double));
+
+		c_idx_stack[link_id] = nullptr;
 		cudaMalloc((void**)&(dev_c_idx_stack[link_id]), n_time_steps * RZ_length[link_id] * sizeof(bool));
+
+		k_idx_stack[link_id] = nullptr;
 		cudaMalloc((void**)&(dev_k_idx_stack[link_id]), 2 * (link_id + 1) * n_time_steps * RZ_length[link_id] * sizeof(bool));
 		cudaMemset(dev_k_idx_stack, 0, 2 * (link_id + 1) * n_time_steps * RZ_length[link_id] * sizeof(bool));
 
@@ -331,24 +340,48 @@ void rotatotopeArray::stack(rotatotopeArray &EEs, rotatotopeArray &base) {
 		
 		// origin shift
 		origin_shift_kernel <<< n_time_steps, 1 >>> (RZ_length[link_id], dev_RZ_stack[link_id]);
+	}
 
-		if(debugMode){
-			if (link_id == 0) {
-				debug_RZ = new double[n_time_steps * RZ_length[link_id] * Z_width];
-				cudaMemcpy(debug_RZ, dev_RZ_stack[link_id], n_time_steps * RZ_length[link_id] * Z_width * sizeof(double), cudaMemcpyDeviceToHost);
+	/*
+	for(uint32_t i = 0; i < n_pairs * 2; i += 2){
+		uint32_t R1 = self_pairs[i];
+		uint32_t R2 = self_pairs[i + 1];
 
-				debug_c_idx = new bool[n_time_steps * RZ_length[link_id]];
-				cudaMemcpy(debug_c_idx, dev_c_idx_stack[link_id], n_time_steps * RZ_length[link_id] * sizeof(bool), cudaMemcpyDeviceToHost);
+		RZ_stack[R1] = new double[n_time_steps * RZ_length[R1] * Z_width];
+		cudaMemcpy(RZ_stack[R1], dev_RZ_stack[R1], n_time_steps * RZ_length[R1] * Z_width * sizeof(double), cudaMemcpyDeviceToHost);
 
-				debug_k_idx = new bool[2 * (link_id + 1) * n_time_steps * RZ_length[link_id]];
-				cudaMemcpy(debug_k_idx, dev_k_idx_stack[link_id], 2 * (link_id + 1) * n_time_steps * RZ_length[link_id] * sizeof(bool), cudaMemcpyDeviceToHost);
-			}
-		}
-		else{
-			debug_RZ = nullptr;
-			debug_c_idx = nullptr;
-			debug_k_idx = nullptr;
-		}
+		c_idx_stack[R1] = new bool[n_time_steps * RZ_length[R1]];
+		cudaMemcpy(c_idx_stack[R1], dev_c_idx_stack[R1], n_time_steps * RZ_length[R1] * sizeof(bool), cudaMemcpyDeviceToHost);
+
+		k_idx_stack[R1] = new bool[2 * (R1 + 1) * n_time_steps * RZ_length[R1]];
+		cudaMemcpy(k_idx_stack[R1], dev_k_idx_stack[R1], 2 * (R1 + 1) * n_time_steps * RZ_length[R1] * sizeof(bool), cudaMemcpyDeviceToHost);
+
+		RZ_stack[R2] = new double[n_time_steps * RZ_length[R2] * Z_width];
+		cudaMemcpy(RZ_stack[R2], dev_RZ_stack[R2], n_time_steps * RZ_length[R2] * Z_width * sizeof(double), cudaMemcpyDeviceToHost);
+
+		c_idx_stack[R2] = new bool[n_time_steps * RZ_length[R2]];
+		cudaMemcpy(c_idx_stack[R2], dev_c_idx_stack[R2], n_time_steps * RZ_length[R2] * sizeof(bool), cudaMemcpyDeviceToHost);
+
+		k_idx_stack[R2] = new bool[2 * (R2 + 1) * n_time_steps * RZ_length[R2]];
+		cudaMemcpy(k_idx_stack[R2], dev_k_idx_stack[R2], 2 * (R2 + 1) * n_time_steps * RZ_length[R2] * sizeof(bool), cudaMemcpyDeviceToHost);
+	}
+	*/
+
+	uint32_t link_id = 0;
+	if(debugMode){
+		debug_RZ = new double[n_time_steps * RZ_length[link_id] * Z_width];
+		cudaMemcpy(debug_RZ, dev_RZ_stack[link_id], n_time_steps * RZ_length[link_id] * Z_width * sizeof(double), cudaMemcpyDeviceToHost);
+
+		debug_c_idx = new bool[n_time_steps * RZ_length[link_id]];
+		cudaMemcpy(debug_c_idx, dev_c_idx_stack[link_id], n_time_steps * RZ_length[link_id] * sizeof(bool), cudaMemcpyDeviceToHost);
+
+		debug_k_idx = new bool[2 * (link_id + 1) * n_time_steps * RZ_length[link_id]];
+		cudaMemcpy(debug_k_idx, dev_k_idx_stack[link_id], 2 * (link_id + 1) * n_time_steps * RZ_length[link_id] * sizeof(bool), cudaMemcpyDeviceToHost);
+	}
+	else{
+		debug_RZ = nullptr;
+		debug_c_idx = nullptr;
+		debug_k_idx = nullptr;
 	}
 }
 
@@ -447,6 +480,7 @@ __global__ void origin_shift_kernel(uint32_t RZ_length, double* RZ_stack){
 }
 
 void rotatotopeArray::generate_constraints(uint32_t n_obstacles_in, double* OZ, uint32_t OZ_width, uint32_t OZ_length) {
+	// obstacle constraints
 	n_obstacles = n_obstacles_in;
 	uint32_t OZ_unit_length = OZ_length / n_obstacles;
 
@@ -529,6 +563,46 @@ void rotatotopeArray::generate_constraints(uint32_t n_obstacles_in, double* OZ, 
 	}
 
 	cudaFree(dev_OZ);
+
+	// self intersection check
+	/*
+	for(uint32_t pair_id = 0; pair_id < n_pairs * 2; pair_id += 2){
+		uint32_t R1 = self_pairs[pair_id];
+		uint32_t R2 = self_pairs[pair_id + 1];
+		uint32_t R1_length = RZ_length[R1];
+		uint32_t R2_length = RZ_length[R2];
+
+		for(uint32_t time_id = 0; time_id < n_time_steps; time_id++){
+			vector<double> gen_zono;
+			gen_zono.reserve((R1_length + R2_length) * Z_width);
+
+			vector<double> k_dep_pt;
+			k_dep_pt.reserve((R1_length + R2_length) * Z_width);
+
+			// centered at R1.Rc - R2.Rc
+			for(uint32_t j = 0; j < Z_width; j++){
+				gen_zono.push_back(RZ_stack[R1][time_id * R1_length * Z_width + j] - RZ_stack[R2][time_id * R2_length * Z_width + j]);
+			}
+
+			// add buffer distance accounting for 2 links
+			for(uint32_t j = 0; j < Z_width; j++){
+				for(uint32_t p = 0; p < Z_width; p++){
+					if(j == p){
+						gen_zono.push_back(BUFFER_DIST);
+					}
+					else{
+						gen_zono.push_back(0);
+					}
+				}
+			}
+
+			// fill in gen_zono with k independent generators
+			
+
+			// fill in k_dep_pt with k dependent generators
+		}
+	}
+	*/
 }
 
 __global__ void buff_obstacles_kernel(uint32_t link_id, uint32_t RZ_length, double* RZ, bool* c_idx, bool* k_idx, double* OZ, uint32_t OZ_unit_length, double* buff_obstacles, double* frs_k_dep_G, bool* k_con, uint8_t* k_con_num) {
@@ -568,6 +642,9 @@ __global__ void buff_obstacles_kernel(uint32_t link_id, uint32_t RZ_length, doub
 		for (uint32_t obs_g = 1; obs_g < OZ_unit_length; obs_g++) {
 			for (uint32_t i = 0; i < 3; i++) {
 				buff_obstacles[(buff_base + obs_g) * 3 + i] = OZ[(obstacle_base + obs_g) * 3 + i];
+
+				// buffer the obstacle, suppose the generators are an eye matrix
+				if(i == obs_g - 1) buff_obstacles[(buff_base + obs_g) * 3 + i] += BUFFER_DIST / 2.0;
 			}
 		}
 	}
@@ -593,14 +670,45 @@ __global__ void buff_obstacles_kernel(uint32_t link_id, uint32_t RZ_length, doub
 	}
 	else if (z_id == 2) { // find k-independent generators and complete buff_obstacles
 		uint8_t k_indep_num = OZ_unit_length;
+		// add a test here, reduce small generators to be a box
+		double reduced_generators[3];
+		reduced_generators[0] = 0;
+		reduced_generators[1] = 0;
+		reduced_generators[2] = 0;
+
 		for (uint32_t z = 1; z < RZ_length; z++) {
 			if (!kc_info[z]) {
+				double norm = 0;
 				for (uint32_t i = 0; i < 3; i++) {
-					buff_obstacles[(buff_base + k_indep_num) * 3 + i] = RZ[(RZ_base + z) * 3 + i];
+					norm += RZ[(RZ_base + z) * 3 + i] * RZ[(RZ_base + z) * 3 + i];
 				}
-				k_indep_num++;
+
+				if(norm >= TOO_SMALL_POLYTOPE_JUDGE){
+					for (uint32_t i = 0; i < 3; i++) {
+						buff_obstacles[(buff_base + k_indep_num) * 3 + i] = RZ[(RZ_base + z) * 3 + i];
+					}
+					k_indep_num++;
+				}
+				else{
+					for (uint32_t i = 0; i < 3; i++) {
+						reduced_generators[i] += RZ[(RZ_base + z) * 3 + i];
+					}
+				}
 			}
 		}
+
+		for (uint32_t i = 0; i < 3; i++) {
+			for (uint32_t j = 0; j < 3; j++){
+				if(i == j){
+					buff_obstacles[(buff_base + k_indep_num) * 3 + j] = reduced_generators[i];
+				}
+				else{
+					buff_obstacles[(buff_base + k_indep_num) * 3 + j] = 0;
+				}
+			}
+			k_indep_num++;
+		}
+		
 	}
 }
 
@@ -627,7 +735,7 @@ __global__ void polytope(uint32_t link_id, uint32_t RZ_length, double* buff_obst
 	
 	
 	double A_s_q = sqrt(A_1 * A_1 + A_2 * A_2 + A_3 * A_3);
-	if(A_s_q >= TOO_SMALL_POLYTOPE_JUDGE){
+	if(A_s_q > 0){
 		A_1 /= A_s_q;
 		A_2 /= A_s_q;
 		A_3 /= A_s_q;
@@ -649,7 +757,7 @@ __global__ void polytope(uint32_t link_id, uint32_t RZ_length, double* buff_obst
 		deltaD += abs(A_1 * buff_obstacles[(obs_base + i) * 3] + A_2 * buff_obstacles[(obs_base + i) * 3 + 1] + A_3 * buff_obstacles[(obs_base + i) * 3 + 2]);
 	}
 
-	if (A_s_q >= TOO_SMALL_POLYTOPE_JUDGE) {
+	if (A_s_q > 0) {
 		d_con[con_base] = d;
 		delta_con[con_base] = deltaD;
 	}
@@ -877,14 +985,29 @@ rotatotopeArray::~rotatotopeArray() {
 
 	if (dev_RZ_stack != nullptr) {
 		for (uint32_t i = 0; i < n_links; i++) {
+			delete[] RZ_stack[i];
+		}
+		delete[] RZ_stack;
+
+		for (uint32_t i = 0; i < n_links; i++) {
 			cudaFree(dev_RZ_stack[i]);
 		}
 		delete[] dev_RZ_stack;
 
 		for (uint32_t i = 0; i < n_links; i++) {
+			delete[] c_idx_stack[i];
+		}
+		delete[] c_idx_stack;
+
+		for (uint32_t i = 0; i < n_links; i++) {
 			cudaFree(dev_c_idx_stack[i]);
 		}
 		delete[] dev_c_idx_stack;
+
+		for (uint32_t i = 0; i < n_links; i++) {
+			delete[] k_idx_stack[i];
+		}
+		delete[] k_idx_stack;
 
 		for (uint32_t i = 0; i < n_links; i++) {
 			cudaFree(dev_k_idx_stack[i]);
