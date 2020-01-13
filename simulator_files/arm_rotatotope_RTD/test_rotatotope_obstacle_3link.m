@@ -69,7 +69,7 @@ eval_out = R_cuda.eval_output;
 eval_grad_out = R_cuda.eval_grad_output;
 eval_hess_out = R_cuda.eval_hess_output;
 mex_res = R_cuda.mex_res;
-
+return;
 %% analysis
 % link_id = 1;
 % time_id = 66;

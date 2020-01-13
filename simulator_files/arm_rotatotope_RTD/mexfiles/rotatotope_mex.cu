@@ -12,6 +12,8 @@ This code aims to replace the contructor of the rotatotope
 
 using namespace Ipopt;
 
+const bool debugMode = false;
+
 /*
 Instruction:
 	This is the mex function to replace
@@ -104,15 +106,13 @@ P1.	generate all the rotatotopes
 	cudaMalloc((void**)&dev_rot_axes, 6 * sizeof(uint8_t));
 	cudaMemcpy(dev_rot_axes, rot_axes, 6 * sizeof(uint8_t), cudaMemcpyHostToDevice);
 
-	uint32_t link_reduce_order = 15;
-	uint32_t point_reduce_order = 15;
+	uint32_t link_reduce_order = 20;
+	uint32_t point_reduce_order = 10;
 	
 	rotatotopeArray links = rotatotopeArray(n_links, n_time_steps, 2, R, dev_R, R_unit_length, dev_rot_axes, link_Z, link_Z_width, link_Z_length, link_reduce_order);
 	rotatotopeArray EEs = rotatotopeArray(n_links - 1, n_time_steps, 2, R, dev_R, R_unit_length, dev_rot_axes, EE_Z, EE_Z_width, EE_Z_length, point_reduce_order);
 	rotatotopeArray base = rotatotopeArray(n_links - 2, n_time_steps, 1, R, dev_R, R_unit_length, dev_rot_axes, base_Z, base_Z_width, base_Z_length, point_reduce_order);
 
-	// comment here if you don't want to debug
-	bool debugMode = true;
 	links.debugMode = debugMode;
 
 	/*
@@ -124,9 +124,19 @@ P2.	stack the rotatotopes
 P3.	generate the constraints
 	*/
 	links.generate_constraints(n_obstacles, OZ, OZ_width, OZ_length);
+
 	end_t = clock();
 	mexPrintf("CUDA: Construct rotatotopes time: %.6f ms\n", 1000.0 * (end_t - start_t) / (double)(CLOCKS_PER_SEC));
 	start_t = clock();
+
+	uint32_t n_pairs = 1;
+	uint32_t self_pairs[2] = {0, 2};
+	links.generate_self_constraints(n_pairs, self_pairs);
+
+	end_t = clock();
+	mexPrintf("CUDA: Construct rotatotopes time: %.6f ms\n", 1000.0 * (end_t - start_t) / (double)(CLOCKS_PER_SEC));
+	
+	
 	/*
 P4.	solve the NLP
 	*/

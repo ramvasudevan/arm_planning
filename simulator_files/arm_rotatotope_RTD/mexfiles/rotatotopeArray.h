@@ -84,6 +84,15 @@ public:
 
 	/*
 	Instruction:
+		generate the self intersection constraints
+	Requires:
+		1. number of pairs that may cause self intersection
+		2. the index of links in pairs
+	*/
+	void generate_self_constraints(uint32_t n_pairs_input, uint32_t* self_pairs_input);
+
+	/*
+	Instruction:
 		evaluate constraints at k_opt for optimization
 	Requires:
 		1. k_opt
@@ -103,10 +112,10 @@ public:
 	uint32_t joint_per_link;
 
 	// number of pairs of self intersection check
-	uint32_t n_pairs = 1;
+	uint32_t n_pairs;
 
 	// self intersection pairs
-	uint32_t self_pairs[2] = {0, 2};
+	uint32_t* self_pairs;
 
 	// a pointer to R in gpu
 	double* dev_R;
@@ -174,6 +183,11 @@ public:
 	// maximum of k_con in rotatotopes
 	uint32_t* max_k_con_num;
 
+	// self intersection check
+	vector< vector< vector<double> > > A_con_self_array;
+	vector< vector< vector<double> > > d_con_self_array;
+	vector< vector< vector<double> > > delta_con_self_array;
+
 	// current constraints info
 	double* current_k_opt; // current k
 	double* con; // value of constraints at k
@@ -182,9 +196,6 @@ public:
 
 	// timing
 	std::clock_t start_t, end_t; 
-
-	double* debug = nullptr;
-	double* debug_2 = nullptr;
 };
 
 /*

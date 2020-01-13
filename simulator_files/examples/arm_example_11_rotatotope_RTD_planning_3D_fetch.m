@@ -12,7 +12,7 @@
 clear ; clc ; figure(1); clf; view(3); grid on;
 
 %% user parameters
-N_random_obstacles = 20 ;
+N_random_obstacles = 10 ;
 dimension = 3 ;
 nLinks = 3 ;
 verbosity = 10 ;
@@ -20,6 +20,7 @@ allow_replan_errors = true ;
 t_plan = 0.5 ;
 time_discretization = 0.01 ;
 T = 1 ;
+use_cuda_flag = true;
 
 A = robot_arm_3D_fetch('verbose', verbosity, 'animation_set_axes_flag', 0, 'animation_set_view_flag', 0);
 
@@ -51,7 +52,7 @@ FRS_options.L = 0.33;
 FRS_options.buffer_dist = A.buffer_dist;
 FRS_options.combs = generate_combinations_upto(200);
 FRS_options.maxcombs = 200;
-P = robot_arm_rotatotope_RTD_planner_3D_fetch(FRS_options, 'verbose', verbosity, 't_plan', t_plan, 'time_discretization', time_discretization) ;
+P = robot_arm_rotatotope_RTD_planner_3D_fetch(FRS_options, 'verbose', verbosity, 't_plan', t_plan, 'time_discretization', time_discretization, 'use_cuda_flag', use_cuda_flag) ;
 
 % set up world using arm
 I = A.get_agent_info ;

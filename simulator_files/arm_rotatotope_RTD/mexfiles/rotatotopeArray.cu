@@ -87,6 +87,9 @@ rotatotopeArray::rotatotopeArray(uint32_t n_links_input, uint32_t n_time_steps_i
 		dev_k_idx = nullptr;
 	}
 
+	n_pairs = 0;
+	self_pairs = nullptr;
+	
 	dev_RZ_stack = nullptr;
 	dev_c_idx_stack = nullptr;
 	dev_k_idx_stack = nullptr;
@@ -342,31 +345,6 @@ void rotatotopeArray::stack(rotatotopeArray &EEs, rotatotopeArray &base) {
 		origin_shift_kernel <<< n_time_steps, 1 >>> (RZ_length[link_id], dev_RZ_stack[link_id]);
 	}
 
-	/*
-	for(uint32_t i = 0; i < n_pairs * 2; i += 2){
-		uint32_t R1 = self_pairs[i];
-		uint32_t R2 = self_pairs[i + 1];
-
-		RZ_stack[R1] = new double[n_time_steps * RZ_length[R1] * Z_width];
-		cudaMemcpy(RZ_stack[R1], dev_RZ_stack[R1], n_time_steps * RZ_length[R1] * Z_width * sizeof(double), cudaMemcpyDeviceToHost);
-
-		c_idx_stack[R1] = new bool[n_time_steps * RZ_length[R1]];
-		cudaMemcpy(c_idx_stack[R1], dev_c_idx_stack[R1], n_time_steps * RZ_length[R1] * sizeof(bool), cudaMemcpyDeviceToHost);
-
-		k_idx_stack[R1] = new bool[2 * (R1 + 1) * n_time_steps * RZ_length[R1]];
-		cudaMemcpy(k_idx_stack[R1], dev_k_idx_stack[R1], 2 * (R1 + 1) * n_time_steps * RZ_length[R1] * sizeof(bool), cudaMemcpyDeviceToHost);
-
-		RZ_stack[R2] = new double[n_time_steps * RZ_length[R2] * Z_width];
-		cudaMemcpy(RZ_stack[R2], dev_RZ_stack[R2], n_time_steps * RZ_length[R2] * Z_width * sizeof(double), cudaMemcpyDeviceToHost);
-
-		c_idx_stack[R2] = new bool[n_time_steps * RZ_length[R2]];
-		cudaMemcpy(c_idx_stack[R2], dev_c_idx_stack[R2], n_time_steps * RZ_length[R2] * sizeof(bool), cudaMemcpyDeviceToHost);
-
-		k_idx_stack[R2] = new bool[2 * (R2 + 1) * n_time_steps * RZ_length[R2]];
-		cudaMemcpy(k_idx_stack[R2], dev_k_idx_stack[R2], 2 * (R2 + 1) * n_time_steps * RZ_length[R2] * sizeof(bool), cudaMemcpyDeviceToHost);
-	}
-	*/
-
 	uint32_t link_id = 0;
 	if(debugMode){
 		debug_RZ = new double[n_time_steps * RZ_length[link_id] * Z_width];
@@ -563,46 +541,6 @@ void rotatotopeArray::generate_constraints(uint32_t n_obstacles_in, double* OZ, 
 	}
 
 	cudaFree(dev_OZ);
-
-	// self intersection check
-	/*
-	for(uint32_t pair_id = 0; pair_id < n_pairs * 2; pair_id += 2){
-		uint32_t R1 = self_pairs[pair_id];
-		uint32_t R2 = self_pairs[pair_id + 1];
-		uint32_t R1_length = RZ_length[R1];
-		uint32_t R2_length = RZ_length[R2];
-
-		for(uint32_t time_id = 0; time_id < n_time_steps; time_id++){
-			vector<double> gen_zono;
-			gen_zono.reserve((R1_length + R2_length) * Z_width);
-
-			vector<double> k_dep_pt;
-			k_dep_pt.reserve((R1_length + R2_length) * Z_width);
-
-			// centered at R1.Rc - R2.Rc
-			for(uint32_t j = 0; j < Z_width; j++){
-				gen_zono.push_back(RZ_stack[R1][time_id * R1_length * Z_width + j] - RZ_stack[R2][time_id * R2_length * Z_width + j]);
-			}
-
-			// add buffer distance accounting for 2 links
-			for(uint32_t j = 0; j < Z_width; j++){
-				for(uint32_t p = 0; p < Z_width; p++){
-					if(j == p){
-						gen_zono.push_back(BUFFER_DIST);
-					}
-					else{
-						gen_zono.push_back(0);
-					}
-				}
-			}
-
-			// fill in gen_zono with k independent generators
-			
-
-			// fill in k_dep_pt with k dependent generators
-		}
-	}
-	*/
 }
 
 __global__ void buff_obstacles_kernel(uint32_t link_id, uint32_t RZ_length, double* RZ, bool* c_idx, bool* k_idx, double* OZ, uint32_t OZ_unit_length, double* buff_obstacles, double* frs_k_dep_G, bool* k_con, uint8_t* k_con_num) {
@@ -708,7 +646,6 @@ __global__ void buff_obstacles_kernel(uint32_t link_id, uint32_t RZ_length, doub
 			}
 			k_indep_num++;
 		}
-		
 	}
 }
 
@@ -732,7 +669,6 @@ __global__ void polytope(uint32_t link_id, uint32_t RZ_length, double* buff_obst
 	double A_1 = buff_obstacles[first_base + 1] * buff_obstacles[second_base + 2] - buff_obstacles[first_base + 2] * buff_obstacles[second_base + 1];
 	double A_2 = buff_obstacles[first_base + 2] * buff_obstacles[second_base] - buff_obstacles[first_base] * buff_obstacles[second_base + 2];
 	double A_3 = buff_obstacles[first_base] * buff_obstacles[second_base + 1] - buff_obstacles[first_base + 1] * buff_obstacles[second_base];
-	
 	
 	double A_s_q = sqrt(A_1 * A_1 + A_2 * A_2 + A_3 * A_3);
 	if(A_s_q > 0){
@@ -764,6 +700,206 @@ __global__ void polytope(uint32_t link_id, uint32_t RZ_length, double* buff_obst
 	else {
 		d_con[con_base] = A_BIG_NUMBER;
 		delta_con[con_base] = A_BIG_NUMBER;
+	}
+}
+
+void rotatotopeArray::generate_self_constraints(uint32_t n_pairs_input, uint32_t* self_pairs_input){
+	n_pairs = n_pairs_input;
+	self_pairs = self_pairs_input;
+	
+	A_con_self_array.reserve(n_pairs);
+	d_con_self_array.reserve(n_pairs);
+	delta_con_self_array.reserve(n_pairs);
+
+	for(uint32_t pair_id = 0; pair_id < n_pairs; pair_id++){
+		A_con_self_array.emplace_back();
+		A_con_self_array[pair_id].reserve(n_time_steps);
+		d_con_self_array.emplace_back();
+		d_con_self_array[pair_id].reserve(n_time_steps);
+		delta_con_self_array.emplace_back();
+		delta_con_self_array[pair_id].reserve(n_time_steps);
+
+		uint32_t R1 = self_pairs[pair_id * 2];
+		uint32_t R2 = self_pairs[pair_id * 2 + 1];
+		uint32_t R1_length = RZ_length[R1];
+		uint32_t R2_length = RZ_length[R2];
+		
+		// copy from GPU
+		if(RZ_stack[R1] == nullptr){
+			RZ_stack[R1] = new double[n_time_steps * R1_length * Z_width];
+			cudaMemcpy(RZ_stack[R1], dev_RZ_stack[R1], n_time_steps * R1_length * Z_width * sizeof(double), cudaMemcpyDeviceToHost);
+
+			c_idx_stack[R1] = new bool[n_time_steps * R1_length];
+			cudaMemcpy(c_idx_stack[R1], dev_c_idx_stack[R1], n_time_steps * R1_length * sizeof(bool), cudaMemcpyDeviceToHost);
+
+			k_idx_stack[R1] = new bool[2 * (R1 + 1) * n_time_steps * R1_length];
+			cudaMemcpy(k_idx_stack[R1], dev_k_idx_stack[R1], 2 * (R1 + 1) * n_time_steps * R1_length * sizeof(bool), cudaMemcpyDeviceToHost);
+		}
+
+		if(RZ_stack[R2] == nullptr){
+			RZ_stack[R2] = new double[n_time_steps * R2_length * Z_width];
+			cudaMemcpy(RZ_stack[R2], dev_RZ_stack[R2], n_time_steps * R2_length * Z_width * sizeof(double), cudaMemcpyDeviceToHost);
+
+			c_idx_stack[R2] = new bool[n_time_steps * R2_length];
+			cudaMemcpy(c_idx_stack[R2], dev_c_idx_stack[R2], n_time_steps * R2_length * sizeof(bool), cudaMemcpyDeviceToHost);
+
+			k_idx_stack[R2] = new bool[2 * (R2 + 1) * n_time_steps * R2_length];
+			cudaMemcpy(k_idx_stack[R2], dev_k_idx_stack[R2], 2 * (R2 + 1) * n_time_steps * R2_length * sizeof(bool), cudaMemcpyDeviceToHost);
+		}
+		
+		for(uint32_t time_id = 0; time_id < n_time_steps; time_id++){
+			A_con_self_array[pair_id].emplace_back();
+			vector<double>& A_con_self = A_con_self_array[pair_id][time_id];
+
+			d_con_self_array[pair_id].emplace_back();
+			vector<double>& d_con_self = d_con_self_array[pair_id][time_id];
+
+			delta_con_self_array[pair_id].emplace_back();
+			vector<double>& delta_con_self = delta_con_self_array[pair_id][time_id];
+
+			vector<double> center;
+			center.reserve(Z_width);
+
+			vector<double> gen_zono;
+			gen_zono.reserve((R1_length + R2_length - 2) * Z_width);
+
+			vector<double> k_dep_pt;
+			k_dep_pt.reserve((R1_length + R2_length - 2) * Z_width);
+
+			// centered at R1.Rc - R2.Rc
+			for(uint32_t i = 0; i < Z_width; i++){
+				center.push_back(RZ_stack[R1][time_id * R1_length * Z_width + i] - RZ_stack[R2][time_id * R2_length * Z_width + i]);
+			}
+			
+			// deal with the first link
+			uint32_t RZ_base = time_id * R1_length;
+			uint32_t k_start = RZ_base;
+			uint32_t k_end = (2 * (R1 + 1) * n_time_steps + time_id) * R1_length;
+			uint32_t k_step = n_time_steps * R1_length;
+			double reduced_generators[3] = {0.0};
+
+			for(uint32_t z_id = 1; z_id < R1_length; z_id++){
+				bool kc_info = false;
+				for (uint32_t i = k_start; i < k_end; i += k_step) {
+					if (k_idx_stack[R1][i + z_id] == true) {
+						kc_info = true;
+						break;
+					}
+				}
+				kc_info &= c_idx_stack[R1][RZ_base + z_id];
+
+				if(kc_info){ // fill in k_dep_pt with k dependent generators
+					for(uint32_t i = 0; i < Z_width; i++){
+						k_dep_pt.push_back(-RZ_stack[R1][(RZ_base + z_id) * Z_width + i]);
+					}
+				}
+				else{ // fill in gen_zono with k independent generators
+					double norm = 0;
+					for (uint32_t i = 0; i < 3; i++) {
+						norm += RZ_stack[R1][(RZ_base + z_id) * Z_width + i] * RZ_stack[R1][(RZ_base + z_id) * Z_width+ i];
+					}
+
+					if(norm >= TOO_SMALL_POLYTOPE_JUDGE){
+						for (uint32_t i = 0; i < 3; i++) {
+							gen_zono.push_back(RZ_stack[R1][(RZ_base + z_id) * Z_width + i]);
+						}
+					}
+					else{
+						for (uint32_t i = 0; i < 3; i++) {
+							reduced_generators[i] += RZ_stack[R1][(RZ_base + z_id) * Z_width + i];
+						}
+					}
+				}
+			}
+
+			// deal with the second link
+			RZ_base = time_id * R2_length;
+			k_start = RZ_base;
+			k_end = (2 * (R2 + 1) * n_time_steps + time_id) * R2_length;
+			k_step = n_time_steps * R2_length;
+
+			for(uint32_t z_id = 1; z_id < R2_length; z_id++){
+				bool kc_info = false;
+				for (uint32_t i = k_start; i < k_end; i += k_step) {
+					if (k_idx_stack[R2][i + z_id] == true) {
+						kc_info = true;
+						break;
+					}
+				}
+				kc_info &= c_idx_stack[R2][RZ_base + z_id];
+
+				if(kc_info){ // fill in k_dep_pt with k dependent generators
+					for(uint32_t i = 0; i < Z_width; i++){
+						k_dep_pt.push_back(RZ_stack[R2][(RZ_base + z_id) * Z_width + i]);
+					}
+				}
+				else{ // fill in gen_zono with k independent generators
+					double norm = 0;
+					for (uint32_t i = 0; i < Z_width; i++) {
+						norm += RZ_stack[R2][(RZ_base + z_id) * Z_width + i] * RZ_stack[R2][(RZ_base + z_id) * Z_width+ i];
+					}
+
+					if(norm >= TOO_SMALL_POLYTOPE_JUDGE){
+						for (uint32_t i = 0; i < Z_width; i++) {
+							gen_zono.push_back(RZ_stack[R2][(RZ_base + z_id) * Z_width + i]);
+						}
+					}
+					else{
+						for (uint32_t i = 0; i < Z_width; i++) {
+							reduced_generators[i] += RZ_stack[R2][(RZ_base + z_id) * Z_width + i];
+						}
+					}
+				}
+			}
+
+			// add the box that contains small generators and the buffer
+			for (uint32_t i = 0; i < 3; i++) {
+				for (uint32_t j = 0; j < 3; j++){
+					if(i == j){
+						gen_zono.push_back(reduced_generators[i] + BUFFER_DIST);
+					}
+					else{
+						gen_zono.push_back(0);
+					}
+				}
+			}
+			
+			// generate con_self
+			uint32_t nGen = gen_zono.size() / Z_width;
+			uint32_t nkDep = k_dep_pt.size() / Z_width;
+			A_con_self.reserve(nGen * (nGen - 1) / 2 * nkDep);
+			d_con_self.reserve(nGen * (nGen - 1) / 2);
+			delta_con_self.reserve(nGen * (nGen - 1) / 2);
+			
+			for(uint32_t fir = 1; fir < nGen; fir++){
+				for(uint32_t sec = 0; sec < fir; sec++){
+					uint32_t first_base  = fir * Z_width;
+					uint32_t second_base = sec * Z_width;
+					double A_1 = gen_zono[first_base + 1] * gen_zono[second_base + 2] - gen_zono[first_base + 2] * gen_zono[second_base + 1];
+					double A_2 = gen_zono[first_base + 2] * gen_zono[second_base]     - gen_zono[first_base]     * gen_zono[second_base + 2];
+					double A_3 = gen_zono[first_base]     * gen_zono[second_base + 1] - gen_zono[first_base + 1] * gen_zono[second_base];
+	
+					double A_s_q = sqrt(A_1 * A_1 + A_2 * A_2 + A_3 * A_3);
+					if(A_s_q > 0){
+						A_1 /= A_s_q;
+						A_2 /= A_s_q;
+						A_3 /= A_s_q;
+
+						for (uint32_t i = 0; i < nkDep; i++) {
+							A_con_self.push_back(A_1 * k_dep_pt[i * Z_width] + A_2 * k_dep_pt[i * Z_width + 1] + A_3 * k_dep_pt[i * Z_width + 2]);
+						}
+	
+						d_con_self.push_back(A_1 * center[0] + A_2 * center[1] + A_3 * center[2]);
+	
+						double deltaD = 0;
+						for (uint32_t i = 0; i < nGen; i++) {
+							deltaD += abs(A_1 * gen_zono[i * Z_width] + A_2 * gen_zono[i * Z_width + 1] + A_3 * gen_zono[i * Z_width + 2]);
+						}
+						delta_con_self.push_back(deltaD);
+					}
+				}
+			}
+		}
 	}
 }
 
@@ -803,6 +939,7 @@ void rotatotopeArray::evaluate_constraints(double* k_opt) {
 	cudaMalloc((void**)&dev_g_k, n_links * 2 * sizeof(double));
 	cudaMemcpy(dev_g_k, g_k, n_links * 2 * sizeof(double), cudaMemcpyHostToDevice);
 
+	// obstacles constraint evaluation
 	for (uint32_t link_id = 0; link_id < n_links; link_id++) {
 		uint32_t buff_obstacle_length = RZ_length[link_id] + 3;
 		uint32_t constraint_length = ((buff_obstacle_length - 1) * (buff_obstacle_length - 2)) / 2;
@@ -818,6 +955,18 @@ void rotatotopeArray::evaluate_constraints(double* k_opt) {
 		evaluate_gradient_kernel << < grid2, block2 >> > (dev_con_result, link_id, RZ_length[link_id], dev_lambda, dev_g_k, dev_A_con[link_id], max_k_con_num[link_id], dev_k_con[link_id], dev_k_con_num[link_id], n_links, dev_con, dev_jaco_con, dev_hess_con);
 
 		cudaFree(dev_con_result);
+	}
+
+	// self intersection check
+	for(uint32_t pair_id = 0; pair_id < n_pairs; pair_id++){
+		uint32_t R1 = self_pairs[pair_id * 2];
+		uint32_t R2 = self_pairs[pair_id * 2 + 1];
+		uint32_t R1_length = RZ_length[R1];
+		uint32_t R2_length = RZ_length[R2];
+
+		for(uint32_t time_id = 0; time_id < n_time_steps; time_id++){
+
+		}
 	}
 
 	cudaMemcpy(con, dev_con, n_links * n_obstacles * n_time_steps * sizeof(double), cudaMemcpyDeviceToHost);
@@ -1075,11 +1224,6 @@ rotatotopeArray::~rotatotopeArray() {
 		delete[] debug_RZ;
 		delete[] debug_c_idx;
 		delete[] debug_k_idx;
-	}
-
-	if (debug != nullptr) {
-		delete[] debug;
-		delete[] debug_2;
 	}
 
 	if (con != nullptr) {
