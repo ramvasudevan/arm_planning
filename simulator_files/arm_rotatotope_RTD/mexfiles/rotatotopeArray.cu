@@ -111,6 +111,10 @@ rotatotopeArray::rotatotopeArray(uint32_t n_links_input, uint32_t n_time_steps_i
 	current_k_opt = nullptr;
 	con = nullptr;
 	jaco_con = nullptr;
+	hess_con = nullptr;
+	con_self = nullptr;
+	jaco_con_self = nullptr;
+	hess_con_self = nullptr;
 }
 
 __global__ void initialize_RZ_kernel(double* link_Z, uint32_t link_Z_length, uint32_t reduce_order, double* RZ, bool* c_idx) {
@@ -707,11 +711,14 @@ void rotatotopeArray::generate_self_constraints(uint32_t n_pairs_input, uint32_t
 	n_pairs = n_pairs_input;
 	self_pairs = self_pairs_input;
 	
+	k_con_self_array.reserve(n_pairs);
 	A_con_self_array.reserve(n_pairs);
 	d_con_self_array.reserve(n_pairs);
 	delta_con_self_array.reserve(n_pairs);
 
 	for(uint32_t pair_id = 0; pair_id < n_pairs; pair_id++){
+		k_con_self_array.emplace_back();
+		k_con_self_array[pair_id].reserve(n_time_steps);
 		A_con_self_array.emplace_back();
 		A_con_self_array[pair_id].reserve(n_time_steps);
 		d_con_self_array.emplace_back();
@@ -748,6 +755,10 @@ void rotatotopeArray::generate_self_constraints(uint32_t n_pairs_input, uint32_t
 		}
 		
 		for(uint32_t time_id = 0; time_id < n_time_steps; time_id++){
+			k_con_self_array[pair_id].emplace_back();
+			vector<bool>& k_con_self = k_con_self_array[pair_id][time_id];
+			k_con_self.reserve((R2 + 1) * 2 * (R1_length + R2_length - 2));
+
 			A_con_self_array[pair_id].emplace_back();
 			vector<double>& A_con_self = A_con_self_array[pair_id][time_id];
 
@@ -789,6 +800,13 @@ void rotatotopeArray::generate_self_constraints(uint32_t n_pairs_input, uint32_t
 				kc_info &= c_idx_stack[R1][RZ_base + z_id];
 
 				if(kc_info){ // fill in k_dep_pt with k dependent generators
+					for (uint32_t i = k_start; i < k_end; i += k_step) {
+						k_con_self.push_back(k_idx_stack[R1][i + z_id]);
+					}
+					for (uint32_t i = 0; i < 2 * (R2 - R1); i++) { // fill in 0 to form a matrix
+						k_con_self.push_back(false);
+					}
+
 					for(uint32_t i = 0; i < Z_width; i++){
 						k_dep_pt.push_back(-RZ_stack[R1][(RZ_base + z_id) * Z_width + i]);
 					}
@@ -829,6 +847,10 @@ void rotatotopeArray::generate_self_constraints(uint32_t n_pairs_input, uint32_t
 				kc_info &= c_idx_stack[R2][RZ_base + z_id];
 
 				if(kc_info){ // fill in k_dep_pt with k dependent generators
+					for (uint32_t i = k_start; i < k_end; i += k_step) {
+						k_con_self.push_back(k_idx_stack[R2][i + z_id]);
+					}
+
 					for(uint32_t i = 0; i < Z_width; i++){
 						k_dep_pt.push_back(RZ_stack[R2][(RZ_base + z_id) * Z_width + i]);
 					}
@@ -952,21 +974,9 @@ void rotatotopeArray::evaluate_constraints(double* k_opt) {
 		
 		dim3 grid2(n_obstacles, n_time_steps, 1);
 		dim3 block2((link_id + 1) * 2, (link_id + 1) * 2, 1);
-		evaluate_gradient_kernel << < grid2, block2 >> > (dev_con_result, link_id, RZ_length[link_id], dev_lambda, dev_g_k, dev_A_con[link_id], max_k_con_num[link_id], dev_k_con[link_id], dev_k_con_num[link_id], n_links, dev_con, dev_jaco_con, dev_hess_con);
+		evaluate_gradient_kernel << < grid2, block2 >> > (dev_con_result, link_id, RZ_length[link_id], constraint_length, dev_lambda, dev_g_k, dev_A_con[link_id], max_k_con_num[link_id], dev_k_con[link_id], dev_k_con_num[link_id], n_links, dev_con, dev_jaco_con, dev_hess_con);
 
 		cudaFree(dev_con_result);
-	}
-
-	// self intersection check
-	for(uint32_t pair_id = 0; pair_id < n_pairs; pair_id++){
-		uint32_t R1 = self_pairs[pair_id * 2];
-		uint32_t R2 = self_pairs[pair_id * 2 + 1];
-		uint32_t R1_length = RZ_length[R1];
-		uint32_t R2_length = RZ_length[R2];
-
-		for(uint32_t time_id = 0; time_id < n_time_steps; time_id++){
-
-		}
 	}
 
 	cudaMemcpy(con, dev_con, n_links * n_obstacles * n_time_steps * sizeof(double), cudaMemcpyDeviceToHost);
@@ -985,7 +995,7 @@ void rotatotopeArray::evaluate_constraints(double* k_opt) {
 
 	end_t = clock();
 	if(debugMode){
-		mexPrintf("constraint evaluation time: %.6f\n", (end_t - start_t) / (double)(CLOCKS_PER_SEC));
+		mexPrintf("constraint evaluation time: %.6f ms\n", 1000.0 * (end_t - start_t) / (double)(CLOCKS_PER_SEC));
 	}
 }
 
@@ -1029,7 +1039,7 @@ __global__ void evaluate_constraints_kernel(double* lambda, uint32_t link_id, ui
 	}
 }
 
-__global__ void evaluate_gradient_kernel(double* con_result, uint32_t link_id, uint32_t RZ_length, double* lambda, double* g_k, double* A_con, uint32_t A_con_width, bool* k_con, uint8_t* k_con_num, uint32_t n_links, double* con, double* jaco_con, double* hess_con) {
+__global__ void evaluate_gradient_kernel(double* con_result, uint32_t link_id, uint32_t RZ_length, uint32_t constraint_length, double* lambda, double* g_k, double* A_con, uint32_t A_con_width, bool* k_con, uint8_t* k_con_num, uint32_t n_links, double* con, double* jaco_con, double* hess_con) {
 	uint32_t obstacle_id = blockIdx.x;
 	uint32_t n_obstacles = gridDim.x;
 	uint32_t time_id = blockIdx.y;
@@ -1038,8 +1048,6 @@ __global__ void evaluate_gradient_kernel(double* con_result, uint32_t link_id, u
 	uint32_t joint_id_sec = threadIdx.y;
 	uint32_t k_con_num_base = time_id;
 	
-	uint32_t buff_obstacle_length = RZ_length + 3;
-	uint32_t constraint_length = ((buff_obstacle_length - 1) * (buff_obstacle_length - 2)) / 2;
 	uint32_t con_base = (obstacle_id * n_time_steps + time_id) * constraint_length;
 	uint32_t con_result_base = (obstacle_id * n_time_steps + time_id) * constraint_length * 2;
 	__shared__ uint32_t max_idx;
@@ -1116,6 +1124,82 @@ __global__ void evaluate_gradient_kernel(double* con_result, uint32_t link_id, u
 		}
 		hess_con[hess_con_base + hess_index + joint_id - joint_id_sec - 1] = -result / g_k[joint_id] / g_k[joint_id_sec];
 	}	
+}
+
+void rotatotopeArray::evaluate_self_constraints(double* k_opt){
+	if(con_self != nullptr){
+		delete[] con_self;
+		delete[] jaco_con_self;
+		delete[] hess_con_self;
+	}
+	start_t = clock();
+	current_k_opt = k_opt;
+
+	double* lambda = new double[n_links * 2];
+	for (uint32_t joint_id = 0; joint_id < n_links * 2; joint_id++) {
+		lambda[joint_id] = c_k[joint_id] + k_opt[joint_id] / g_k[joint_id];
+	}
+
+	for(uint32_t pair_id = 0; pair_id < n_pairs; pair_id++){
+		uint32_t R1 = self_pairs[pair_id * 2];
+		uint32_t R2 = self_pairs[pair_id * 2 + 1];
+		uint32_t R1_length = RZ_length[R1];
+		uint32_t R2_length = RZ_length[R2];
+
+		for(uint32_t time_id = 0; time_id < n_time_steps; time_id++){
+			vector<bool>&   k_con_self     = k_con_self_array[pair_id][time_id];
+			vector<double>& A_con_self     = A_con_self_array[pair_id][time_id];
+			vector<double>& d_con_self     = d_con_self_array[pair_id][time_id];
+			vector<double>& delta_con_self = delta_con_self_array[pair_id][time_id];
+
+			uint32_t k_con_id = 0;
+			uint32_t A_con_id = 0;
+			uint32_t k_width = 2 * (R2 + 1);
+			uint32_t k_length = k_con_self.size() / k_width;
+
+			vector<double> lambdas_prod;
+			lambdas_prod.reserve(k_length);
+
+			for(uint32_t i = 0; i < k_length; i++){
+				double prod = 1.0;
+				for(uint32_t j = 0; j < k_width; j++, k_con_id++){
+					if(k_con_self[k_con_id]){
+						prod *= lambda[i];
+					}
+				}
+				lambdas_prod.push_back(prod);
+			}
+
+			double maximum = -A_BIG_NUMBER - A_BIG_NUMBER;
+			uint32_t max_idx = 0;
+			double index_factor = 1.0;
+			for(uint32_t con_id = 0; con_id < d_con_self.size(); con_id++){
+				double result = 0;
+				for(uint32_t i = 0; i < k_length; i++, A_con_id++){
+					result += lambdas_prod[i] * A_con_self[A_con_id];
+				}
+				
+				double con_result = result - d_con_self[con_id] - delta_con_self[con_id];
+				if(con_result > maximum){
+					maximum = con_result;
+					max_idx = con_id;
+					index_factor = 1.0;
+				}
+				
+				con_result = -result + d_con_self[con_id] - delta_con_self[con_id];
+				if(con_result > maximum){
+					maximum = con_result;
+					max_idx = con_id;
+					index_factor = -1.0;
+				}
+			}
+		}
+	}
+
+	end_t = clock();
+	if(true){
+		mexPrintf("constraint evaluation time: %.6f ms\n", 1000.0 * (end_t - start_t) / (double)(CLOCKS_PER_SEC));
+	}
 }
 
 rotatotopeArray::~rotatotopeArray() {
@@ -1230,6 +1314,12 @@ rotatotopeArray::~rotatotopeArray() {
 		delete[] con;
 		delete[] jaco_con;
 		delete[] hess_con;
+	}
+
+	if (con_self != nullptr) {
+		delete[] con_self;
+		delete[] jaco_con_self;
+		delete[] hess_con_self;
 	}
 }
 

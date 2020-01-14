@@ -12,7 +12,7 @@ This code aims to replace the contructor of the rotatotope
 
 using namespace Ipopt;
 
-const bool debugMode = false;
+const bool debugMode = true;
 
 /*
 Instruction:
@@ -130,7 +130,7 @@ P3.	generate the constraints
 	start_t = clock();
 
 	uint32_t n_pairs = 1;
-	uint32_t self_pairs[2] = {0, 2};
+	uint32_t self_pairs[2] = {0, 2}; // the latter one in the pair is always higher
 	links.generate_self_constraints(n_pairs, self_pairs);
 
 	end_t = clock();
@@ -188,6 +188,8 @@ P4.	solve the NLP
 		int *output0 = (int*)mxGetData(plhs[0]);
 		*output0 = -12345;
 	}
+
+	links.evaluate_self_constraints(k_opt);
 
 	end_t = clock();
 	mexPrintf("CUDA: IPOPT solve time: %.6f ms\n", 1000.0 * (end_t - start_t) / (double)(CLOCKS_PER_SEC));

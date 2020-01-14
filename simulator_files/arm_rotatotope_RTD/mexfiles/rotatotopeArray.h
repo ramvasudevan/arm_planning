@@ -100,6 +100,16 @@ public:
 	*/
 	void evaluate_constraints(double* k_opt);
 
+	/*
+	Instruction:
+		evaluate the self intersection constraints
+	Requires:
+		1. k_opt
+			--> input of k
+	*/
+	void evaluate_self_constraints(double* k_opt);
+
+
 	bool debugMode;
 
 	// number of different zonotopes
@@ -184,6 +194,7 @@ public:
 	uint32_t* max_k_con_num;
 
 	// self intersection check
+	vector< vector< vector<bool> > >   k_con_self_array;
 	vector< vector< vector<double> > > A_con_self_array;
 	vector< vector< vector<double> > > d_con_self_array;
 	vector< vector< vector<double> > > delta_con_self_array;
@@ -193,6 +204,9 @@ public:
 	double* con; // value of constraints at k
 	double* jaco_con; // value of jacobian of constraints at k
 	double* hess_con; // value of hessian of constraints at k
+	double* con_self; // value of self intersection at k
+	double* jaco_con_self; // value of jacobian of self intersection at k
+	double* hess_con_self; // value of hessian of self intersection at k
 
 	// timing
 	std::clock_t start_t, end_t; 
@@ -396,20 +410,21 @@ Requires:
 	1. con_result
 	2. link_id
 	3. RZ_length
-	4. lambda
-	5. g_k
-	6. A_con
-	7. k_con
-	8. k_con_num
-	9. n_links
-	10. con
-	11. jaco_con
-	12. hess_con
+	4. constraint_length
+	5. lambda
+	6. g_k
+	7. A_con
+	8. k_con
+	9. k_con_num
+	10. n_links
+	11. con
+	12. jaco_con
+	13. hess_con
 Modifies:
 	1. con
 	2. jaco_con
 	3. hess_con
 */
-__global__ void evaluate_gradient_kernel(double* con_result, uint32_t link_id, uint32_t RZ_length, double* lambda, double* g_k, double* A_con, uint32_t A_con_width, bool* k_con, uint8_t* k_con_num, uint32_t n_links, double* con, double* jaco_con, double* hess_con);
+__global__ void evaluate_gradient_kernel(double* con_result, uint32_t link_id, uint32_t RZ_length, uint32_t constraint_length, double* lambda, double* g_k, double* A_con, uint32_t A_con_width, bool* k_con, uint8_t* k_con_num, uint32_t n_links, double* con, double* jaco_con, double* hess_con);
 
 #endif // !ROTATOTOPE_ARRAY_H
