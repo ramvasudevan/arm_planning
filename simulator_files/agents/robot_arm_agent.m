@@ -82,7 +82,8 @@ classdef robot_arm_agent < multi_link_agent
         use_robotics_toolbox_model_for_dynamics_flag = false ;
         
         %% miscellaneous
-        % integration
+        % move mode
+        move_mode = 'integrator' ; % choose 'direct' or 'integrator'
         integrator_time_discretization = 0.01 ; % s
         
         % collision checking
@@ -100,7 +101,7 @@ classdef robot_arm_agent < multi_link_agent
 %         floor_normal_axis = 3 ;
         
         % buffer distance for obstacles
-        buffer_dist = 0;
+        buffer_dist = 0 ;
     end
     
     methods
@@ -940,6 +941,27 @@ classdef robot_arm_agent < multi_link_agent
             
             % optimize!
             [q,~,exitflag] = fmincon(opt_fun,q0,[],[],[],[],lb,ub,[],options) ;
+        end
+        
+        %% moving
+        function move(A,t_move,T_ref,U_ref,Z_ref)
+            switch A.move_mode
+                case 'integrator'
+                    move@multi_link_agent(A,t_move,T_ref,U_ref,Z_ref)
+                case 'direct'
+                    % don't call the integrator, just assume the agent
+                    % perfectly executes the reference trajectory
+                    
+                    % get the reference trajectory up to time t_move
+                    T = 0:A.integrator_time_discretization:t_move ;
+                    [U,Z] = match_trajectories(T,T_ref,U_ref,T_ref,Z_ref) ;
+                    
+                    % append the reference trajectory to the agent's
+                    % current trajectory
+                    A.commit_move_data(T,Z,T,U) ;
+                otherwise
+                    error('Please set A.move_mode to ''integrator'' or ''direct''!')
+            end
         end
         
         %% dynamics

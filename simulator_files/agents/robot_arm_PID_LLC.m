@@ -75,7 +75,6 @@ classdef robot_arm_PID_LLC < robot_arm_LLC
                 z_ref = z_cur ;
             end
             
-            
             % compute control input
             pd_error = z_cur - z_ref ;
             i_error = LLC.position_error_state ;

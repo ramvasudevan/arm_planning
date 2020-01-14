@@ -37,7 +37,7 @@ shelf_width = 1.2 ; % m
 shelf_depth = 0.8 ; % m
 N_shelves = 3 ;
 min_shelf_height = 0.3 ;
-max_shelf_height = 1.4 ;
+max_shelf_height = 1.3 ;
 
 % add more obstacles
 N_random_obstacles = 6 ; % NOTE we should no longer set W.N_obstacles
@@ -45,7 +45,7 @@ create_random_obstacles_flag = false ; % in addition to the shelf
 %%% END WORLD PARAMETERS %%%
 
 %%% OTHER PARAMETERS %%%
-use_cuda_flag = true;
+use_cuda_flag = true ;
 verbosity = 6 ;
 allow_replan_errors = true ;
 actual_t_plan = 10 ;
@@ -65,12 +65,14 @@ lookahead_distance = 0.3 ;
 use_end_effector_for_cost_flag = false ;
 csv_filename = 'fetch_shelf_scene_example.csv' ;
 plot_CAD_flag = true ; % plot the faaaaancy arm :)
+agent_move_mode = 'direct' ; % pick 'direct' or 'integrator'
 %%% END OTHER PARAMETERS %%%
 
 %% automated from here
 % make agent
 A = robot_arm_3D_fetch('verbose',verbosity, 'animation_set_axes_flag',0,...
-    'animation_set_view_flag',0,'plot_CAD_flag',plot_CAD_flag);
+    'animation_set_view_flag',0,'plot_CAD_flag',plot_CAD_flag,...
+    'move_mode',agent_move_mode);
 
 % can adjust tracking controller gains here
 A.LLC.K_p = 1*A.LLC.K_p;
