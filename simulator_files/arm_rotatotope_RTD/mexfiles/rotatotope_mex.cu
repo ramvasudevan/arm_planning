@@ -158,7 +158,7 @@ P4.	solve the NLP
     app->Options()->SetStringValue("mu_strategy", "adaptive");
     app->Options()->SetStringValue("output_file", "ipopt.out");
 	if(debugMode){
-		app->Options()->SetStringValue("derivative_test", "first-order");
+		app->Options()->SetStringValue("derivative_test", "second-order");
 		app->Options()->SetNumericValue("derivative_test_perturbation", 0.000001);
 	}
 

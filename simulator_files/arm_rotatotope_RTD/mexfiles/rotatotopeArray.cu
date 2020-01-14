@@ -1140,7 +1140,7 @@ __global__ void evaluate_gradient_kernel(double* con_result, bool* index_factor,
 		for(uint32_t i = 0; i < joint_id_sec; i++){
 			hess_index += n_links * 2 - 1 - i;
 		}
-		hess_con[hess_con_base + hess_index + joint_id - joint_id_sec - 1] = -result / g_k[joint_id] / g_k[joint_id_sec];
+		hess_con[hess_con_base + joint_id * (joint_id - 1) / 2 + joint_id_sec] = -result / g_k[joint_id] / g_k[joint_id_sec];
 	}	
 }
 

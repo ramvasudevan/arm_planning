@@ -1,9 +1,75 @@
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit http://projects.coin-or.org/Ipopt
+******************************************************************************
+
 This is Ipopt version 3.12.13, running with linear solver ma57.
 
 Starting derivative checker for first derivatives.
 
+Starting derivative checker for second derivatives.
 
-No errors detected by derivative checker.
+*    94-th constr_hess[    1,    0] =  4.4250941154731233e-03 v  ~ -5.2719908015634587e+01  [ 1.000e+00]
+*    94-th constr_hess[    3,    0] =  0.0000000000000000e+00 v  ~ -5.2719908015634587e+01  [ 1.000e+00]
+*    94-th constr_hess[    5,    0] =  0.0000000000000000e+00 v  ~ -5.2719908015634587e+01  [ 1.000e+00]
+*    95-th constr_hess[    0,    0] =  0.0000000000000000e+00 v  ~ -5.2934434378065781e+01  [ 1.000e+00]
+*    95-th constr_hess[    1,    0] =  4.4431005836127087e-03 v  ~ -5.2934434378065781e+01  [ 1.000e+00]
+*    96-th constr_hess[    1,    0] =  4.4575320823011522e-03 v  ~  0.0000000000000000e+00  [ 4.458e-03]
+*    96-th constr_hess[    4,    0] =  0.0000000000000000e+00 v  ~ -5.3101911558217644e+01  [ 1.000e+00]
+*    97-th constr_hess[    1,    0] =  4.4683710620872655e-03 v  ~ -5.3231034699764706e+01  [ 1.000e+00]
+*    97-th constr_hess[    3,    0] =  0.0000000000000000e+00 v  ~ -5.3235503070819817e+01  [ 1.000e+00]
+*    97-th constr_hess[    4,    0] =  0.0000000000000000e+00 v  ~ -5.3235503070819817e+01  [ 1.000e+00]
+*    97-th constr_hess[    5,    0] =  0.0000000000000000e+00 v  ~ -5.3235503070819817e+01  [ 1.000e+00]
+*    98-th constr_hess[    1,    0] =  4.4756043608826686e-03 v  ~ -5.3317203904119928e+01  [ 1.000e+00]
+*    98-th constr_hess[    3,    0] =  0.0000000000000000e+00 v  ~  3.9230884398324537e+02  [ 1.000e+00]
+*    99-th constr_hess[    1,    0] =  4.4792232039617677e-03 v  ~  0.0000000000000000e+00  [ 4.479e-03]
+*    99-th constr_hess[    4,    0] =  0.0000000000000000e+00 v  ~  3.9262605346614828e+02  [ 1.000e+00]
+*    99-th constr_hess[    5,    0] =  0.0000000000000000e+00 v  ~ -5.3364793862489826e+01  [ 1.000e+00]
+*   294-th constr_hess[    1,    0] =  7.6855097594815220e-03 v  ~  0.0000000000000000e+00  [ 7.686e-03]
+*   295-th constr_hess[    1,    0] =  7.7167834189810301e-03 v  ~  0.0000000000000000e+00  [ 7.717e-03]
+*   295-th constr_hess[    2,    0] =  0.0000000000000000e+00 v  ~ -9.1936600987233007e+01  [ 1.000e+00]
+*   295-th constr_hess[    3,    0] =  0.0000000000000000e+00 v  ~ -9.1936600987233007e+01  [ 1.000e+00]
+*   295-th constr_hess[    5,    0] =  0.0000000000000000e+00 v  ~ -9.1936600987233007e+01  [ 1.000e+00]
+*   296-th constr_hess[    0,    0] =  0.0000000000000000e+00 v  ~ -9.2235217440228567e+01  [ 1.000e+00]
+*   296-th constr_hess[    1,    0] =  7.7418480664483329e-03 v  ~ -9.2235217440228567e+01  [ 1.000e+00]
+*   296-th constr_hess[    2,    0] =  0.0000000000000000e+00 v  ~ -9.2235217440242437e+01  [ 1.000e+00]
+*   296-th constr_hess[    4,    0] =  0.0000000000000000e+00 v  ~ -9.2227475592163159e+01  [ 1.000e+00]
+*   296-th constr_hess[    5,    0] =  0.0000000000000000e+00 v  ~ -9.2235217440242437e+01  [ 1.000e+00]
+*   297-th constr_hess[    1,    0] =  7.7606732219716286e-03 v  ~  0.0000000000000000e+00  [ 7.761e-03]
+*   298-th constr_hess[    1,    0] =  7.7732360256170755e-03 v  ~  0.0000000000000000e+00  [ 7.773e-03]
+*   298-th constr_hess[    3,    0] =  0.0000000000000000e+00 v  ~ -9.2609168881041541e+01  [ 1.000e+00]
+*   298-th constr_hess[    4,    0] =  0.0000000000000000e+00 v  ~ -9.2609168881041541e+01  [ 1.000e+00]
+*   299-th constr_hess[    0,    0] =  0.0000000000000000e+00 v  ~ -9.2684049952475320e+01  [ 1.000e+00]
+*   299-th constr_hess[    1,    0] =  7.7795212374287721e-03 v  ~  6.8191348861697259e+02  [ 1.000e+00]
+*   299-th constr_hess[    2,    0] =  0.0000000000000000e+00 v  ~ -9.2684049952475320e+01  [ 1.000e+00]
+*   394-th constr_hess[    0,    0] =  0.0000000000000000e+00 v  ~  6.4946051571965199e+01  [ 1.000e+00]
+*   394-th constr_hess[    1,    0] = -5.4513067539698054e-03 v  ~  0.0000000000000000e+00  [ 5.451e-03]
+*   394-th constr_hess[    2,    0] =  0.0000000000000000e+00 v  ~  6.4946051571965199e+01  [ 1.000e+00]
+*   394-th constr_hess[    4,    0] =  0.0000000000000000e+00 v  ~  6.4946051571965199e+01  [ 1.000e+00]
+*   394-th constr_hess[    5,    0] =  0.0000000000000000e+00 v  ~  6.4946051571965199e+01  [ 1.000e+00]
+*   395-th constr_hess[    1,    0] = -5.4734890576277626e-03 v  ~  0.0000000000000000e+00  [ 5.473e-03]
+*   395-th constr_hess[    3,    0] =  0.0000000000000000e+00 v  ~  6.5210328212841901e+01  [ 1.000e+00]
+*   395-th constr_hess[    4,    0] =  0.0000000000000000e+00 v  ~  6.5204854723784067e+01  [ 1.000e+00]
+*   396-th constr_hess[    1,    0] = -5.4912673295056721e-03 v  ~  6.5422135879213144e+01  [ 1.000e+00]
+*   396-th constr_hess[    2,    0] =  0.0000000000000000e+00 v  ~  6.5422135879213144e+01  [ 1.000e+00]
+*   396-th constr_hess[    4,    0] =  0.0000000000000000e+00 v  ~ -4.8133672334176731e+02  [ 1.000e+00]
+*   396-th constr_hess[    5,    0] =  0.0000000000000000e+00 v  ~ -4.8133672334176731e+02  [ 1.000e+00]
+*   397-th constr_hess[    0,    0] =  0.0000000000000000e+00 v  ~  6.5581217001974011e+01  [ 1.000e+00]
+*   397-th constr_hess[    1,    0] = -5.5046199503024995e-03 v  ~ -4.8250714655315164e+02  [ 1.000e+00]
+*   398-th constr_hess[    1,    0] = -5.5135307055424812e-03 v  ~  6.5687378404261096e+01  [ 1.000e+00]
+*   398-th constr_hess[    3,    0] =  0.0000000000000000e+00 v  ~  6.5687378404261096e+01  [ 1.000e+00]
+*   398-th constr_hess[    4,    0] =  0.0000000000000000e+00 v  ~  6.5687378404261096e+01  [ 1.000e+00]
+*   398-th constr_hess[    5,    0] =  0.0000000000000000e+00 v  ~  6.5687378404261096e+01  [ 1.000e+00]
+*   399-th constr_hess[    0,    0] =  0.0000000000000000e+00 v  ~  6.5740491301549696e+01  [ 1.000e+00]
+*   399-th constr_hess[    1,    0] = -5.5179887855750977e-03 v  ~  0.0000000000000000e+00  [ 5.518e-03]
+*   399-th constr_hess[    2,    0] =  0.0000000000000000e+00 v  ~  6.5740491301549696e+01  [ 1.000e+00]
+*   399-th constr_hess[    3,    0] =  0.0000000000000000e+00 v  ~  6.5740491301549696e+01  [ 1.000e+00]
+*   399-th constr_hess[    4,    0] =  0.0000000000000000e+00 v  ~  6.5734973312768517e+01  [ 1.000e+00]
+*   399-th constr_hess[    5,    0] =  0.0000000000000000e+00 v  ~  6.5740491301549696e+01  [ 1.000e+00]
+
+Derivative checker detected 57 error(s).
 
 Number of nonzeros in equality constraint Jacobian...:        0
 Number of nonzeros in inequality constraint Jacobian.:     9144
@@ -21,33 +87,25 @@ Total number of inequality constraints...............:     1524
 
 iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
    0  9.0015470e-02 0.00e+00 9.75e+00   0.0 0.00e+00    -  0.00e+00 0.00e+00   0
-   1  8.9675171e-02 0.00e+00 3.00e-02  -5.1 2.70e-03    -  9.70e-01 1.00e+00f  1
-   2  8.2962060e-02 0.00e+00 1.09e-02  -2.7 1.75e-01    -  6.37e-01 7.31e-01h  1
-   3  7.8859893e-02 0.00e+00 3.61e-04  -3.0 3.77e-02    -  9.90e-01 1.00e+00h  1
-   4  7.1265351e-02 0.00e+00 1.82e-04  -3.3 1.00e-01    -  9.98e-01 1.00e+00h  1
-   5  6.9848236e-02 0.00e+00 3.04e-05  -4.2 3.30e-02    -  9.99e-01 1.00e+00h  1
-   6  6.9329282e-02 0.00e+00 5.94e-08  -5.7 2.29e-02    -  1.00e+00 1.00e+00h  1
-   7  6.9268833e-02 0.00e+00 5.89e-11  -7.8 5.80e-03    -  1.00e+00 1.00e+00h  1
-   8  6.9267456e-02 0.00e+00 1.03e-09 -11.0 2.23e-04    -  1.00e+00 1.00e+00h  1
 
-Number of Iterations....: 8
+Number of Iterations....: 0
 
                                    (scaled)                 (unscaled)
-Objective...............:   6.9267455903564479e-02    6.9267455903564479e-02
-Dual infeasibility......:   1.0265015537709797e-09    1.0265015537709797e-09
+Objective...............:   9.0015470000000000e-02    9.0015470000000000e-02
+Dual infeasibility......:   9.7454302959286441e+00    9.7454302959286441e+00
 Constraint violation....:   0.0000000000000000e+00    0.0000000000000000e+00
-Complementarity.........:   1.6110452572458520e-09    1.6110452572458520e-09
-Overall NLP error.......:   1.6110452572458520e-09    1.6110452572458520e-09
+Complementarity.........:   6.2892933101000006e+02    6.2892933101000006e+02
+Overall NLP error.......:   6.2892933101000006e+02    6.2892933101000006e+02
 
 
-Number of objective function evaluations             = 9
-Number of objective gradient evaluations             = 9
+Number of objective function evaluations             = 1
+Number of objective gradient evaluations             = 1
 Number of equality constraint evaluations            = 0
-Number of inequality constraint evaluations          = 9
+Number of inequality constraint evaluations          = 1
 Number of equality constraint Jacobian evaluations   = 0
-Number of inequality constraint Jacobian evaluations = 9
-Number of Lagrangian Hessian evaluations             = 8
-Total CPU secs in IPOPT (w/o function evaluations)   =      0.045
-Total CPU secs in NLP function evaluations           =      0.021
+Number of inequality constraint Jacobian evaluations = 1
+Number of Lagrangian Hessian evaluations             = 0
+Total CPU secs in IPOPT (w/o function evaluations)   =      5.035
+Total CPU secs in NLP function evaluations           =      0.001
 
-EXIT: Optimal Solution Found.
+EXIT: Maximum CPU time exceeded.

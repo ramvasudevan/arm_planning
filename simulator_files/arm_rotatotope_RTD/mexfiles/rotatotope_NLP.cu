@@ -489,9 +489,16 @@ bool rotatotope_NLP::eval_h(
 
       for(Index i = 0; i < ra_info->n_links * n_obstacles * ra_info->n_time_steps; i++){
          idx = 0;
+         Index hess_idx = 0;
          for (Index row = 0; row < n; row++) {
-            for (Index col = 0; col < row; col++) {
-               values[idx] += lambda[i] * ra_info->hess_con[i * n * (n - 1) / 2 + idx];
+            for (Index col = 0; col <= row; col++) {
+               if(row == col){
+                  values[idx] += 0;
+               }
+               else{
+                  values[idx] += lambda[i] * ra_info->hess_con[i * n * (n - 1) / 2 + hess_idx];
+                  hess_idx++;
+               }
                idx++;
             }
          }
