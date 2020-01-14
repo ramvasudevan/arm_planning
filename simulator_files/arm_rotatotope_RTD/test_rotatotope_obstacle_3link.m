@@ -47,7 +47,7 @@ O{2} = box_obstacle_zonotope('center', obs_center(:), 'side_lengths', [obs_width
 obs_center = [0.6; -0.4; 0.7];
 obs_width = [0.1];
 O{3} = box_obstacle_zonotope('center', obs_center(:), 'side_lengths', [obs_width, obs_width, obs_width]);
-obs_center = [-0.6; 0.4; 0.7];
+obs_center = [-0.8; 0.5; 0.7];
 obs_width = [0.1];
 O{4} = box_obstacle_zonotope('center', obs_center(:), 'side_lengths', [obs_width, obs_width, obs_width]);
 obs_center = [0.6; -0.4; -0.7];
@@ -85,6 +85,8 @@ return;
 % disp(mex_data(:,id));
 
 [c, ceq, gradc, gradceq] = eval_constraints(R, bad_k, q, q_dot);
+plot(c,'r.');hold on;plot(eval_out,'b.')
+return;
 
 % test one particular set of constraints
 % default 1, 3, 97

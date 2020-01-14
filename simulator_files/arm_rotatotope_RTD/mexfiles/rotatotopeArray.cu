@@ -1000,7 +1000,7 @@ void rotatotopeArray::evaluate_constraints(double* k_opt) {
 
 	end_t = clock();
 	if(debugMode){
-		mexPrintf("constraint evaluation time: %.6f ms\n", 1000.0 * (end_t - start_t) / (double)(CLOCKS_PER_SEC));
+		mexPrintf("CUDA: constraint evaluation time: %.6f ms\n", 1000.0 * (end_t - start_t) / (double)(CLOCKS_PER_SEC));
 	}
 }
 
@@ -1217,7 +1217,7 @@ void rotatotopeArray::evaluate_self_constraints(double* k_opt){
 
 	end_t = clock();
 	if(true){
-		mexPrintf("self intersection time: %.6f ms\n", 1000.0 * (end_t - start_t) / (double)(CLOCKS_PER_SEC));
+		mexPrintf("CUDA: self intersection time: %.6f ms\n", 1000.0 * (end_t - start_t) / (double)(CLOCKS_PER_SEC));
 	}
 }
 
