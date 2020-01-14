@@ -968,9 +968,10 @@ void rotatotopeArray::evaluate_constraints(double* k_opt) {
 
 		double* dev_con_result; // results of evaluation of constriants
 		cudaMalloc((void**)&dev_con_result, n_obstacles * n_time_steps * constraint_length * 2 * sizeof(double));
-		
-		dim3 grid1(n_obstacles, constraint_length, 1);
-		evaluate_constraints_kernel << < grid1, n_time_steps >> > (dev_lambda, link_id, RZ_length[link_id], dev_A_con[link_id], max_k_con_num[link_id], dev_d_con[link_id], dev_delta_con[link_id], dev_k_con[link_id], dev_k_con_num[link_id], dev_con_result);
+
+		dim3 grid1(n_obstacles, n_time_steps, 1);
+		dim3 block1(constraint_length, 1, 1);
+		evaluate_constraints_kernel << < grid1, block1 >> > (dev_lambda, link_id, RZ_length[link_id], dev_A_con[link_id], max_k_con_num[link_id], dev_d_con[link_id], dev_delta_con[link_id], dev_k_con[link_id], dev_k_con_num[link_id], dev_con_result);
 		
 		dim3 grid2(n_obstacles, n_time_steps, 1);
 		dim3 block2((link_id + 1) * 2, (link_id + 1) * 2, 1);
@@ -1001,18 +1002,31 @@ void rotatotopeArray::evaluate_constraints(double* k_opt) {
 
 __global__ void evaluate_constraints_kernel(double* lambda, uint32_t link_id, uint32_t RZ_length, double* A_con, uint32_t A_con_width, double* d_con, double* delta_con, bool* k_con, uint8_t* k_con_num, double* con_result) {
 	uint32_t obstacle_id = blockIdx.x;
-	uint32_t c_id = blockIdx.y;
-	uint32_t constraint_length = gridDim.y;
-	uint32_t time_id = threadIdx.x;
-	uint32_t n_time_steps = blockDim.x;
+	uint32_t time_id = blockIdx.y;
+	uint32_t n_time_steps = gridDim.y;
+	uint32_t c_id = threadIdx.x;
+	uint32_t constraint_length = blockDim.x;
 	uint32_t k_con_num_base = time_id;
 	uint32_t con_base = (obstacle_id * n_time_steps + time_id) * constraint_length + c_id;
 	uint32_t con_result_base = (obstacle_id * n_time_steps + time_id) * constraint_length * 2 + c_id;
 
 	__shared__ double shared_lambda[6];
+	__shared__ double lambdas_prod[MAX_K_DEP_SIZE];
 
-	if (time_id < 2 * (link_id + 1)) {
-		shared_lambda[time_id] = lambda[time_id];
+	if (c_id < 2 * (link_id + 1)) {
+		shared_lambda[c_id] = lambda[c_id];
+	}
+
+	__syncthreads();
+
+	if (c_id < k_con_num[k_con_num_base]) {
+		double prod = 1.0;
+		for (uint32_t j = 0; j < 2 * (link_id + 1); j++) {
+			if (k_con[(j * n_time_steps + time_id) * RZ_length + c_id]) {
+				prod *= shared_lambda[j];
+			}
+		}
+		lambdas_prod[c_id] = prod;
 	}
 
 	__syncthreads();
@@ -1024,14 +1038,7 @@ __global__ void evaluate_constraints_kernel(double* lambda, uint32_t link_id, ui
 	else{
 		double result = 0;
 		for (uint32_t p = 0; p < k_con_num[k_con_num_base]; p++){
-			double prod = 1.0;
-			for (uint32_t j = 0; j < 2 * (link_id + 1); j++) {
-				if (k_con[(j * n_time_steps + time_id) * RZ_length + p]) {
-					prod *= shared_lambda[j];
-				}
-			}
-
-			result += prod * A_con[con_base * A_con_width + p];
+			result += lambdas_prod[p] * A_con[con_base * A_con_width + p];
 		}
 
 		con_result[con_result_base]                     =  result - d_con[con_base] - delta_con[con_base];
@@ -1198,7 +1205,7 @@ void rotatotopeArray::evaluate_self_constraints(double* k_opt){
 
 	end_t = clock();
 	if(true){
-		mexPrintf("constraint evaluation time: %.6f ms\n", 1000.0 * (end_t - start_t) / (double)(CLOCKS_PER_SEC));
+		mexPrintf("self intersection time: %.6f ms\n", 1000.0 * (end_t - start_t) / (double)(CLOCKS_PER_SEC));
 	}
 }
 

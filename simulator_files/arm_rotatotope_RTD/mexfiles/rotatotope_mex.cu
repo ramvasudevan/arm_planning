@@ -106,7 +106,8 @@ P1.	generate all the rotatotopes
 	cudaMalloc((void**)&dev_rot_axes, 6 * sizeof(uint8_t));
 	cudaMemcpy(dev_rot_axes, rot_axes, 6 * sizeof(uint8_t), cudaMemcpyHostToDevice);
 
-	uint32_t link_reduce_order = 20;
+	// should promise that link + 3 * point <= 45, so that combination size <= 1024
+	uint32_t link_reduce_order = 15;
 	uint32_t point_reduce_order = 10;
 	
 	rotatotopeArray links = rotatotopeArray(n_links, n_time_steps, 2, R, dev_R, R_unit_length, dev_rot_axes, link_Z, link_Z_width, link_Z_length, link_reduce_order);
@@ -135,7 +136,6 @@ P3.	generate the constraints
 
 	end_t = clock();
 	mexPrintf("CUDA: Construct rotatotopes time: %.6f ms\n", 1000.0 * (end_t - start_t) / (double)(CLOCKS_PER_SEC));
-	
 	
 	/*
 P4.	solve the NLP

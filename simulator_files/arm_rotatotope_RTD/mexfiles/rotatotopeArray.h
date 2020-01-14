@@ -32,6 +32,7 @@ a cuda array for a cluster of rotatotopes
 #define A_BIG_NUMBER 1000000.0
 #define BUFFER_DIST 0.1460
 #define TOO_SMALL_POLYTOPE_JUDGE 0.000001
+#define MAX_K_DEP_SIZE 100
 #define CONSERVATIVE_BUFFER 0.001
 
 using std::vector;
