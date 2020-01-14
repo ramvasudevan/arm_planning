@@ -34,7 +34,9 @@ classdef robot_arm_3D_fetch < robot_arm_agent
 %                           0.05, 0.025, 0.05, 0.025 ;  % size in y
 %                           0.05, 0.025, 0.05, 0.025] ; % size in z
 
-            buffer_dist = 0.1460;
+%             buffer_dist = 0.1460;
+            buffer_dist = 0.1460*sqrt(3);
+
 
             link_sizes = [0.1206, 0.4635, 0.001, 0.4254, 0.001, 0.3810 ;  % size in x
                           0.1460, 0.1460, 0.001, 0.150, 0.001, 0.1460 ;  % size in y

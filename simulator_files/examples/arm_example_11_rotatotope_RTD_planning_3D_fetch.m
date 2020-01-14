@@ -12,7 +12,7 @@
 clear ; clc ; figure(1); clf; view(3); grid on;
 
 %% user parameters
-N_random_obstacles = 10 ;
+N_random_obstacles = 40 ;
 dimension = 3 ;
 nLinks = 3 ;
 verbosity = 10 ;
@@ -81,4 +81,4 @@ if dimension == 3
     view(3)
 end
 
-animate(A)
+animate(A, true)
