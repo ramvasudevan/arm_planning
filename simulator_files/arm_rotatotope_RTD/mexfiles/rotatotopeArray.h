@@ -398,10 +398,12 @@ Requires:
 	8. k_con
 	9. k_con_num
 	10. con_result
+	11. index_factor
 Modifies:
 	1. con_result
+	2. index_factor
 */
-__global__ void evaluate_constraints_kernel(double* lambda, uint32_t link_id, uint32_t RZ_length, double* A_con, uint32_t A_con_width, double* d_con, double* delta_con, bool* k_con, uint8_t* k_con_num, double* con_result);
+__global__ void evaluate_constraints_kernel(double* lambda, uint32_t link_id, uint32_t RZ_length, double* A_con, uint32_t A_con_width, double* d_con, double* delta_con, bool* k_con, uint8_t* k_con_num, double* con_result, bool* index_factor);
 
 /*
 Instruction:
@@ -409,23 +411,24 @@ Instruction:
 	evaluate the jacobian and hessian of constraint with that maximum
 Requires:
 	1. con_result
-	2. link_id
-	3. RZ_length
-	4. constraint_length
-	5. lambda
-	6. g_k
-	7. A_con
-	8. k_con
-	9. k_con_num
-	10. n_links
-	11. con
-	12. jaco_con
-	13. hess_con
+	2. index_factor
+	3. link_id
+	4. RZ_length
+	5. constraint_length
+	6. lambda
+	7. g_k
+	8. A_con
+	9. k_con
+	10. k_con_num
+	11. n_links
+	12. con
+	13. jaco_con
+	14. hess_con
 Modifies:
 	1. con
 	2. jaco_con
 	3. hess_con
 */
-__global__ void evaluate_gradient_kernel(double* con_result, uint32_t link_id, uint32_t RZ_length, uint32_t constraint_length, double* lambda, double* g_k, double* A_con, uint32_t A_con_width, bool* k_con, uint8_t* k_con_num, uint32_t n_links, double* con, double* jaco_con, double* hess_con);
+__global__ void evaluate_gradient_kernel(double* con_result, bool* index_factor, uint32_t link_id, uint32_t RZ_length, uint32_t constraint_length, double* lambda, double* g_k, double* A_con, uint32_t A_con_width, bool* k_con, uint8_t* k_con_num, uint32_t n_links, double* con, double* jaco_con, double* hess_con);
 
 #endif // !ROTATOTOPE_ARRAY_H

@@ -926,12 +926,13 @@ void rotatotopeArray::generate_self_constraints(uint32_t n_pairs_input, uint32_t
 }
 
 void rotatotopeArray::evaluate_constraints(double* k_opt) {
+	start_t = clock();
 	if(con != nullptr){
 		delete[] con;
 		delete[] jaco_con;
 		delete[] hess_con;
 	}
-	start_t = clock();
+	
 	current_k_opt = k_opt;
 
 	con = new double[n_links * n_obstacles * n_time_steps];
@@ -967,17 +968,20 @@ void rotatotopeArray::evaluate_constraints(double* k_opt) {
 		uint32_t constraint_length = ((buff_obstacle_length - 1) * (buff_obstacle_length - 2)) / 2;
 
 		double* dev_con_result; // results of evaluation of constriants
-		cudaMalloc((void**)&dev_con_result, n_obstacles * n_time_steps * constraint_length * 2 * sizeof(double));
+		bool* dev_index_factor; // whether the constraints are positive or negative
+		cudaMalloc((void**)&dev_con_result, n_obstacles * n_time_steps * constraint_length * sizeof(double));
+		cudaMalloc((void**)&dev_index_factor, n_obstacles * n_time_steps * constraint_length * sizeof(bool));
 
 		dim3 grid1(n_obstacles, n_time_steps, 1);
 		dim3 block1(constraint_length, 1, 1);
-		evaluate_constraints_kernel << < grid1, block1 >> > (dev_lambda, link_id, RZ_length[link_id], dev_A_con[link_id], max_k_con_num[link_id], dev_d_con[link_id], dev_delta_con[link_id], dev_k_con[link_id], dev_k_con_num[link_id], dev_con_result);
+		evaluate_constraints_kernel << < grid1, block1 >> > (dev_lambda, link_id, RZ_length[link_id], dev_A_con[link_id], max_k_con_num[link_id], dev_d_con[link_id], dev_delta_con[link_id], dev_k_con[link_id], dev_k_con_num[link_id], dev_con_result, dev_index_factor);
 		
 		dim3 grid2(n_obstacles, n_time_steps, 1);
 		dim3 block2((link_id + 1) * 2, (link_id + 1) * 2, 1);
-		evaluate_gradient_kernel << < grid2, block2 >> > (dev_con_result, link_id, RZ_length[link_id], constraint_length, dev_lambda, dev_g_k, dev_A_con[link_id], max_k_con_num[link_id], dev_k_con[link_id], dev_k_con_num[link_id], n_links, dev_con, dev_jaco_con, dev_hess_con);
+		evaluate_gradient_kernel << < grid2, block2 >> > (dev_con_result, dev_index_factor, link_id, RZ_length[link_id], constraint_length, dev_lambda, dev_g_k, dev_A_con[link_id], max_k_con_num[link_id], dev_k_con[link_id], dev_k_con_num[link_id], n_links, dev_con, dev_jaco_con, dev_hess_con);
 
 		cudaFree(dev_con_result);
+		cudaFree(dev_index_factor);
 	}
 
 	cudaMemcpy(con, dev_con, n_links * n_obstacles * n_time_steps * sizeof(double), cudaMemcpyDeviceToHost);
@@ -1000,7 +1004,7 @@ void rotatotopeArray::evaluate_constraints(double* k_opt) {
 	}
 }
 
-__global__ void evaluate_constraints_kernel(double* lambda, uint32_t link_id, uint32_t RZ_length, double* A_con, uint32_t A_con_width, double* d_con, double* delta_con, bool* k_con, uint8_t* k_con_num, double* con_result) {
+__global__ void evaluate_constraints_kernel(double* lambda, uint32_t link_id, uint32_t RZ_length, double* A_con, uint32_t A_con_width, double* d_con, double* delta_con, bool* k_con, uint8_t* k_con_num, double* con_result, bool* index_factor) {
 	uint32_t obstacle_id = blockIdx.x;
 	uint32_t time_id = blockIdx.y;
 	uint32_t n_time_steps = gridDim.y;
@@ -1008,7 +1012,7 @@ __global__ void evaluate_constraints_kernel(double* lambda, uint32_t link_id, ui
 	uint32_t constraint_length = blockDim.x;
 	uint32_t k_con_num_base = time_id;
 	uint32_t con_base = (obstacle_id * n_time_steps + time_id) * constraint_length + c_id;
-	uint32_t con_result_base = (obstacle_id * n_time_steps + time_id) * constraint_length * 2 + c_id;
+	uint32_t con_result_base = (obstacle_id * n_time_steps + time_id) * constraint_length + c_id;
 
 	__shared__ double shared_lambda[6];
 	__shared__ double lambdas_prod[MAX_K_DEP_SIZE];
@@ -1032,8 +1036,8 @@ __global__ void evaluate_constraints_kernel(double* lambda, uint32_t link_id, ui
 	__syncthreads();
 
 	if (d_con[con_base] == A_BIG_NUMBER){
-		con_result[con_result_base]                     = -A_BIG_NUMBER;
-		con_result[con_result_base + constraint_length] = -A_BIG_NUMBER;
+		con_result[con_result_base] = -A_BIG_NUMBER;
+		index_factor[con_result_base] = false;
 	}
 	else{
 		double result = 0;
@@ -1041,12 +1045,21 @@ __global__ void evaluate_constraints_kernel(double* lambda, uint32_t link_id, ui
 			result += lambdas_prod[p] * A_con[con_base * A_con_width + p];
 		}
 
-		con_result[con_result_base]                     =  result - d_con[con_base] - delta_con[con_base];
-		con_result[con_result_base + constraint_length] = -result + d_con[con_base] - delta_con[con_base];
+		double pos_result =  result - d_con[con_base] - delta_con[con_base];
+		double neg_result = -result + d_con[con_base] - delta_con[con_base];
+
+		if(pos_result > neg_result){
+			con_result[con_result_base] = pos_result;
+			index_factor[con_result_base] = true;
+		}
+		else{
+			con_result[con_result_base] = neg_result;
+			index_factor[con_result_base] = false;
+		}     
 	}
 }
 
-__global__ void evaluate_gradient_kernel(double* con_result, uint32_t link_id, uint32_t RZ_length, uint32_t constraint_length, double* lambda, double* g_k, double* A_con, uint32_t A_con_width, bool* k_con, uint8_t* k_con_num, uint32_t n_links, double* con, double* jaco_con, double* hess_con) {
+__global__ void evaluate_gradient_kernel(double* con_result, bool* index_factor, uint32_t link_id, uint32_t RZ_length, uint32_t constraint_length, double* lambda, double* g_k, double* A_con, uint32_t A_con_width, bool* k_con, uint8_t* k_con_num, uint32_t n_links, double* con, double* jaco_con, double* hess_con) {
 	uint32_t obstacle_id = blockIdx.x;
 	uint32_t n_obstacles = gridDim.x;
 	uint32_t time_id = blockIdx.y;
@@ -1055,36 +1068,34 @@ __global__ void evaluate_gradient_kernel(double* con_result, uint32_t link_id, u
 	uint32_t joint_id_sec = threadIdx.y;
 	uint32_t k_con_num_base = time_id;
 	
-	uint32_t con_base = (obstacle_id * n_time_steps + time_id) * constraint_length;
-	uint32_t con_result_base = (obstacle_id * n_time_steps + time_id) * constraint_length * 2;
+	uint32_t con_result_base = (obstacle_id * n_time_steps + time_id) * constraint_length;
 	__shared__ uint32_t max_idx;
 	uint32_t valu_con_base = (link_id * n_obstacles + obstacle_id) * n_time_steps + time_id;
 	uint32_t jaco_con_base = ((link_id * n_obstacles + obstacle_id) * n_time_steps + time_id) * n_links * 2;
 	uint32_t hess_con_base = ((link_id * n_obstacles + obstacle_id) * n_time_steps + time_id) * n_links * (n_links * 2 - 1);
 
 	__shared__ double shared_lambda[6];
-	__shared__ double index_factor;
+	__shared__ double max_index_factor;
 
 	if (joint_id_sec == 0) {
 		if(joint_id == 0){
 			double maximum = -A_BIG_NUMBER - A_BIG_NUMBER;
 			max_idx = 0;
-			for (uint32_t i = 0; i < constraint_length * 2; i++) {
+			for (uint32_t i = 0; i < constraint_length; i++) {
 				double cur = con_result[con_result_base + i];
 				if (maximum < cur) {
-					max_idx = i;
+					max_idx = con_result_base + i;
 					maximum = cur;
 				}
 			}
 			con[valu_con_base] = -maximum + CONSERVATIVE_BUFFER;
 
-			index_factor = 1.0;
-			if(max_idx >= constraint_length){
-				index_factor = -1.0;
-				max_idx -= constraint_length;
+			if(index_factor[max_idx]){
+				max_index_factor = 1.0;
 			}
-
-			max_idx += con_base;
+			else{
+				max_index_factor = -1.0;
+			}
 		}
 		else if (joint_id <= 2 * (link_id + 1)) {
 			shared_lambda[joint_id - 1] = lambda[joint_id - 1];
@@ -1104,7 +1115,7 @@ __global__ void evaluate_gradient_kernel(double* con_result, uint32_t link_id, u
 					}
 				}
 
-				result += prod * index_factor * A_con[max_idx * A_con_width + p];
+				result += prod * max_index_factor * A_con[max_idx * A_con_width + p];
 			}
 		}
 		
@@ -1121,7 +1132,7 @@ __global__ void evaluate_gradient_kernel(double* con_result, uint32_t link_id, u
 					}
 				}
 				
-				result += prod * index_factor * A_con[max_idx * A_con_width + p];
+				result += prod * max_index_factor * A_con[max_idx * A_con_width + p];
 			}
 		}
 		
@@ -1134,12 +1145,13 @@ __global__ void evaluate_gradient_kernel(double* con_result, uint32_t link_id, u
 }
 
 void rotatotopeArray::evaluate_self_constraints(double* k_opt){
+	start_t = clock();
 	if(con_self != nullptr){
 		delete[] con_self;
 		delete[] jaco_con_self;
 		delete[] hess_con_self;
 	}
-	start_t = clock();
+
 	current_k_opt = k_opt;
 
 	double* lambda = new double[n_links * 2];
