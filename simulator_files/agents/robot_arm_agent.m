@@ -15,9 +15,11 @@ classdef robot_arm_agent < multi_link_agent
         
         % link sizes is a 2-by-n_links_and_joints array, where each row
         % specifies the breadth of the link along the x, y, and z
-        % dimensions (note that, for ellipsoid-shaped links, these values
+        % dimensions; note that, for ellipsoid-shaped links, these values
         % specify the diameters of the ellipsoid along the link's local x,
-        % y, and z dimensions)
+        % y, and z dimensions; for cylindrical links, the x value is the
+        % length of the cylinder and the y and z values are the diameter
+        % (only the y value is used to generate volumes)
         link_sizes
         
         % the links all have 1 kg mass by default
@@ -264,7 +266,19 @@ classdef robot_arm_agent < multi_link_agent
                             l = l./2 ;
                             I_x = (1/5)*m*((l(2)+l(3)).^2) ;
                             I_y = (1/5)*m*((l(1)+l(3)).^2) ;
-                            I_z = (1/5)*m*((l(1)+l(2)).^2) ;                            
+                            I_z = (1/5)*m*((l(1)+l(2)).^2) ;
+                        case 'cylinder'
+                            if l(2) ~= l(3)
+                                warning(['The size definition of link ',num2str(idx),...
+                                    ' has two mismatched diameters!'])
+                            end
+                            
+                            h = l(1) ;
+                            r = l(2)/2 ;
+                            
+                            I_x = (1/2)*m*r^2 ;
+                            I_y = (1/12)*m*(3*r^2 + h) ;
+                            I_z = (1/12)*m*(3*r^2 + h) ;
                         otherwise
                             error([A.link_shapes{idx}, 'is an unsupported link shape!'])
                     end
@@ -406,8 +420,13 @@ classdef robot_arm_agent < multi_link_agent
                         % diameters of the link in each dimension
                         l = l./2 ;
                         [link_faces,link_vertices] = make_ellipsoid_for_patch(l(1),l(2),l(3),zeros(3,1),6) ;
+                    case 'cylinder'
+                        % l = (length, radius, (not used))
+                        [link_faces,link_vertices] = make_cylinder_for_patch(l(2)/2,l(1),10,true,true) ;
+                        R = axang2rotm([0 1 0 pi/2]) ;
+                        link_vertices = (R*link_vertices')' ;
                     otherwise
-                        error('Invalid link type! Pick cuboid or ellipsoid.')
+                        error('Invalid link type! Pick cuboid, ellipsoid, or cylinder.')
                 end
 
                 % fill in cell array
@@ -466,6 +485,13 @@ classdef robot_arm_agent < multi_link_agent
                             case 'ellipsoid'
                                 l = l./2 ;
                                 [~,link_vertices] = make_ellipsoid_for_patch(l(1),l(2),l(3),zeros(3,1),6) ;
+                            case 'cylinder'
+                                % l = (length, radius, (not used))
+                                [~,link_vertices] = make_cylinder_for_patch(l(2)/2,l(1),10,true,true) ;
+                                R = axang2rotm([0 1 0 pi/2]) ;
+                                link_vertices = (R*link_vertices')' ;
+                            otherwise
+                                error('Invalid link type! Pick cuboid, ellipsoid, or cylinder!')
                         end
                         link_faces = convhull(link_vertices) ;
                         
