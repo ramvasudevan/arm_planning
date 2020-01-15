@@ -17,7 +17,7 @@ classdef robot_arm_RTD_planner_3D_fetch < robot_arm_generic_planner
         k_opt_prev = [];
         
         iter = 0;
-        first_iter_pause = 1;
+        first_iter_pause = true;
        
     end
     methods

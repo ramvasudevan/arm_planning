@@ -45,7 +45,8 @@ create_random_obstacles_flag = false ; % in addition to the shelf
 %%% END WORLD PARAMETERS %%%
 
 %%% OTHER PARAMETERS %%%
-use_cuda_flag = true ;
+use_cuda_flag = false ;
+agent_move_mode = 'direct' ; % pick 'direct' or 'integrator'
 verbosity = 6 ;
 allow_replan_errors = true ;
 actual_t_plan = 10 ;
@@ -64,8 +65,7 @@ plot_waypoint_arm_flag  = true ; % for HLP
 lookahead_distance = 0.3 ;
 use_end_effector_for_cost_flag = false ;
 csv_filename = 'fetch_shelf_scene_example.csv' ;
-plot_CAD_flag = true ; % plot the faaaaancy arm :)
-agent_move_mode = 'direct' ; % pick 'direct' or 'integrator'
+plot_CAD_flag = false ; % plot the faaaaancy arm :)
 %%% END OTHER PARAMETERS %%%
 
 %% automated from here

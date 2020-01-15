@@ -20,9 +20,10 @@ allow_replan_errors = true ;
 t_plan = 0.5 ;
 time_discretization = 0.01 ;
 T = 1 ;
-use_cuda_flag = true;
+use_cuda_flag = false;
+agent_move_mode = 'direct' ; % pick 'direct' or 'integrator'
 
-A = robot_arm_3D_fetch('verbose', verbosity, 'animation_set_axes_flag', 0, 'animation_set_view_flag', 0);
+A = robot_arm_3D_fetch('verbose', verbosity, 'animation_set_axes_flag', 0, 'animation_set_view_flag', 0, 'move_mode', agent_move_mode);
 
 %% automated from here
 
