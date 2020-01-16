@@ -28,14 +28,14 @@ classdef robot_arm_3D_fetch < robot_arm_agent
             
             n_states = 2*n_links_and_joints ;
             
-            link_shapes = {'cuboid', 'cuboid','cuboid','cuboid','cuboid', 'cuboid'} ;
+            link_shapes = {'cylinder', 'cylinder','cylinder','cylinder','cylinder', 'cylinder'} ;
             
 %             link_sizes = [0.05, 0.300, 0.05, 0.200 ;  % size in x
 %                           0.05, 0.025, 0.05, 0.025 ;  % size in y
 %                           0.05, 0.025, 0.05, 0.025] ; % size in z
 
-%             buffer_dist = 0.1460;
-            buffer_dist = 0.1460*sqrt(3);
+            buffer_dist = 0.1460;
+%             buffer_dist = 0.1460*sqrt(2);
 
 
             link_sizes = [0.1206, 0.4635, 0.001, 0.4254, 0.001, 0.3810 ;  % size in x
@@ -120,8 +120,27 @@ classdef robot_arm_3D_fetch < robot_arm_agent
             wrist_roll = stlread('wrist_roll_link_collision.STL') ;
             gripper = stlread('gripper_link.STL') ;
             
-            A.link_plot_CAD_data = {shoulder_pan, shoulder_lift,...
+            temp_link_plot_CAD_data = {shoulder_pan, shoulder_lift,...
                 upper_arm, elbow, forearm, wrist_flex, wrist_roll, gripper} ;
+            
+            % check to make sure the CAD data are patches, not
+            % triangulations
+            triangulated_flag = false ;
+            for idx = 1:8
+                current_data = temp_link_plot_CAD_data{idx} ;
+                if isa(current_data,'triangulation')
+                    triangulated_flag = true ;
+                    new_data.faces = current_data.ConnectivityList ;
+                    new_data.vertices = current_data.Points ;
+                    temp_link_plot_CAD_data{idx} = new_data ;
+                end
+            end
+            
+            if triangulated_flag
+                A.vdisp('STL read returned a triangulated data format, but we fixed it :)',7)
+            end
+            
+            A.link_plot_CAD_data = temp_link_plot_CAD_data ;
         end
         
         %% plotting

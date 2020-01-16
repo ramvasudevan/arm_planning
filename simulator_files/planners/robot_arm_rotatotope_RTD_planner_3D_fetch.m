@@ -103,6 +103,11 @@ classdef robot_arm_rotatotope_RTD_planner_3D_fetch < robot_arm_generic_planner
                 %             disp(k_opt);
                 %             pause;
                 P.vdisp('Processing trajopt result',8)
+                
+                % plotting
+%                 P.R.plot(10, {'b', 'b', 'b'});
+%                 P.R.plot_slice(k_opt, 10, {'g', 'g', 'g'});
+%                 pause;
             else
                 P.vdisp('Replan is calling trajopt!',8)
                 R_cuda = robot_arm_FRS_rotatotope_fetch_cuda(q_0, q_dot_0, q_des, O, zeros(6,1), P.FRS_options);
@@ -183,7 +188,8 @@ classdef robot_arm_rotatotope_RTD_planner_3D_fetch < robot_arm_generic_planner
             lb = P.R.c_k - P.R.g_k;
             ub = P.R.c_k + P.R.g_k;
             
-            initial_guess = (lb + ub)/2;
+%             initial_guess = (lb + ub)/2;
+            initial_guess = rand_range(lb, ub);
            
 %             options = optimoptions('fmincon','SpecifyConstraintGradient',true, 'Algorithm', 'interior-point');
             options = optimoptions('fmincon','SpecifyConstraintGradient',true);

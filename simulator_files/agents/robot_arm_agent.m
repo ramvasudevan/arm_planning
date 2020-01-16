@@ -15,9 +15,11 @@ classdef robot_arm_agent < multi_link_agent
         
         % link sizes is a 2-by-n_links_and_joints array, where each row
         % specifies the breadth of the link along the x, y, and z
-        % dimensions (note that, for ellipsoid-shaped links, these values
+        % dimensions; note that, for ellipsoid-shaped links, these values
         % specify the diameters of the ellipsoid along the link's local x,
-        % y, and z dimensions)
+        % y, and z dimensions; for cylindrical links, the x value is the
+        % length of the cylinder and the y and z values are the diameter
+        % (only the y value is used to generate volumes)
         link_sizes
         
         % the links all have 1 kg mass by default
@@ -82,7 +84,8 @@ classdef robot_arm_agent < multi_link_agent
         use_robotics_toolbox_model_for_dynamics_flag = false ;
         
         %% miscellaneous
-        % integration
+        % move mode
+        move_mode = 'integrator' ; % choose 'direct' or 'integrator'
         integrator_time_discretization = 0.01 ; % s
         
         % collision checking
@@ -100,7 +103,7 @@ classdef robot_arm_agent < multi_link_agent
 %         floor_normal_axis = 3 ;
         
         % buffer distance for obstacles
-        buffer_dist = 0;
+        buffer_dist = 0 ;
     end
     
     methods
@@ -263,7 +266,19 @@ classdef robot_arm_agent < multi_link_agent
                             l = l./2 ;
                             I_x = (1/5)*m*((l(2)+l(3)).^2) ;
                             I_y = (1/5)*m*((l(1)+l(3)).^2) ;
-                            I_z = (1/5)*m*((l(1)+l(2)).^2) ;                            
+                            I_z = (1/5)*m*((l(1)+l(2)).^2) ;
+                        case 'cylinder'
+                            if l(2) ~= l(3)
+                                warning(['The size definition of link ',num2str(idx),...
+                                    ' has two mismatched diameters!'])
+                            end
+                            
+                            h = l(1) ;
+                            r = l(2)/2 ;
+                            
+                            I_x = (1/2)*m*r^2 ;
+                            I_y = (1/12)*m*(3*r^2 + h) ;
+                            I_z = (1/12)*m*(3*r^2 + h) ;
                         otherwise
                             error([A.link_shapes{idx}, 'is an unsupported link shape!'])
                     end
@@ -405,8 +420,13 @@ classdef robot_arm_agent < multi_link_agent
                         % diameters of the link in each dimension
                         l = l./2 ;
                         [link_faces,link_vertices] = make_ellipsoid_for_patch(l(1),l(2),l(3),zeros(3,1),6) ;
+                    case 'cylinder'
+                        % l = (length, radius, (not used))
+                        [link_faces,link_vertices] = make_cylinder_for_patch(l(2)/2,l(1),10,true,true) ;
+                        R = axang2rotm([0 1 0 pi/2]) ;
+                        link_vertices = (R*link_vertices')' ;
                     otherwise
-                        error('Invalid link type! Pick cuboid or ellipsoid.')
+                        error('Invalid link type! Pick cuboid, ellipsoid, or cylinder.')
                 end
 
                 % fill in cell array
@@ -465,6 +485,13 @@ classdef robot_arm_agent < multi_link_agent
                             case 'ellipsoid'
                                 l = l./2 ;
                                 [~,link_vertices] = make_ellipsoid_for_patch(l(1),l(2),l(3),zeros(3,1),6) ;
+                            case 'cylinder'
+                                % l = (length, radius, (not used))
+                                [~,link_vertices] = make_cylinder_for_patch(l(2)/2,l(1),10,true,true) ;
+                                R = axang2rotm([0 1 0 pi/2]) ;
+                                link_vertices = (R*link_vertices')' ;
+                            otherwise
+                                error('Invalid link type! Pick cuboid, ellipsoid, or cylinder!')
                         end
                         link_faces = convhull(link_vertices) ;
                         
@@ -940,6 +967,27 @@ classdef robot_arm_agent < multi_link_agent
             
             % optimize!
             [q,~,exitflag] = fmincon(opt_fun,q0,[],[],[],[],lb,ub,[],options) ;
+        end
+        
+        %% moving
+        function move(A,t_move,T_ref,U_ref,Z_ref)
+            switch A.move_mode
+                case 'integrator'
+                    move@multi_link_agent(A,t_move,T_ref,U_ref,Z_ref)
+                case 'direct'
+                    % don't call the integrator, just assume the agent
+                    % perfectly executes the reference trajectory
+                    
+                    % get the reference trajectory up to time t_move
+                    T = 0:A.integrator_time_discretization:t_move ;
+                    [U,Z] = match_trajectories(T,T_ref,U_ref,T_ref,Z_ref) ;
+                    
+                    % append the reference trajectory to the agent's
+                    % current trajectory
+                    A.commit_move_data(T,Z,T,U) ;
+                otherwise
+                    error('Please set A.move_mode to ''integrator'' or ''direct''!')
+            end
         end
         
         %% dynamics

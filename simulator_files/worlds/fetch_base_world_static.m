@@ -49,9 +49,9 @@ classdef fetch_base_world_static < world
 %             W.plot_data.baselink = [] ;
 
             % generate obstacles representing the fetch's body
-            if W.include_base_obstacle
-                W.create_base_obstacle() ;
-            end
+%             if W.include_base_obstacle
+%                 W.create_base_obstacle() ;
+%             end
         end
         
         %% setup
