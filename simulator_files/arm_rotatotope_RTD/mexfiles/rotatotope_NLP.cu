@@ -58,7 +58,6 @@ rotatotope_NLP::~rotatotope_NLP()
     double* q_input,
     double* q_dot_input,
     double* q_des_input,
-    double* c_k_input,
     double* g_k_input,
     uint32_t n_obstacles_input
  )
@@ -67,7 +66,6 @@ rotatotope_NLP::~rotatotope_NLP()
     q = q_input;
     q_dot = q_dot_input;
     q_des = q_des_input;
-    c_k = c_k_input;
     g_k = g_k_input;
     n_obstacles = n_obstacles_input;
     uint32_t n_angles = ra_info->n_links * 2;
@@ -131,12 +129,12 @@ bool rotatotope_NLP::get_bounds_info(
 
    // lower bounds
    for( Index i = 0; i < n; i++ ) {
-      x_l[i] = c_k[i] - g_k[i];
+      x_l[i] = -g_k[i];
    }
 
    // upper bounds  
    for( Index i = 0; i < n; i++ ) {
-      x_u[i] = c_k[i] + g_k[i];
+      x_u[i] = g_k[i];
    }
 
    for( Index i = 0; i < m; i++ ) {
@@ -177,7 +175,7 @@ bool rotatotope_NLP::get_starting_point(
 
    // initialize to the given starting point
    for( Index i = 0; i < n; i++ ) {
-      x[i] = c_k[i];
+      x[i] = 0;
    }
 
    return true;

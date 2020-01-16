@@ -34,7 +34,6 @@ public:
        double* q_input,
        double* q_dot_input,
        double* q_des_input,
-       double* c_k_input,
        double* g_k_input,
        uint32_t n_obstacles_input
     );
@@ -181,8 +180,6 @@ private:
    double* q_dot;
 
    double* q_des;
-
-   double* c_k;
 
    double* g_k;
 

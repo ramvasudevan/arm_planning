@@ -12,7 +12,7 @@ a cuda array for a cluster of rotatotopes
 
 #include "rotatotopeArray.h"
 
-rotatotopeArray::rotatotopeArray(uint32_t n_links_input, uint32_t n_time_steps_input, uint32_t joint_per_link_input, double* R_input, double* dev_R_input, uint32_t R_unit_length_input, uint8_t* dev_rot_axes_input, double* Z_input, uint32_t Z_width_input, uint32_t Z_length_input, uint32_t reduce_order_input) {
+rotatotopeArray::rotatotopeArray(uint32_t n_links_input, uint32_t n_time_steps_input, uint32_t joint_per_link_input, double* R_input, double* dev_R_input, uint32_t R_unit_length_input, uint8_t* dev_rot_axes_input, double* Z_input, uint32_t Z_width_input, uint32_t Z_length_input, uint32_t reduce_order_input, double* g_k_input) {
 	debugMode = false;
 	
 	n_links = n_links_input;
@@ -37,12 +37,7 @@ rotatotopeArray::rotatotopeArray(uint32_t n_links_input, uint32_t n_time_steps_i
 		for (uint32_t joint_id = 0; joint_id < n_links * 2; joint_id++) {
 			uint32_t R_id_start = ((joint_id + 1) * n_time_steps - 1) * R_unit_length;
 			c_k[joint_id] = R_input[R_id_start * 5 + k_dim];
-			for (uint32_t R_id = R_id_start + 1; R_id < R_id_start + R_unit_length; R_id++) {
-				if (R_input[R_id * 5 + k_dim] != 0) {
-					g_k[joint_id] = R_input[R_id * 5 + k_dim];
-					break;
-				}
-			}
+			g_k[joint_id] = g_k_input[joint_id];
 		}
 
 		double* dev_RZ_new;

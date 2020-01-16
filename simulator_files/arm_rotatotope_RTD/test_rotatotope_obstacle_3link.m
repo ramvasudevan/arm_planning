@@ -58,7 +58,6 @@ R = R.generate_self_intersection_constraints();
 
 good_k = -pi/6*ones(6, 1) ;
 bad_k = [pi/6 - 0.001; pi/6 - 0.001; pi/12; pi/24; -pi/36; pi/48];
-bad_k = good_k;
 % for i = 1:length(O)
 %     plot(O{i});
 % end

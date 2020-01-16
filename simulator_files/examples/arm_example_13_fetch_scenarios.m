@@ -16,12 +16,12 @@
 clear; clc;
 %% user parameters
 %%% CHOOSE SCENARIO %%%
-scenario = 7; % 1 2 3 4 5 6 or 7
+scenario = 6; % 1 2 3 4 5 6 or 7
 sub_scenario = 1; % sub_scenario only changes for scenario 4
 
 %%% EXPORTING TO CSV %%%
-write_to_csv = true;
-run_simulation_flag = false ;
+write_to_csv = false;
+run_simulation_flag = true ;
 world_save_dir = 'arm_planning/simulator_files/testing/saved_worlds/20200116_scenarios';
 if ~exist(world_save_dir, 'dir')
     mkdir(world_save_dir);
@@ -29,7 +29,7 @@ end
 csv_filename = sprintf('%s/scene_%03d_%03d.csv', world_save_dir, scenario, sub_scenario);
 
 %%% PLANNING PARAMETERS %%%
-use_cuda_flag = false ;
+use_cuda_flag = true ;
 agent_move_mode = 'direct' ; % pick 'direct' or 'integrator'
 
 % add more obstacles
@@ -360,10 +360,10 @@ P = robot_arm_rotatotope_RTD_planner_3D_fetch(FRS_options,...
 
 % P.HLP = robot_arm_optimization_HLP() ;
 
-P.HLP = arm_end_effector_RRT_star_HLP('plot_waypoint_flag',plot_waypoint_flag,...
-    'plot_waypoint_arm_flag',plot_waypoint_arm_flag,...
-    'grow_tree_mode',HLP_grow_tree_mode,...
-    'buffer',0.1) ;
+% P.HLP = arm_end_effector_RRT_star_HLP('plot_waypoint_flag',plot_waypoint_flag,...
+%     'plot_waypoint_arm_flag',plot_waypoint_arm_flag,...
+%     'grow_tree_mode',HLP_grow_tree_mode,...
+%     'buffer',0.1) ;
 
 %% set up simulator
 % set up world using arm

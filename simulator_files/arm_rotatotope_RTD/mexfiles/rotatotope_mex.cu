@@ -48,7 +48,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 	/*
 P0.	process the input
 	*/
-	if (nrhs != 7) {
+	if (nrhs != 8) {
 		mexErrMsgIdAndTxt("MyProg:ConvertString","*** Incorrect number of input!");
 	}
 
@@ -77,6 +77,8 @@ P0.	process the input
 	double* q_dot = mxGetPr(prhs[5]);
 
 	double* q_des = mxGetPr(prhs[6]);
+
+	double* g_k = mxGetPr(prhs[7]);
 
 	double link_Z[18] =  {  0.1778,         0,         0,
 							0.1778,         0,         0,
@@ -110,9 +112,9 @@ P1.	generate all the rotatotopes
 	uint32_t link_reduce_order = 15;
 	uint32_t point_reduce_order = 10;
 	
-	rotatotopeArray links = rotatotopeArray(n_links, n_time_steps, 2, R, dev_R, R_unit_length, dev_rot_axes, link_Z, link_Z_width, link_Z_length, link_reduce_order);
-	rotatotopeArray EEs = rotatotopeArray(n_links - 1, n_time_steps, 2, R, dev_R, R_unit_length, dev_rot_axes, EE_Z, EE_Z_width, EE_Z_length, point_reduce_order);
-	rotatotopeArray base = rotatotopeArray(n_links - 2, n_time_steps, 1, R, dev_R, R_unit_length, dev_rot_axes, base_Z, base_Z_width, base_Z_length, point_reduce_order);
+	rotatotopeArray links = rotatotopeArray(n_links, n_time_steps, 2, R, dev_R, R_unit_length, dev_rot_axes, link_Z, link_Z_width, link_Z_length, link_reduce_order, g_k);
+	rotatotopeArray EEs = rotatotopeArray(n_links - 1, n_time_steps, 2, R, dev_R, R_unit_length, dev_rot_axes, EE_Z, EE_Z_width, EE_Z_length, point_reduce_order, g_k);
+	rotatotopeArray base = rotatotopeArray(n_links - 2, n_time_steps, 1, R, dev_R, R_unit_length, dev_rot_axes, base_Z, base_Z_width, base_Z_length, point_reduce_order, g_k);
 
 	links.debugMode = debugMode;
 
@@ -141,7 +143,7 @@ P3.	generate the constraints
 P4.	solve the NLP
 	*/
 	SmartPtr<rotatotope_NLP> mynlp = new rotatotope_NLP();
-	mynlp->set_parameters(&links, q, q_dot, q_des, links.c_k, links.g_k, n_obstacles);
+	mynlp->set_parameters(&links, q, q_dot, q_des, g_k, n_obstacles);
 
 	// Create a new instance of IpoptApplication
     //  (use a SmartPtr, not raw)

@@ -25,6 +25,7 @@ classdef robot_arm_FRS_rotatotope_fetch
         
         q = zeros(6, 1);
         q_dot = zeros(6, 1);
+        k_dim = [3];
         
         link_rotatotopes = {};
         link_EE_rotatotopes = {};
@@ -71,10 +72,6 @@ classdef robot_arm_FRS_rotatotope_fetch
             
             obj = obj.create_FRS();
             
-            % all rotatotopes defined for same parameter set:
-            obj.c_k = obj.link_rotatotopes{end}{end}.c_k;
-            obj.g_k = obj.link_rotatotopes{end}{end}.g_k;
-            
             % generate k vertices for each link
             for i = 1:obj.n_links
                 cubeV = cubelet_ND(length(obj.link_joints{i}))';
@@ -97,6 +94,20 @@ classdef robot_arm_FRS_rotatotope_fetch
                     0, 0, 1, 0, 0; 0, 0, 0, 1, 0; 0, 0, 0, 0, 1];
                 for j = 1:length(trig_FRS_load{i})
                     trig_FRS{j}{i} = A*zonotope_slice(trig_FRS_load{i}{j}{1}, 4, obj.q_dot(i));
+                end
+                
+                Z = trig_FRS{1}{i}.Z;
+                c = Z(:, 1);
+                G = Z(:, 2:end);
+                G(:, ~any(G)) = []; % delete zero columns of G
+                
+                % extract k information
+                obj.c_k(i, 1) = c(obj.k_dim);
+                k_col = find(G(obj.k_dim, :) ~= 0);
+                if length(k_col) == 1
+                    obj.g_k(i, 1) = G(obj.k_dim, k_col);
+                else
+                    error('More than one generator for k-dimensions');
                 end
             end
             obj.n_time_steps = length(trig_FRS);

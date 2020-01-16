@@ -7,8 +7,8 @@ classdef robot_arm_FRS_rotatotope_fetch_cuda
     properties
         rot_axes = [3;2;1;2;1;2]; % order of rotation axes on fetch
         link_joints = {[1;2], [1;2;3;4], [1;2;3;4;5;6]}; % joints that each link depends on
-        link_zonotopes = {zonotope([0.33/2, 0.33/2; 0, 0; 0, 0]); zonotope([0.33/2, 0.33/2; 0, 0; 0, 0]); zonotope([0.33/2, 0.33/2; 0, 0; 0, 0])};
-        link_EE_zonotopes = {zonotope([0.33; 0; 0]); zonotope([0.33; 0; 0]); zonotope([0.33; 0; 0])};
+%         link_zonotopes = {zonotope([0.33/2, 0.33/2; 0, 0; 0, 0]); zonotope([0.33/2, 0.33/2; 0, 0; 0, 0]); zonotope([0.33/2, 0.33/2; 0, 0; 0, 0])};
+%         link_EE_zonotopes = {zonotope([0.33; 0; 0]); zonotope([0.33; 0; 0]); zonotope([0.33; 0; 0])};
         n_links = 3;
         n_time_steps = 0;
         dim = 3;
@@ -18,6 +18,7 @@ classdef robot_arm_FRS_rotatotope_fetch_cuda
         q;
         q_dot;
         q_des;
+        k_dim = [3];
         
         FRS_options = {};
         
@@ -27,6 +28,8 @@ classdef robot_arm_FRS_rotatotope_fetch_cuda
         RZ = [];
         c_idx = [];
         k_idx = [];
+        g_k = [];
+        c_k = [];
         
         A_con = [];
         d_con = [];
@@ -92,6 +95,21 @@ classdef robot_arm_FRS_rotatotope_fetch_cuda
                     trig_FRS = A*zonotope_slice(trig_FRS_load{i}{j}{1}, 4, obj.q_dot(i));
                     mexin_R = [mexin_R, trig_FRS.Z(:,1:10)];
                 end
+                
+                Z = trig_FRS.Z;
+                c = Z(:, 1);
+                G = Z(:, 2:end);
+                G(:, ~any(G)) = []; % delete zero columns of G
+                
+                % extract k information
+                obj.c_k(i, 1) = c(obj.k_dim);
+                k_col = find(G(obj.k_dim, :) ~= 0);
+                if length(k_col) == 1
+                    obj.g_k(i, 1) = G(obj.k_dim, k_col);
+                else
+                    error('More than one generator for k-dimensions');
+                end
+                
             end
             obj.n_time_steps = length(trig_FRS);
             
@@ -104,8 +122,8 @@ classdef robot_arm_FRS_rotatotope_fetch_cuda
                 mexin_OZ = [mexin_OZ, obj.obstacles{i}.zono.Z]; 
             end
            
-            %[obj.mex_res, obj.RZ, obj.c_idx, obj.k_idx, obj.A_con, obj.d_con, obj.delta_con, obj.k_con, obj.eval_output, obj.eval_grad_output, obj.eval_hess_output, obj.A_con_self, obj.d_con_self, obj.delta_con_self, obj.k_con_self] = rotatotope_mex(mexin_R, length(obj.obstacles), mexin_OZ, obj.k_opt, obj.q, obj.q_dot, obj.q_des);
-            obj.mex_res = rotatotope_mex(mexin_R, length(obj.obstacles), mexin_OZ, obj.k_opt, obj.q, obj.q_dot, obj.q_des);
+            %[obj.mex_res, obj.RZ, obj.c_idx, obj.k_idx, obj.A_con, obj.d_con, obj.delta_con, obj.k_con, obj.eval_output, obj.eval_grad_output, obj.eval_hess_output, obj.A_con_self, obj.d_con_self, obj.delta_con_self, obj.k_con_self] = rotatotope_mex(mexin_R, length(obj.obstacles), mexin_OZ, obj.k_opt, obj.q, obj.q_dot, obj.q_des, obj.g_k);
+            obj.mex_res = rotatotope_mex(mexin_R, length(obj.obstacles), mexin_OZ, obj.k_opt, obj.q, obj.q_dot, obj.q_des, obj.g_k);
             toc;
         end
     end
