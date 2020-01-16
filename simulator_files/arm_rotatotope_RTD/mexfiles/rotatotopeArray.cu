@@ -108,6 +108,18 @@ rotatotopeArray::rotatotopeArray(uint32_t n_links_input, uint32_t n_time_steps_i
 	dev_k_con_num = nullptr;
 	max_k_con_num = nullptr;
 
+	A_con_self = nullptr;
+	dev_A_con_self = nullptr;
+	d_con_self = nullptr;
+	dev_d_con_self = nullptr;
+	delta_con_self = nullptr;
+	dev_delta_con_self = nullptr;
+	k_con_self = nullptr;
+	dev_k_con_self = nullptr;
+	k_con_num_self = nullptr;
+	dev_k_con_num_self = nullptr;
+	max_k_con_num_self = nullptr;
+
 	current_k_opt = nullptr;
 	con = nullptr;
 	jaco_con = nullptr;
@@ -195,8 +207,8 @@ __global__ void reduce_kernel(double* RZ_new, bool* c_idx_new, bool* k_idx_new, 
 	uint32_t z_id = threadIdx.x;
 	uint32_t norm_length = blockDim.x;
 	uint32_t mul_Z = (link_id * n_time_steps + time_id) * norm_length + z_id; // we never reduce the center
-	__shared__ double RZ_norm[max_norm_size];
-	__shared__ uint32_t RZ_id[max_norm_size];
+	__shared__ double RZ_norm[MAX_NORM_SIZE];
+	__shared__ uint32_t RZ_id[MAX_NORM_SIZE];
 
 	RZ_norm[z_id] = 0;
 	double norm;
@@ -521,8 +533,8 @@ void rotatotopeArray::generate_constraints(uint32_t n_obstacles_in, double* OZ, 
 		cudaMalloc((void**)&(dev_d_con[link_id]), n_obstacles * n_time_steps * constraint_length * sizeof(double));
 		cudaMalloc((void**)&(dev_delta_con[link_id]), n_obstacles * n_time_steps * constraint_length * sizeof(double));
 		
-		dim3 grid2(n_obstacles, constraint_length, 1);
-		polytope << < grid2, n_time_steps >> > (link_id, RZ_length[link_id], dev_buff_obstacles, dev_frs_k_dep_G, dev_k_con_num[link_id], max_k_con_num[link_id], dev_A_con[link_id], dev_d_con[link_id], dev_delta_con[link_id]);
+		dim3 grid2(n_obstacles, n_time_steps, 1);
+		polytope << < grid2, constraint_length >> > (buff_obstacle_length, RZ_length[link_id], dev_buff_obstacles, dev_frs_k_dep_G, dev_k_con_num[link_id], max_k_con_num[link_id], dev_A_con[link_id], dev_d_con[link_id], dev_delta_con[link_id]);
 
 		if(debugMode){
 			A_con[link_id] = new double[n_obstacles * n_time_steps * constraint_length * max_k_con_num[link_id]];
@@ -562,7 +574,7 @@ __global__ void buff_obstacles_kernel(uint32_t link_id, uint32_t RZ_length, doub
 	uint32_t buff_base = (obstacle_id * n_time_steps + time_id) * buff_obstacle_length;
 
 	// first, find kc_col
-	__shared__ bool kc_info[max_RZ_length];
+	__shared__ bool kc_info[MAX_RZ_LENGTH];
 
 	kc_info[z_id] = false;
 	for (uint32_t i = k_start; i < k_end; i += k_step) {
@@ -653,17 +665,16 @@ __global__ void buff_obstacles_kernel(uint32_t link_id, uint32_t RZ_length, doub
 	}
 }
 
-__global__ void polytope(uint32_t link_id, uint32_t RZ_length, double* buff_obstacles, double* frs_k_dep_G, uint8_t* k_con_num, uint32_t A_con_width, double* A_con, double* d_con, double* delta_con) {
+__global__ void polytope(uint32_t buff_obstacle_length, uint32_t k_dep_G_length, double* buff_obstacles, double* frs_k_dep_G, uint8_t* k_con_num, uint32_t A_con_width, double* A_con, double* d_con, double* delta_con) {
 	uint32_t obstacle_id = blockIdx.x;
-	uint32_t time_id = threadIdx.x;
-	uint32_t n_time_steps = blockDim.x;
-	uint32_t buff_obstacle_length = RZ_length + 3;
+	uint32_t time_id = blockIdx.y;
+	uint32_t n_time_steps = gridDim.y;
 	double buff_obstacle_size = (double)buff_obstacle_length - 1.0;
 	uint32_t constraint_length = (buff_obstacle_length - 1) * (buff_obstacle_length - 2) / 2;
 	uint32_t k_con_base = time_id;
-	uint32_t k_dep_G_base = k_con_base * RZ_length;
+	uint32_t k_dep_G_base = k_con_base * k_dep_G_length;
 	uint32_t obs_base = (obstacle_id * n_time_steps + time_id) * buff_obstacle_length;
-	uint32_t c_id = blockIdx.y;
+	uint32_t c_id = threadIdx.x;
 	uint32_t first = (uint32_t)floor(-0.5*sqrt(4 * buff_obstacle_size * buff_obstacle_size - 4 * buff_obstacle_size - 8.0 * ((double)c_id) + 1.0) + buff_obstacle_size - 0.5);
 	uint32_t first_base = (obs_base + first + 1) * 3;
 	uint32_t second = c_id + 1 - ((2 * (buff_obstacle_length - 1) - 3 - first) * first) / 2;
@@ -702,7 +713,7 @@ __global__ void polytope(uint32_t link_id, uint32_t RZ_length, double* buff_obst
 		delta_con[con_base] = deltaD;
 	}
 	else {
-		d_con[con_base] = A_BIG_NUMBER;
+		d_con[con_base] = 0;
 		delta_con[con_base] = A_BIG_NUMBER;
 	}
 }
@@ -711,216 +722,235 @@ void rotatotopeArray::generate_self_constraints(uint32_t n_pairs_input, uint32_t
 	n_pairs = n_pairs_input;
 	self_pairs = self_pairs_input;
 	
-	k_con_self_array.reserve(n_pairs);
-	A_con_self_array.reserve(n_pairs);
-	d_con_self_array.reserve(n_pairs);
-	delta_con_self_array.reserve(n_pairs);
+	A_con_self = new double*[n_pairs];
+	dev_A_con_self = new double*[n_pairs];
+	d_con_self = new double*[n_pairs];
+	dev_d_con_self = new double*[n_pairs];
+	delta_con_self = new double*[n_pairs];
+	dev_delta_con_self = new double*[n_pairs];
+	k_con_self = new bool*[n_pairs];
+	dev_k_con_self = new bool*[n_pairs];
+	k_con_num_self = new uint8_t*[n_pairs];
+	dev_k_con_num_self = new uint8_t*[n_pairs];
+	max_k_con_num_self = new uint32_t[n_pairs];
 
 	for(uint32_t pair_id = 0; pair_id < n_pairs; pair_id++){
-		k_con_self_array.emplace_back();
-		k_con_self_array[pair_id].reserve(n_time_steps);
-		A_con_self_array.emplace_back();
-		A_con_self_array[pair_id].reserve(n_time_steps);
-		d_con_self_array.emplace_back();
-		d_con_self_array[pair_id].reserve(n_time_steps);
-		delta_con_self_array.emplace_back();
-		delta_con_self_array[pair_id].reserve(n_time_steps);
-
 		uint32_t R1 = self_pairs[pair_id * 2];
 		uint32_t R2 = self_pairs[pair_id * 2 + 1];
 		uint32_t R1_length = RZ_length[R1];
 		uint32_t R2_length = RZ_length[R2];
-		
-		// copy from GPU
-		if(RZ_stack[R1] == nullptr){
-			RZ_stack[R1] = new double[n_time_steps * R1_length * Z_width];
-			cudaMemcpy(RZ_stack[R1], dev_RZ_stack[R1], n_time_steps * R1_length * Z_width * sizeof(double), cudaMemcpyDeviceToHost);
 
-			c_idx_stack[R1] = new bool[n_time_steps * R1_length];
-			cudaMemcpy(c_idx_stack[R1], dev_c_idx_stack[R1], n_time_steps * R1_length * sizeof(bool), cudaMemcpyDeviceToHost);
+		uint32_t gen_zono_length = R2_length;
+		uint32_t constraint_length = ((gen_zono_length - 1) * (gen_zono_length - 2)) / 2;
+		uint32_t k_dep_length = R1_length;
 
-			k_idx_stack[R1] = new bool[2 * (R1 + 1) * n_time_steps * R1_length];
-			cudaMemcpy(k_idx_stack[R1], dev_k_idx_stack[R1], 2 * (R1 + 1) * n_time_steps * R1_length * sizeof(bool), cudaMemcpyDeviceToHost);
+		// buffer the obstacle by k-independent generators
+		k_con_self[pair_id] = new bool[2 * (R2 + 1) * n_time_steps * k_dep_length];
+		cudaMalloc((void**)&(dev_k_con_self[pair_id]), 2 * (R2 + 1) * n_time_steps * k_dep_length * sizeof(bool));
+		cudaMemset(dev_k_con_self[pair_id], 0, 2 * (R2 + 1) * n_time_steps * k_dep_length * sizeof(bool));
+		k_con_num_self[pair_id] = new uint8_t[n_time_steps];
+		cudaMalloc((void**)&(dev_k_con_num_self[pair_id]), n_time_steps * sizeof(uint8_t));
+
+		double* dev_gen_zono;
+		cudaMalloc((void**)&dev_gen_zono, n_time_steps * gen_zono_length * Z_width * sizeof(double));
+		cudaMemset(dev_gen_zono, 0, n_time_steps * gen_zono_length * Z_width * sizeof(double));
+
+		double* dev_k_dep_pt;
+		cudaMalloc((void**)&dev_k_dep_pt, n_time_steps * k_dep_length * Z_width * sizeof(double));
+		cudaMemset(dev_k_dep_pt, 0, n_time_steps * k_dep_length * Z_width * sizeof(double));
+
+		gen_zono_kernel << < n_time_steps, R2_length >> > (R1, R2, R1_length, R2_length, dev_RZ_stack[R1], dev_c_idx_stack[R1], dev_k_idx_stack[R1], dev_RZ_stack[R2], dev_c_idx_stack[R2], dev_k_idx_stack[R2], dev_gen_zono, dev_k_dep_pt, dev_k_con_self[pair_id], dev_k_con_num_self[pair_id]);
+
+		if(debugMode){
+			cudaMemcpy(k_con_self[pair_id], dev_k_con_self[pair_id], 2 * (R2 + 1) * n_time_steps * k_dep_length * sizeof(bool), cudaMemcpyDeviceToHost);
 		}
+		cudaMemcpy(k_con_num_self[pair_id], dev_k_con_num_self[pair_id], n_time_steps * sizeof(uint8_t), cudaMemcpyDeviceToHost);
 
-		if(RZ_stack[R2] == nullptr){
-			RZ_stack[R2] = new double[n_time_steps * R2_length * Z_width];
-			cudaMemcpy(RZ_stack[R2], dev_RZ_stack[R2], n_time_steps * R2_length * Z_width * sizeof(double), cudaMemcpyDeviceToHost);
-
-			c_idx_stack[R2] = new bool[n_time_steps * R2_length];
-			cudaMemcpy(c_idx_stack[R2], dev_c_idx_stack[R2], n_time_steps * R2_length * sizeof(bool), cudaMemcpyDeviceToHost);
-
-			k_idx_stack[R2] = new bool[2 * (R2 + 1) * n_time_steps * R2_length];
-			cudaMemcpy(k_idx_stack[R2], dev_k_idx_stack[R2], 2 * (R2 + 1) * n_time_steps * R2_length * sizeof(bool), cudaMemcpyDeviceToHost);
-		}
-		
-		for(uint32_t time_id = 0; time_id < n_time_steps; time_id++){
-			k_con_self_array[pair_id].emplace_back();
-			vector<bool>& k_con_self = k_con_self_array[pair_id][time_id];
-			k_con_self.reserve((R2 + 1) * 2 * (R1_length + R2_length - 2));
-
-			A_con_self_array[pair_id].emplace_back();
-			vector<double>& A_con_self = A_con_self_array[pair_id][time_id];
-
-			d_con_self_array[pair_id].emplace_back();
-			vector<double>& d_con_self = d_con_self_array[pair_id][time_id];
-
-			delta_con_self_array[pair_id].emplace_back();
-			vector<double>& delta_con_self = delta_con_self_array[pair_id][time_id];
-
-			vector<double> center;
-			center.reserve(Z_width);
-
-			vector<double> gen_zono;
-			gen_zono.reserve((R1_length + R2_length - 2) * Z_width);
-
-			vector<double> k_dep_pt;
-			k_dep_pt.reserve((R1_length + R2_length - 2) * Z_width);
-
-			// centered at R1.Rc - R2.Rc
-			for(uint32_t i = 0; i < Z_width; i++){
-				center.push_back(RZ_stack[R1][time_id * R1_length * Z_width + i] - RZ_stack[R2][time_id * R2_length * Z_width + i]);
+		// find the maximum width of A_con for memory allocation
+		max_k_con_num_self[pair_id] = 0;
+		for (uint32_t i = 0; i < n_time_steps; i++) {
+			if (k_con_num_self[pair_id][i] > max_k_con_num_self[pair_id]) {
+				max_k_con_num_self[pair_id] = k_con_num_self[pair_id][i];
 			}
+		}
+
+		if(max_k_con_num_self[pair_id] > k_dep_length){
+			mexErrMsgIdAndTxt("MyProg:ConvertString","*** Incorrect size of k dep in self intersection");
+		}
+
+		// generate obstacles polynomials
+		cudaMalloc((void**)&(dev_A_con_self[pair_id]), n_time_steps * constraint_length * max_k_con_num_self[pair_id] * sizeof(double));
+		cudaMalloc((void**)&(dev_d_con_self[pair_id]), n_time_steps * constraint_length * sizeof(double));
+		cudaMalloc((void**)&(dev_delta_con_self[pair_id]), n_time_steps * constraint_length * sizeof(double));
+		
+		dim3 grid2(1, n_time_steps, 1);
+		polytope << < grid2, constraint_length >> > (gen_zono_length, k_dep_length, dev_gen_zono, dev_k_dep_pt, dev_k_con_num_self[pair_id], max_k_con_num_self[pair_id], dev_A_con_self[pair_id], dev_d_con_self[pair_id], dev_delta_con_self[pair_id]);
+
+		if(debugMode){
+			A_con_self[pair_id] = new double[n_time_steps * constraint_length * max_k_con_num_self[pair_id]];
+			cudaMemcpy(A_con_self[pair_id], dev_A_con_self[pair_id], n_time_steps * constraint_length * max_k_con_num_self[pair_id] * sizeof(double), cudaMemcpyDeviceToHost);
 			
-			// deal with the first link
-			uint32_t RZ_base = time_id * R1_length;
-			uint32_t k_start = RZ_base;
-			uint32_t k_end = (2 * (R1 + 1) * n_time_steps + time_id) * R1_length;
-			uint32_t k_step = n_time_steps * R1_length;
-			double reduced_generators[3] = {0.0};
+			d_con_self[pair_id] = new double[n_time_steps * constraint_length];
+			cudaMemcpy(d_con_self[pair_id], dev_d_con_self[pair_id], n_time_steps * constraint_length * sizeof(double), cudaMemcpyDeviceToHost);
+			
+			delta_con_self[pair_id] = new double[n_time_steps * constraint_length];
+			cudaMemcpy(delta_con_self[pair_id], dev_delta_con_self[pair_id], n_time_steps * constraint_length * sizeof(double), cudaMemcpyDeviceToHost);
+		}
+		else{
+			A_con_self[pair_id] = nullptr;
+			d_con_self[pair_id] = nullptr;
+			delta_con_self[pair_id] = nullptr;
+		}
 
-			for(uint32_t z_id = 1; z_id < R1_length; z_id++){
-				bool kc_info = false;
-				for (uint32_t i = k_start; i < k_end; i += k_step) {
-					if (k_idx_stack[R1][i + z_id] == true) {
-						kc_info = true;
-						break;
-					}
+		cudaFree(dev_gen_zono);
+		cudaFree(dev_k_dep_pt);
+	}
+}
+
+__global__ void gen_zono_kernel(uint32_t link_id_1, uint32_t link_id_2, uint32_t RZ_length_1, uint32_t RZ_length_2, double* RZ_1, bool* c_idx_1, bool* k_idx_1, double* RZ_2, bool* c_idx_2, bool* k_idx_2, double* gen_zono, double* k_dep_pt, bool* k_con_self, uint8_t* k_con_num_self) {
+	uint32_t time_id = blockIdx.x;
+	uint32_t n_time_steps = gridDim.x;
+	uint32_t z_id = threadIdx.x; 
+	uint32_t gen_zono_length = RZ_length_2;
+	uint32_t gen_zono_base = time_id * gen_zono_length;
+	uint32_t k_con_num_base = time_id;
+	uint32_t RZ_base_1 = time_id * RZ_length_1;
+	uint32_t k_start_1 = time_id * RZ_length_1;
+	uint32_t k_end_1 = (2 * (link_id_1 + 1) * n_time_steps + time_id) * RZ_length_1;
+	uint32_t k_step_1 = n_time_steps * RZ_length_1;
+	uint32_t RZ_base_2 = time_id * RZ_length_2;
+	uint32_t k_start_2 = time_id * RZ_length_2;
+	uint32_t k_end_2 = (2 * (link_id_2 + 1) * n_time_steps + time_id) * RZ_length_2;
+	uint32_t k_step_2 = n_time_steps * RZ_length_2;
+	
+	// first, find kc_col for both links in a pair
+	__shared__ bool kc_info_1[MAX_RZ_LENGTH];
+	__shared__ bool kc_info_2[MAX_RZ_LENGTH];
+
+	if(z_id < RZ_length_1){
+		kc_info_1[z_id] = false;
+		for (uint32_t i = k_start_1; i < k_end_1; i += k_step_1) {
+			if (k_idx_1[i + z_id] == true) {
+				kc_info_1[z_id] = true;
+				break;
+			}
+		}
+		kc_info_1[z_id] &= c_idx_1[RZ_base_1 + z_id];
+	}
+
+	kc_info_2[z_id] = false;
+	for (uint32_t i = k_start_2; i < k_end_2; i += k_step_2) {
+		if (k_idx_2[i + z_id] == true) {
+			kc_info_2[z_id] = true;
+			break;
+		}
+	}
+	kc_info_2[z_id] &= c_idx_2[RZ_base_2 + z_id];
+
+	__syncthreads();
+
+	if (z_id == 0) { // process the center
+		for (uint32_t i = 0; i < 3; i++) {
+			gen_zono[gen_zono_base * 3 + i] = RZ_1[RZ_base_1 * 3 + i] - RZ_2[RZ_base_2 * 3 + i];
+		}
+	}
+	else if (z_id == 1) { // find k-dependent generators and complete k_con
+		uint8_t k_dep_num = 0;
+		for (uint32_t z = 1; z < RZ_length_1; z++) {
+			if (kc_info_1[z]) {
+				for (uint32_t j = k_start_1; j < k_end_1; j += k_step_1) {
+					k_con_self[j + k_dep_num] = k_idx_1[j + z];
 				}
-				kc_info &= c_idx_stack[R1][RZ_base + z_id];
 
-				if(kc_info){ // fill in k_dep_pt with k dependent generators
-					for (uint32_t i = k_start; i < k_end; i += k_step) {
-						k_con_self.push_back(k_idx_stack[R1][i + z_id]);
-					}
-					for (uint32_t i = 0; i < 2 * (R2 - R1); i++) { // fill in 0 to form a matrix
-						k_con_self.push_back(false);
-					}
-
-					for(uint32_t i = 0; i < Z_width; i++){
-						k_dep_pt.push_back(-RZ_stack[R1][(RZ_base + z_id) * Z_width + i]);
-					}
+				for (uint32_t i = 0; i < 3; i++) {
+					k_dep_pt[(RZ_base_1 + k_dep_num) * 3 + i] = -RZ_1[(RZ_base_1 + z) * 3 + i];
 				}
-				else{ // fill in gen_zono with k independent generators
-					double norm = 0;
+
+				k_dep_num++;
+			}
+		}
+		for (uint32_t z = 1; z < RZ_length_2; z++) {
+			if (kc_info_2[z]) {
+				uint32_t kj = k_start_1;
+				for (uint32_t j = k_start_2; j < k_end_2; j += k_step_2) {
+					k_con_self[kj + k_dep_num] = k_idx_2[j + z];
+					kj += k_step_1;
+				}
+
+				for (uint32_t i = 0; i < 3; i++) {
+					k_dep_pt[(RZ_base_1 + k_dep_num) * 3 + i] = RZ_2[(RZ_base_2 + z) * 3 + i];
+				}
+
+				k_dep_num++;
+			}
+		}
+
+		k_con_num_self[k_con_num_base] = k_dep_num;
+	}
+	else if (z_id == 2) { // find k-independent generators and complete gen_zono
+		uint8_t k_indep_num = 1;
+		// add a test here, reduce small generators to be a box
+		double reduced_generators[3];
+		reduced_generators[0] = 0;
+		reduced_generators[1] = 0;
+		reduced_generators[2] = 0;
+
+		for (uint32_t z = 1; z < RZ_length_1; z++) {
+			if (!kc_info_1[z]) {
+				double norm = 0;
+				for (uint32_t i = 0; i < 3; i++) {
+					norm += RZ_1[(RZ_base_1 + z) * 3 + i] * RZ_1[(RZ_base_1 + z) * 3 + i];
+				}
+
+				if(norm >= TOO_SMALL_POLYTOPE_JUDGE){
 					for (uint32_t i = 0; i < 3; i++) {
-						norm += RZ_stack[R1][(RZ_base + z_id) * Z_width + i] * RZ_stack[R1][(RZ_base + z_id) * Z_width+ i];
+						gen_zono[(gen_zono_base + k_indep_num) * 3 + i] = RZ_1[(RZ_base_1 + z) * 3 + i];
 					}
-
-					if(norm >= TOO_SMALL_POLYTOPE_JUDGE){
-						for (uint32_t i = 0; i < 3; i++) {
-							gen_zono.push_back(RZ_stack[R1][(RZ_base + z_id) * Z_width + i]);
-						}
-					}
-					else{
-						for (uint32_t i = 0; i < 3; i++) {
-							reduced_generators[i] += RZ_stack[R1][(RZ_base + z_id) * Z_width + i];
-						}
+					k_indep_num++;
+				}
+				else{
+					for (uint32_t i = 0; i < 3; i++) {
+						reduced_generators[i] += RZ_1[(RZ_base_1 + z) * 3 + i];
 					}
 				}
 			}
+		}
 
-			// deal with the second link
-			RZ_base = time_id * R2_length;
-			k_start = RZ_base;
-			k_end = (2 * (R2 + 1) * n_time_steps + time_id) * R2_length;
-			k_step = n_time_steps * R2_length;
+		for (uint32_t z = 1; z < RZ_length_2; z++) {
+			if (!kc_info_2[z]) {
+				double norm = 0;
+				for (uint32_t i = 0; i < 3; i++) {
+					norm += RZ_2[(RZ_base_2 + z) * 3 + i] * RZ_2[(RZ_base_2 + z) * 3 + i];
+				}
 
-			for(uint32_t z_id = 1; z_id < R2_length; z_id++){
-				bool kc_info = false;
-				for (uint32_t i = k_start; i < k_end; i += k_step) {
-					if (k_idx_stack[R2][i + z_id] == true) {
-						kc_info = true;
-						break;
+				if(norm >= TOO_SMALL_POLYTOPE_JUDGE){
+					for (uint32_t i = 0; i < 3; i++) {
+						gen_zono[(gen_zono_base + k_indep_num) * 3 + i] = RZ_2[(RZ_base_2 + z) * 3 + i];
+					}
+					k_indep_num++;
+				}
+				else{
+					for (uint32_t i = 0; i < 3; i++) {
+						reduced_generators[i] += RZ_2[(RZ_base_2 + z) * 3 + i];
 					}
 				}
-				kc_info &= c_idx_stack[R2][RZ_base + z_id];
 
-				if(kc_info){ // fill in k_dep_pt with k dependent generators
-					for (uint32_t i = k_start; i < k_end; i += k_step) {
-						k_con_self.push_back(k_idx_stack[R2][i + z_id]);
-					}
-
-					for(uint32_t i = 0; i < Z_width; i++){
-						k_dep_pt.push_back(RZ_stack[R2][(RZ_base + z_id) * Z_width + i]);
-					}
-				}
-				else{ // fill in gen_zono with k independent generators
-					double norm = 0;
-					for (uint32_t i = 0; i < Z_width; i++) {
-						norm += RZ_stack[R2][(RZ_base + z_id) * Z_width + i] * RZ_stack[R2][(RZ_base + z_id) * Z_width+ i];
-					}
-
-					if(norm >= TOO_SMALL_POLYTOPE_JUDGE){
-						for (uint32_t i = 0; i < Z_width; i++) {
-							gen_zono.push_back(RZ_stack[R2][(RZ_base + z_id) * Z_width + i]);
-						}
-					}
-					else{
-						for (uint32_t i = 0; i < Z_width; i++) {
-							reduced_generators[i] += RZ_stack[R2][(RZ_base + z_id) * Z_width + i];
-						}
-					}
+				if(k_indep_num >= gen_zono_length - 3){
+					break;
 				}
 			}
+		}
 
-			// add the box that contains small generators and the buffer
-			for (uint32_t i = 0; i < 3; i++) {
-				for (uint32_t j = 0; j < 3; j++){
-					if(i == j){
-						gen_zono.push_back(reduced_generators[i] + BUFFER_DIST);
-					}
-					else{
-						gen_zono.push_back(0);
-					}
+		for (uint32_t i = 0; i < 3; i++) {
+			for (uint32_t j = 0; j < 3; j++){
+				if(i == j){
+					gen_zono[(gen_zono_base + k_indep_num) * 3 + j] = reduced_generators[i] + BUFFER_DIST;
+				}
+				else{
+					gen_zono[(gen_zono_base + k_indep_num) * 3 + j] = 0;
 				}
 			}
-			
-			// generate con_self
-			uint32_t nGen = gen_zono.size() / Z_width;
-			uint32_t nkDep = k_dep_pt.size() / Z_width;
-			A_con_self.reserve(nGen * (nGen - 1) / 2 * nkDep);
-			d_con_self.reserve(nGen * (nGen - 1) / 2);
-			delta_con_self.reserve(nGen * (nGen - 1) / 2);
-			
-			for(uint32_t fir = 1; fir < nGen; fir++){
-				for(uint32_t sec = 0; sec < fir; sec++){
-					uint32_t first_base  = fir * Z_width;
-					uint32_t second_base = sec * Z_width;
-					double A_1 = gen_zono[first_base + 1] * gen_zono[second_base + 2] - gen_zono[first_base + 2] * gen_zono[second_base + 1];
-					double A_2 = gen_zono[first_base + 2] * gen_zono[second_base]     - gen_zono[first_base]     * gen_zono[second_base + 2];
-					double A_3 = gen_zono[first_base]     * gen_zono[second_base + 1] - gen_zono[first_base + 1] * gen_zono[second_base];
-	
-					double A_s_q = sqrt(A_1 * A_1 + A_2 * A_2 + A_3 * A_3);
-					if(A_s_q > 0){
-						A_1 /= A_s_q;
-						A_2 /= A_s_q;
-						A_3 /= A_s_q;
-
-						for (uint32_t i = 0; i < nkDep; i++) {
-							A_con_self.push_back(A_1 * k_dep_pt[i * Z_width] + A_2 * k_dep_pt[i * Z_width + 1] + A_3 * k_dep_pt[i * Z_width + 2]);
-						}
-	
-						d_con_self.push_back(A_1 * center[0] + A_2 * center[1] + A_3 * center[2]);
-	
-						double deltaD = 0;
-						for (uint32_t i = 0; i < nGen; i++) {
-							deltaD += abs(A_1 * gen_zono[i * Z_width] + A_2 * gen_zono[i * Z_width + 1] + A_3 * gen_zono[i * Z_width + 2]);
-						}
-						delta_con_self.push_back(deltaD);
-					}
-				}
-			}
+			k_indep_num++;
 		}
 	}
 }
@@ -931,6 +961,12 @@ void rotatotopeArray::evaluate_constraints(double* k_opt) {
 		delete[] con;
 		delete[] jaco_con;
 		delete[] hess_con;
+	}
+
+	if(con_self != nullptr){
+		delete[] con_self;
+		delete[] jaco_con_self;
+		delete[] hess_con_self;
 	}
 	
 	current_k_opt = k_opt;
@@ -948,6 +984,21 @@ void rotatotopeArray::evaluate_constraints(double* k_opt) {
 	double* dev_hess_con;
 	cudaMalloc((void**)&dev_hess_con, n_links * n_obstacles * n_time_steps * n_links * (n_links * 2 - 1) * sizeof(double));
 	cudaMemset(dev_hess_con, 0, n_links * n_obstacles * n_time_steps * n_links * (n_links * 2 - 1) * sizeof(double));
+
+	con_self = new double[n_pairs * n_time_steps];
+	double* dev_con_self;
+	cudaMalloc((void**)&dev_con_self, n_pairs * n_time_steps * sizeof(double));
+
+	jaco_con_self = new double[n_pairs * n_time_steps * n_links * 2];
+	double* dev_jaco_con_self;
+	cudaMalloc((void**)&dev_jaco_con_self, n_pairs * n_time_steps * n_links * 2 * sizeof(double));
+	cudaMemset(dev_jaco_con_self, 0, n_pairs * n_time_steps * n_links * 2 * sizeof(double));
+
+	hess_con_self = new double[n_pairs * n_time_steps * n_links * (n_links * 2 - 1)];
+	double* dev_hess_con_self;
+	cudaMalloc((void**)&dev_hess_con_self, n_pairs * n_time_steps * n_links * (n_links * 2 - 1) * sizeof(double));
+	cudaMemset(dev_hess_con_self, 0, n_pairs * n_time_steps * n_links * (n_links * 2 - 1) * sizeof(double));
+
 
 	double* lambda = new double[n_links * 2];
 	for (uint32_t joint_id = 0; joint_id < n_links * 2; joint_id++) {
@@ -978,7 +1029,34 @@ void rotatotopeArray::evaluate_constraints(double* k_opt) {
 		
 		dim3 grid2(n_obstacles, n_time_steps, 1);
 		dim3 block2((link_id + 1) * 2, (link_id + 1) * 2, 1);
-		evaluate_gradient_kernel << < grid2, block2 >> > (dev_con_result, dev_index_factor, link_id, RZ_length[link_id], constraint_length, dev_lambda, dev_g_k, dev_A_con[link_id], max_k_con_num[link_id], dev_k_con[link_id], dev_k_con_num[link_id], n_links, dev_con, dev_jaco_con, dev_hess_con);
+		evaluate_gradient_kernel << < grid2, block2 >> > (dev_con_result, dev_index_factor, link_id, link_id, RZ_length[link_id], constraint_length, dev_lambda, dev_g_k, dev_A_con[link_id], max_k_con_num[link_id], dev_k_con[link_id], dev_k_con_num[link_id], n_links, dev_con, dev_jaco_con, dev_hess_con);
+
+		cudaFree(dev_con_result);
+		cudaFree(dev_index_factor);
+	}
+
+	// self intersection constraint evaluation
+	for (uint32_t pair_id = 0; pair_id < n_pairs; pair_id++) {
+		uint32_t R1 = self_pairs[pair_id * 2];
+		uint32_t R2 = self_pairs[pair_id * 2 + 1];
+		uint32_t R1_length = RZ_length[R1];
+		uint32_t R2_length = RZ_length[R2];
+
+		uint32_t gen_zono_length = R2_length;
+		uint32_t constraint_length = ((gen_zono_length - 1) * (gen_zono_length - 2)) / 2;
+
+		double* dev_con_result; // results of evaluation of constriants
+		bool* dev_index_factor; // whether the constraints are positive or negative
+		cudaMalloc((void**)&dev_con_result, n_time_steps * constraint_length * sizeof(double));
+		cudaMalloc((void**)&dev_index_factor, n_time_steps * constraint_length * sizeof(bool));
+
+		dim3 grid1(1, n_time_steps, 1);
+		dim3 block1(constraint_length, 1, 1);
+		evaluate_constraints_kernel << < grid1, block1 >> > (dev_lambda, R2, R1_length, dev_A_con_self[pair_id], max_k_con_num_self[pair_id], dev_d_con_self[pair_id], dev_delta_con_self[pair_id], dev_k_con_self[pair_id], dev_k_con_num_self[pair_id], dev_con_result, dev_index_factor);
+		
+		dim3 grid2(1, n_time_steps, 1);
+		dim3 block2((R2 + 1) * 2, (R2 + 1) * 2, 1);
+		evaluate_gradient_kernel << < grid2, block2 >> > (dev_con_result, dev_index_factor, R2, pair_id, R1_length, constraint_length, dev_lambda, dev_g_k, dev_A_con_self[pair_id], max_k_con_num_self[pair_id], dev_k_con_self[pair_id], dev_k_con_num_self[pair_id], n_links, dev_con_self, dev_jaco_con_self, dev_hess_con_self);
 
 		cudaFree(dev_con_result);
 		cudaFree(dev_index_factor);
@@ -992,6 +1070,15 @@ void rotatotopeArray::evaluate_constraints(double* k_opt) {
 
 	cudaMemcpy(hess_con, dev_hess_con, n_links * n_obstacles * n_time_steps * n_links * (n_links * 2 - 1)  * sizeof(double), cudaMemcpyDeviceToHost);
 	cudaFree(dev_hess_con);
+
+	cudaMemcpy(con_self, dev_con_self, n_pairs * n_time_steps * sizeof(double), cudaMemcpyDeviceToHost);
+	cudaFree(dev_con_self);
+
+	cudaMemcpy(jaco_con_self, dev_jaco_con_self, n_pairs * n_time_steps * n_links * 2 * sizeof(double), cudaMemcpyDeviceToHost);
+	cudaFree(dev_jaco_con_self);
+
+	cudaMemcpy(hess_con_self, dev_hess_con_self, n_pairs * n_time_steps * n_links * (n_links * 2 - 1)  * sizeof(double), cudaMemcpyDeviceToHost);
+	cudaFree(dev_hess_con_self);
 	
 	delete[] lambda;
 	cudaFree(dev_lambda);
@@ -1035,7 +1122,7 @@ __global__ void evaluate_constraints_kernel(double* lambda, uint32_t link_id, ui
 
 	__syncthreads();
 
-	if (d_con[con_base] == A_BIG_NUMBER){
+	if (delta_con[con_base] == A_BIG_NUMBER){
 		con_result[con_result_base] = -A_BIG_NUMBER;
 		index_factor[con_result_base] = false;
 	}
@@ -1059,7 +1146,7 @@ __global__ void evaluate_constraints_kernel(double* lambda, uint32_t link_id, ui
 	}
 }
 
-__global__ void evaluate_gradient_kernel(double* con_result, bool* index_factor, uint32_t link_id, uint32_t RZ_length, uint32_t constraint_length, double* lambda, double* g_k, double* A_con, uint32_t A_con_width, bool* k_con, uint8_t* k_con_num, uint32_t n_links, double* con, double* jaco_con, double* hess_con) {
+__global__ void evaluate_gradient_kernel(double* con_result, bool* index_factor, uint32_t link_id, uint32_t pos_id, uint32_t RZ_length, uint32_t constraint_length, double* lambda, double* g_k, double* A_con, uint32_t A_con_width, bool* k_con, uint8_t* k_con_num, uint32_t n_links, double* con, double* jaco_con, double* hess_con) {
 	uint32_t obstacle_id = blockIdx.x;
 	uint32_t n_obstacles = gridDim.x;
 	uint32_t time_id = blockIdx.y;
@@ -1070,9 +1157,9 @@ __global__ void evaluate_gradient_kernel(double* con_result, bool* index_factor,
 	
 	uint32_t con_result_base = (obstacle_id * n_time_steps + time_id) * constraint_length;
 	__shared__ uint32_t max_idx;
-	uint32_t valu_con_base = (link_id * n_obstacles + obstacle_id) * n_time_steps + time_id;
-	uint32_t jaco_con_base = ((link_id * n_obstacles + obstacle_id) * n_time_steps + time_id) * n_links * 2;
-	uint32_t hess_con_base = ((link_id * n_obstacles + obstacle_id) * n_time_steps + time_id) * n_links * (n_links * 2 - 1);
+	uint32_t valu_con_base = (pos_id * n_obstacles + obstacle_id) * n_time_steps + time_id;
+	uint32_t jaco_con_base = ((pos_id * n_obstacles + obstacle_id) * n_time_steps + time_id) * n_links * 2;
+	uint32_t hess_con_base = ((pos_id * n_obstacles + obstacle_id) * n_time_steps + time_id) * n_links * (n_links * 2 - 1);
 
 	__shared__ double shared_lambda[6];
 	__shared__ double max_index_factor;
@@ -1142,83 +1229,6 @@ __global__ void evaluate_gradient_kernel(double* con_result, bool* index_factor,
 		}
 		hess_con[hess_con_base + joint_id * (joint_id - 1) / 2 + joint_id_sec] = -result / g_k[joint_id] / g_k[joint_id_sec];
 	}	
-}
-
-void rotatotopeArray::evaluate_self_constraints(double* k_opt){
-	start_t = clock();
-	if(con_self != nullptr){
-		delete[] con_self;
-		delete[] jaco_con_self;
-		delete[] hess_con_self;
-	}
-
-	current_k_opt = k_opt;
-
-	double* lambda = new double[n_links * 2];
-	for (uint32_t joint_id = 0; joint_id < n_links * 2; joint_id++) {
-		lambda[joint_id] = c_k[joint_id] + k_opt[joint_id] / g_k[joint_id];
-	}
-
-	for(uint32_t pair_id = 0; pair_id < n_pairs; pair_id++){
-		uint32_t R1 = self_pairs[pair_id * 2];
-		uint32_t R2 = self_pairs[pair_id * 2 + 1];
-		uint32_t R1_length = RZ_length[R1];
-		uint32_t R2_length = RZ_length[R2];
-
-		for(uint32_t time_id = 0; time_id < n_time_steps; time_id++){
-			vector<bool>&   k_con_self     = k_con_self_array[pair_id][time_id];
-			vector<double>& A_con_self     = A_con_self_array[pair_id][time_id];
-			vector<double>& d_con_self     = d_con_self_array[pair_id][time_id];
-			vector<double>& delta_con_self = delta_con_self_array[pair_id][time_id];
-
-			uint32_t k_con_id = 0;
-			uint32_t A_con_id = 0;
-			uint32_t k_width = 2 * (R2 + 1);
-			uint32_t k_length = k_con_self.size() / k_width;
-
-			vector<double> lambdas_prod;
-			lambdas_prod.reserve(k_length);
-
-			for(uint32_t i = 0; i < k_length; i++){
-				double prod = 1.0;
-				for(uint32_t j = 0; j < k_width; j++, k_con_id++){
-					if(k_con_self[k_con_id]){
-						prod *= lambda[i];
-					}
-				}
-				lambdas_prod.push_back(prod);
-			}
-
-			double maximum = -A_BIG_NUMBER - A_BIG_NUMBER;
-			uint32_t max_idx = 0;
-			double index_factor = 1.0;
-			for(uint32_t con_id = 0; con_id < d_con_self.size(); con_id++){
-				double result = 0;
-				for(uint32_t i = 0; i < k_length; i++, A_con_id++){
-					result += lambdas_prod[i] * A_con_self[A_con_id];
-				}
-				
-				double con_result = result - d_con_self[con_id] - delta_con_self[con_id];
-				if(con_result > maximum){
-					maximum = con_result;
-					max_idx = con_id;
-					index_factor = 1.0;
-				}
-				
-				con_result = -result + d_con_self[con_id] - delta_con_self[con_id];
-				if(con_result > maximum){
-					maximum = con_result;
-					max_idx = con_id;
-					index_factor = -1.0;
-				}
-			}
-		}
-	}
-
-	end_t = clock();
-	if(true){
-		mexPrintf("CUDA: self intersection time: %.6f ms\n", 1000.0 * (end_t - start_t) / (double)(CLOCKS_PER_SEC));
-	}
 }
 
 rotatotopeArray::~rotatotopeArray() {
@@ -1321,6 +1331,60 @@ rotatotopeArray::~rotatotopeArray() {
 		delete[] dev_k_con_num;
 
 		delete[] max_k_con_num;
+	}
+
+	if(dev_A_con_self != nullptr){
+		for (uint32_t i = 0; i < n_pairs; i++) {
+			delete[] A_con_self[i];
+		}
+		delete[] A_con_self;
+
+		for (uint32_t i = 0; i < n_pairs; i++) {
+			cudaFree(dev_A_con_self[i]);
+		}
+		delete[] dev_A_con_self;
+
+		for (uint32_t i = 0; i < n_pairs; i++) {
+			delete[] d_con_self[i];
+		}
+		delete[] d_con_self;
+
+		for (uint32_t i = 0; i < n_pairs; i++) {
+			cudaFree(dev_d_con_self[i]);
+		}
+		delete[] dev_d_con_self;
+
+		for (uint32_t i = 0; i < n_pairs; i++) {
+			delete[] delta_con_self[i];
+		}
+		delete[] delta_con_self;
+
+		for (uint32_t i = 0; i < n_pairs; i++) {
+			cudaFree(dev_delta_con_self[i]);
+		}
+		delete[] dev_delta_con_self;
+
+		for (uint32_t i = 0; i < n_pairs; i++) {
+			delete[] k_con_self[i];
+		}
+		delete[] k_con_self;
+
+		for (uint32_t i = 0; i < n_pairs; i++) {
+			cudaFree(dev_k_con_self[i]);
+		}
+		delete[] dev_k_con_self;
+
+		for (uint32_t i = 0; i < n_pairs; i++) {
+			delete[] k_con_num_self[i];
+		}
+		delete[] k_con_num_self;
+
+		for (uint32_t i = 0; i < n_pairs; i++) {
+			cudaFree(dev_k_con_num_self[i]);
+		}
+		delete[] dev_k_con_num_self;
+
+		delete[] max_k_con_num_self;
 	}
 
 	if (debug_RZ != nullptr) {

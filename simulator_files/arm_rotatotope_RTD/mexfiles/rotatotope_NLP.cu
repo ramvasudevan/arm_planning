@@ -97,7 +97,7 @@ bool rotatotope_NLP::get_nlp_info(
    n = ra_info->n_links * 2;
 
    // number of inequality constraint
-   m = ra_info->n_links * n_obstacles * ra_info->n_time_steps + ra_info->n_links * 8;
+   m = ra_info->n_links * n_obstacles * ra_info->n_time_steps + ra_info->n_pairs * ra_info->n_time_steps + ra_info->n_links * 8;
 
    nnz_jac_g = m * n;
    nnz_h_lag = n * (n + 1) / 2;
@@ -125,7 +125,7 @@ bool rotatotope_NLP::get_bounds_info(
    if(n != ra_info->n_links * 2){
       mexErrMsgIdAndTxt("MyProg:ConvertString", "*** Error wrong value of n in get_bounds_info!");
    }
-   if(m != ra_info->n_links * n_obstacles * ra_info->n_time_steps + ra_info->n_links * 8){
+   if(m != ra_info->n_links * n_obstacles * ra_info->n_time_steps + ra_info->n_pairs * ra_info->n_time_steps + ra_info->n_links * 8){
       mexErrMsgIdAndTxt("MyProg:ConvertString", "*** Error wrong value of m in get_bounds_info!");
    }
 
@@ -244,7 +244,7 @@ bool rotatotope_NLP::eval_g(
    if(n != ra_info->n_links * 2){
       mexErrMsgIdAndTxt("MyProg:ConvertString", "*** Error wrong value of n in eval_g!");
    }
-   if(m != ra_info->n_links * n_obstacles * ra_info->n_time_steps + n * 4){
+   if(m != ra_info->n_links * n_obstacles * ra_info->n_time_steps + ra_info->n_pairs * ra_info->n_time_steps + n * 4){
       mexErrMsgIdAndTxt("MyProg:ConvertString", "*** Error wrong value of m in eval_g!");
    }
    
@@ -277,6 +277,10 @@ bool rotatotope_NLP::eval_g(
    for(Index i = 0; i < offset; i++) {
       g[i] = ra_info->con[i];
    }
+   for(Index i = offset; i < offset + ra_info->n_pairs * ra_info->n_time_steps; i++) {
+      g[i] = ra_info->con_self[i - offset];
+   }
+   offset += ra_info->n_pairs * ra_info->n_time_steps;
    for(Index i = offset; i < offset + n; i++) {
       g[i] = joint_state_limits[i - offset] - q_min[i - offset];
    }
@@ -313,7 +317,7 @@ bool rotatotope_NLP::eval_jac_g(
    if(n != ra_info->n_links * 2){
       mexErrMsgIdAndTxt("MyProg:ConvertString", "*** Error wrong value of n in eval_jac_g!");
    }
-   if(m != ra_info->n_links * n_obstacles * ra_info->n_time_steps + ra_info->n_links * 8){
+   if(m != ra_info->n_links * n_obstacles * ra_info->n_time_steps + ra_info->n_pairs * ra_info->n_time_steps + ra_info->n_links * 8){
       mexErrMsgIdAndTxt("MyProg:ConvertString", "*** Error wrong value of m in eval_jac_g!");
    }
 
@@ -360,6 +364,12 @@ bool rotatotope_NLP::eval_jac_g(
             values[i * n + j] = ra_info->jaco_con[i * n + j];
          }
       }
+      for(Index i = offset; i < offset + ra_info->n_pairs * ra_info->n_time_steps; i++) {
+         for(Index j = 0; j < n; j++){
+            values[i * n + j] = ra_info->jaco_con_self[(i - offset) * n + j];
+         }
+      }
+      offset += ra_info->n_pairs * ra_info->n_time_steps;
       for(Index i = offset; i < offset + n; i++) {
          for(Index j = 0; j < n; j++){
             if(i - offset == j){
@@ -428,7 +438,7 @@ bool rotatotope_NLP::eval_h(
    if(n != ra_info->n_links * 2){
       mexErrMsgIdAndTxt("MyProg:ConvertString", "*** Error wrong value of n in eval_h!");
    }
-   if(m != ra_info->n_links * n_obstacles * ra_info->n_time_steps + ra_info->n_links * 8){
+   if(m != ra_info->n_links * n_obstacles * ra_info->n_time_steps + ra_info->n_pairs * ra_info->n_time_steps + ra_info->n_links * 8){
       mexErrMsgIdAndTxt("MyProg:ConvertString", "*** Error wrong value of m in eval_h!");
    }
 
@@ -487,15 +497,13 @@ bool rotatotope_NLP::eval_h(
          }
       }
 
-      for(Index i = 0; i < ra_info->n_links * n_obstacles * ra_info->n_time_steps; i++){
+      Index offset = ra_info->n_links * n_obstacles * ra_info->n_time_steps;
+      for(Index i = 0; i < offset; i++){
          idx = 0;
          Index hess_idx = 0;
          for (Index row = 0; row < n; row++) {
             for (Index col = 0; col <= row; col++) {
-               if(row == col){
-                  values[idx] += 0;
-               }
-               else{
+               if(row != col){
                   values[idx] += lambda[i] * ra_info->hess_con[i * n * (n - 1) / 2 + hess_idx];
                   hess_idx++;
                }
@@ -503,6 +511,22 @@ bool rotatotope_NLP::eval_h(
             }
          }
       }
+
+      for(Index i = offset; i < offset + ra_info->n_pairs * ra_info->n_time_steps; i++){
+         idx = 0;
+         Index hess_idx = 0;
+         for (Index row = 0; row < n; row++) {
+            for (Index col = 0; col <= row; col++) {
+               if(row != col){
+                  values[idx] += lambda[i] * ra_info->hess_con_self[(i - offset) * n * (n - 1) / 2 + hess_idx];
+                  hess_idx++;
+               }
+               idx++;
+            }
+         }
+      }
+
+      // joint and speed limit has zero hessian
     }
 
    return true;

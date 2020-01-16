@@ -385,21 +385,21 @@ classdef rotatotope
            
            % add a test here that throws out unnecessary constraints.
            % ( not entirely sure this is still valid!! )
-           intersection_possible = 0;
-           for i = 1:size(options.kV_lambda{link_number}, 2)
-               lambdas = double(k_con).*options.kV_lambda{link_number}(:, i);
-               lambdas(~k_con) = 1;
-               lambdas = prod(lambdas, 1)';
-               
-               kVc = A_con*lambdas - b_con;
-               test_kV = max(kVc);
-               if test_kV <= 0
-                   intersection_possible = 1;                  
-               end
-           end
-           if ~intersection_possible
-              A_con = []; b_con = []; k_con = []; 
-           end
+%            intersection_possible = 0;
+%            for i = 1:size(options.kV_lambda{link_number}, 2)
+%                lambdas = double(k_con).*options.kV_lambda{link_number}(:, i);
+%                lambdas(~k_con) = 1;
+%                lambdas = prod(lambdas, 1)';
+%                
+%                kVc = A_con*lambdas - b_con;
+%                test_kV = max(kVc);
+%                if test_kV <= 0
+%                    intersection_possible = 1;                  
+%                end
+%            end
+%            if ~intersection_possible
+%               A_con = []; b_con = []; k_con = []; 
+%            end
         end
     end
 end

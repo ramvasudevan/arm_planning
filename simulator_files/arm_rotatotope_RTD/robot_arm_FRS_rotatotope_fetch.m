@@ -231,7 +231,7 @@ classdef robot_arm_FRS_rotatotope_fetch
                     gen_concat = [frs_k_ind_G_1, frs_k_ind_G_2, 2*obj.FRS_options.buffer_dist/2*eye(3)]; % add buffer distance accounting for 2 links
                     gen_concat(:, ~any(gen_concat)) = []; % delete zero columns
                     gen_zono = [(R1.Rc - R2.Rc), gen_concat]; % centered at R1.Rc - R2.Rc
-                    
+
                     [A_poly, b_poly] = polytope_PH(gen_zono, obj.FRS_options);
                     
                     % the difference in "sliced" points should be outside
@@ -243,21 +243,21 @@ classdef robot_arm_FRS_rotatotope_fetch
                     
                     % add a test here that throws out unnecessary constraints.
                     % ( not entirely sure this is still valid!! )
-                    intersection_possible = 0;
-                    for k = 1:size(obj.FRS_options.kV_lambda{end}, 2)
-                        lambdas_prod = double(k_con).*obj.FRS_options.kV_lambda{end}(:, k);
-                        lambdas_prod(~k_con) = 1;
-                        lambdas_prod = prod(lambdas_prod, 1)';
-                        
-                        kVc = A_con*lambdas_prod - b_con;
-                        test_kV = max(kVc);
-                        if test_kV <= 0
-                            intersection_possible = 1;
-                        end
-                    end
-                    if ~intersection_possible
-                        A_con = []; b_con = []; k_con = [];
-                    end
+%                     intersection_possible = 0;
+%                     for k = 1:size(obj.FRS_options.kV_lambda{end}, 2)
+%                         lambdas_prod = double(k_con).*obj.FRS_options.kV_lambda{end}(:, k);
+%                         lambdas_prod(~k_con) = 1;
+%                         lambdas_prod = prod(lambdas_prod, 1)';
+%                         
+%                         kVc = A_con*lambdas_prod - b_con;
+%                         test_kV = max(kVc);
+%                         if test_kV <= 0
+%                             intersection_possible = 1;
+%                         end
+%                     end
+%                     if ~intersection_possible
+%                         A_con = []; b_con = []; k_con = [];
+%                     end
                     
                     obj.A_con_self{i}{j} = A_con;
                     obj.b_con_self{i}{j} = b_con;

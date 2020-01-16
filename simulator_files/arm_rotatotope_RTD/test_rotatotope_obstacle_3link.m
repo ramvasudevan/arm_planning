@@ -1,5 +1,4 @@
 clc;
-
 % code for testing the constraint generation for a 3 link arm
 % figure(1); clf; hold on; view(3); axis equal;
 
@@ -55,10 +54,11 @@ obs_width = [0.1];
 O{5} = box_obstacle_zonotope('center', obs_center(:), 'side_lengths', [obs_width, obs_width, obs_width]);
 
 R = R.generate_constraints(O);
+R = R.generate_self_intersection_constraints();
 
 good_k = -pi/6*ones(6, 1) ;
 bad_k = [pi/6 - 0.001; pi/6 - 0.001; pi/12; pi/24; -pi/36; pi/48];
-
+bad_k = good_k;
 % for i = 1:length(O)
 %     plot(O{i});
 % end
@@ -70,6 +70,19 @@ eval_grad_out = R_cuda.eval_grad_output;
 eval_hess_out = R_cuda.eval_hess_output;
 mex_res = R_cuda.mex_res;
 return;
+% direc = 1;
+% step = 1e-7;
+% bad_k_step = bad_k;
+% bad_k(direc) = bad_k(direc) + step;
+% R_cuda = robot_arm_FRS_rotatotope_fetch_cuda(q, q_dot, q_des, O, bad_k_step, FRS_options);
+% eval_out_step = R_cuda.eval_output;
+% eval_grad_out_step = R_cuda.eval_grad_output;
+% 
+% simu = (eval_out_step - eval_out)/step;
+% real = eval_grad_out(direc,:)';
+% disp(max(abs(simu-real)));
+% plot(simu,'r.');hold on;plot(real,'b.');
+
 %% analysis
 % link_id = 1;
 % time_id = 66;
@@ -85,12 +98,44 @@ return;
 % disp(mex_data(:,id));
 
 [c, ceq, gradc, gradceq] = eval_constraints(R, bad_k, q, q_dot);
-plot(c,'r.');hold on;plot(eval_out,'b.')
-return;
+% plot(c,'r.');hold on;plot(eval_out,'b.')
+% return;
 
 % test one particular set of constraints
 % default 1, 3, 97
 
+diff_self = [];
+bad_c_k = [];
+mex_bad_c_k = [];
+for time_step = 1:100
+%     A_con_self = R.A_con_self{1}{time_step};
+%     b_con_self = R.b_con_self{1}{time_step};
+%     k_con_self = R.k_con_self{1}{time_step};
+%     mex_A_con_self = R_cuda.A_con_self{1}{time_step};
+%     mex_d_con_self = R_cuda.d_con_self{1}{time_step};
+%     mex_delta_con_self = R_cuda.delta_con_self{1}{time_step};
+%     mex_k_con_self = R_cuda.k_con_self{1}{time_step};
+%     c_param = R.c_k(R.link_joints{3});
+%     g_param = R.g_k(R.link_joints{3});
+    
+    bad_c_k = [bad_c_k, c(time_step+length(O)*3*100)];
+%     bad_c_k = [bad_c_k, eval_out(time_step+length(O)*3*100)];
+    
+%     k_param = bad_k(R.link_joints{3});
+%     lambda = c_param + (k_param./g_param);
+%     mex_lambdas = mex_k_con_self.*lambda;
+%     mex_lambdas(~mex_k_con_self) = 1;
+%     mex_lambdas = prod(mex_lambdas, 1)';
+%     mex_c_obs = mex_A_con_self*mex_lambdas - mex_d_con_self - mex_delta_con_self;
+%     mex_c_obs = [mex_c_obs; -mex_A_con_self*mex_lambdas + mex_d_con_self - mex_delta_con_self];
+%     [mex_c_obs_max,bad_mex_idx] = max(mex_c_obs);
+%     mex_bad_c_k = [mex_bad_c_k, -(mex_c_obs_max)];
+
+    mex_bad_c_k = [mex_bad_c_k, eval_out(time_step+length(O)*3*100)];
+end
+figure(1);plot(bad_c_k,'r.');hold on;plot(mex_bad_c_k,'b.');
+figure(2);plot(bad_c_k-mex_bad_c_k,'.');
+return;
 for obstacle_id = 1:length(O)
     figure(obstacle_id); clf;
     good_diff = [];

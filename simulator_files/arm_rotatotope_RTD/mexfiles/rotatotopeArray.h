@@ -24,15 +24,15 @@ a cuda array for a cluster of rotatotopes
 #include <vector>
 
 #define k_dim 2
-#define max_norm_size 310
-#define max_RZ_length 130
+#define MAX_NORM_SIZE 310
+#define MAX_RZ_LENGTH 50
 #define ORIGIN_SHIFT_X -0.03265
 #define ORIGIN_SHIFT_Y 0.0
 #define ORIGIN_SHIFT_Z 0.72601
 #define A_BIG_NUMBER 1000000.0
 #define BUFFER_DIST 0.1460
 #define TOO_SMALL_POLYTOPE_JUDGE 0.000001
-#define MAX_K_DEP_SIZE 100
+#define MAX_K_DEP_SIZE 50
 #define CONSERVATIVE_BUFFER 0.001
 
 using std::vector;
@@ -100,16 +100,6 @@ public:
 			--> input of k
 	*/
 	void evaluate_constraints(double* k_opt);
-
-	/*
-	Instruction:
-		evaluate the self intersection constraints
-	Requires:
-		1. k_opt
-			--> input of k
-	*/
-	void evaluate_self_constraints(double* k_opt);
-
 
 	bool debugMode;
 
@@ -195,10 +185,22 @@ public:
 	uint32_t* max_k_con_num;
 
 	// self intersection check
-	vector< vector< vector<bool> > >   k_con_self_array;
-	vector< vector< vector<double> > > A_con_self_array;
-	vector< vector< vector<double> > > d_con_self_array;
-	vector< vector< vector<double> > > delta_con_self_array;
+	double** A_con_self;
+	double** dev_A_con_self;
+
+	double** d_con_self;
+	double** dev_d_con_self;
+
+	double** delta_con_self;
+	double** dev_delta_con_self;
+
+	bool** k_con_self;
+	bool** dev_k_con_self;
+
+	uint8_t** k_con_num_self;
+	uint8_t** dev_k_con_num_self;
+
+	uint32_t* max_k_con_num_self;
 
 	// current constraints info
 	double* current_k_opt; // current k
@@ -367,9 +369,8 @@ __global__ void buff_obstacles_kernel(uint32_t link_id, uint32_t RZ_length, doub
 Instruction:
 	generate the polytopes of constraints
 Requires:
-	1. link_id
-		--> which link is in operation
-	2. RZ_length
+	1. buff_obstacle_length
+	2. k_dep_G_length
 	3. buff_obstacles
 	4. frs_k_dep_G
 	5. k_con_num
@@ -382,7 +383,34 @@ Modifies:
 	2. d_con
 	3. delta_con
 */
-__global__ void polytope(uint32_t link_id, uint32_t RZ_length, double* buff_obstacles, double* frs_k_dep_G, uint8_t* k_con_num, uint32_t A_con_width, double* A_con, double* d_con, double* delta_con);
+__global__ void polytope(uint32_t buff_obstacle_length, uint32_t k_dep_G_length, double* buff_obstacles, double* frs_k_dep_G, uint8_t* k_con_num, uint32_t A_con_width, double* A_con, double* d_con, double* delta_con);
+
+/*
+Instruction:
+	generate zonotopes for self intersection constraints
+Requires:
+	1. link_id_1
+		--> which link is in operation
+	2. link_id_2
+	3. RZ_length_1
+	4. RZ_length_2
+	5. RZ_1
+	6. c_idx_1
+	7. k_idx_1
+	8. RZ_1
+	9. c_idx_1
+	10. k_idx_1
+	11. gen_zono
+	12. k_dep_pt
+	13. k_con_self
+	14. k_con_num_self
+Modifies:
+	1. gen_zono
+	2. k_dep_pt
+	3. k_con_self
+	4. k_con_num_self
+*/
+__global__ void gen_zono_kernel(uint32_t link_id_1, uint32_t link_id_2, uint32_t RZ_length_1, uint32_t RZ_length_2, double* RZ_1, bool* c_idx_1, bool* k_idx_1, double* RZ_2, bool* c_idx_2, bool* k_idx_2, double* gen_zono, double* k_dep_pt, bool* k_con_self, uint8_t* k_con_num_self);
 
 /*
 Instruction:
@@ -413,6 +441,7 @@ Requires:
 	1. con_result
 	2. index_factor
 	3. link_id
+	4. pos_id
 	4. RZ_length
 	5. constraint_length
 	6. lambda
@@ -429,6 +458,6 @@ Modifies:
 	2. jaco_con
 	3. hess_con
 */
-__global__ void evaluate_gradient_kernel(double* con_result, bool* index_factor, uint32_t link_id, uint32_t RZ_length, uint32_t constraint_length, double* lambda, double* g_k, double* A_con, uint32_t A_con_width, bool* k_con, uint8_t* k_con_num, uint32_t n_links, double* con, double* jaco_con, double* hess_con);
+__global__ void evaluate_gradient_kernel(double* con_result, bool* index_factor, uint32_t link_id, uint32_t pos_id, uint32_t RZ_length, uint32_t constraint_length, double* lambda, double* g_k, double* A_con, uint32_t A_con_width, bool* k_con, uint8_t* k_con_num, uint32_t n_links, double* con, double* jaco_con, double* hess_con);
 
 #endif // !ROTATOTOPE_ARRAY_H
