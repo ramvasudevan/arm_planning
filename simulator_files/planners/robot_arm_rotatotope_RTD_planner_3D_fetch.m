@@ -318,8 +318,6 @@ classdef robot_arm_rotatotope_RTD_planner_3D_fetch < robot_arm_generic_planner
                             lambdas_grad(:, cols ~= l) = lambdas_grad_temp.*lambdas_grad(:, cols ~= l);
                         end
                         if length(maxidx) > 1
-                                                            disp('ahhh');
-                                                            disp(c_obs(maxidx(1)));
                             tempgradc = P.R.A_con_self{i}{idx(j)}(maxidx, :)*lambdas_grad;
                             gradc = [gradc, (-max(tempgradc)')./g_param];
                         else
@@ -329,8 +327,6 @@ classdef robot_arm_rotatotope_RTD_planner_3D_fetch < robot_arm_generic_planner
                     
                 end
             end
-                    
-            
         end
         
         function [T, U, Z] = generate_trajectory(P, q_0, q_dot_0, k_opt)
