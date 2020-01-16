@@ -4,7 +4,7 @@ classdef fetch_base_world_static < world
         include_base_obstacle = true ;
         N_random_obstacles = 0 ;
         create_random_obstacles_flag = true ;
-        obstacle_size_range = 2*[0.01 0.15] ; % [min, max] side length
+        obstacle_size_range = [0.01 0.5] ; % [min, max] side length
         create_configuration_timeout = 1 ;
         create_obstacle_timeout =  1 ;
         min_dist_in_config_space_between_start_and_goal

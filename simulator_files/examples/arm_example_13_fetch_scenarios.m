@@ -16,8 +16,17 @@
 clear; clc;
 %% user parameters
 %%% CHOOSE SCENARIO %%%
-write_to_csv = false;
-scenario = 6; % 1 2 3 4 5 6 or 7
+scenario = 7; % 1 2 3 4 5 6 or 7
+sub_scenario = 1; % sub_scenario only changes for scenario 4
+
+%%% EXPORTING TO CSV %%%
+write_to_csv = true;
+run_simulation_flag = false ;
+world_save_dir = 'arm_planning/simulator_files/testing/saved_worlds/20200116_scenarios';
+if ~exist(world_save_dir, 'dir')
+    mkdir(world_save_dir);
+end
+csv_filename = sprintf('%s/scene_%03d_%03d.csv', world_save_dir, scenario, sub_scenario);
 
 %%% PLANNING PARAMETERS %%%
 use_cuda_flag = false ;
@@ -33,7 +42,6 @@ simulated_t_plan = 0.5 ;
 time_discretization = 0.01 ;
 T = 1 ;
 first_iter_pause_flag = true ; 
-run_simulation_flag = true ;
 HLP_timeout = 2 ; 
 HLP_grow_tree_mode = 'new' ;
 plot_while_sampling_flag = false ;
@@ -43,7 +51,6 @@ plot_waypoint_flag = true ; % for HLP
 plot_waypoint_arm_flag  = true ; % for HLP
 lookahead_distance = 0.3 ;
 use_end_effector_for_cost_flag = true ;
-csv_filename = 'fetch_scenario.csv' ;
 plot_CAD_flag = false ; % plot the faaaaancy arm :)
 
 %%% WORLD PARAMETERS %%%

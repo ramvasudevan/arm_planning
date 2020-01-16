@@ -8,7 +8,7 @@
 clear ; clc ; figure(1); clf; view(3); grid on;
 
 %% user parameters
-world_save_dir = 'arm_planning/simulator_files/testing/saved_worlds/20191205';
+world_save_dir = 'arm_planning/simulator_files/testing/saved_worlds/20200116';
 if ~exist(world_save_dir, 'dir')
     mkdir(world_save_dir);
 end
@@ -23,9 +23,11 @@ allow_replan_errors = true ;
 t_plan = 0.5 ;
 time_discretization = 0.01 ;
 T = 1 ;
-floor_normal_axis = 1;
+% floor_normal_axis = 1;
+use_cuda_flag = false;
+agent_move_mode = 'direct' ; % pick 'direct' or 'integrator'
 
-A = robot_arm_3D_fetch('verbose', verbosity, 'animation_set_axes_flag', 0, 'animation_set_view_flag', 0);
+A = robot_arm_3D_fetch('verbose', verbosity, 'animation_set_axes_flag', 0, 'animation_set_view_flag', 0, 'move_mode', agent_move_mode);
 
 %% automated from here
 
@@ -33,8 +35,8 @@ for i = N_obstacle_min:N_obstacle_max
     for j = 1:N_worlds_per_obstacle
     
         % use this to start from random start config:
-        W = fetch_base_world_static('include_base_obstacle', 1, 'goal_radius', 0.03, 'N_obstacles',i,'dimension',dimension,'workspace_goal_check', 0,...
-            'verbose',verbosity, 'creation_buffer', 0.1, 'base_creation_buffer', 0.025) ;
+        W = fetch_base_world_static('include_base_obstacle', 1, 'goal_radius', pi/30, 'N_random_obstacles',i,'dimension',dimension,'workspace_goal_check', 0,...
+            'verbose',verbosity, 'creation_buffer', 0.05, 'base_creation_buffer', 0.05) ;
         % W = fetch_base_world_static('include_base_obstacle', 1, 'goal_radius', 0.03, 'N_obstacles',N_obstacles,'dimension',dimension,'workspace_goal_check', 0,...
         %     'verbose',verbosity,'start', [0;0;0;0;0;0], 'goal', [pi;0;0;0;0;0], 'creation_buffer', 0.05) ;
 
