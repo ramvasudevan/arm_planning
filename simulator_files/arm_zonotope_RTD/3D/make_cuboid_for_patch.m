@@ -2,10 +2,14 @@ function [F,V] = make_cuboid_for_patch(L,W,H,C)
 % [F,V] = make_cuboid_for_patch([L,W,H])
 % [F,V] = make_cuboid_for_patch(L,W,H)
 % [F,V] = make_cuboid_for_patch(L,W,H,C)
+% % [F,V] = make_cuboid_for_patch(B)
 %
 % Generate 6 faces and 8 vertices of an axis-aligned cuboid (in 3-D) of
 % length L in x, width W in y, and depth D in Z. An optional fourth
 % argument defining the center of the cuboid can also be passed in.
+%
+% One can also pass in bounds B = [xlo xhi ylo yhi zlo zhi] as the argument
+% to this function.
 %
 % The output of this function can be passed directly into the patch
 % function as faces and vertices, to plot a cuboid in 3-D.
@@ -17,10 +21,14 @@ function [F,V] = make_cuboid_for_patch(L,W,H,C)
     end
 
     if nargin == 1
-        dims = L ;
-        L = dims(1) ;
-        W = dims(2) ;
-        H = dims(3) ;
+        if length(L) == 6
+            [L,W,H,C] = bounds_to_box(L) ;
+        else
+            dims = L ;
+            L = dims(1) ;
+            W = dims(2) ;
+            H = dims(3) ;
+        end
     elseif nargin < 1
         L = 1 ;
         W = 1 ;

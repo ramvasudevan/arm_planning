@@ -38,10 +38,16 @@ classdef robot_arm_3D_fetch < robot_arm_agent
 %             buffer_dist = 0.1460*sqrt(2);
 
 
+            % for rectangular links:
+%             link_sizes = [0.1206, 0.4635, 0.001, 0.4254, 0.001, 0.3810 ;  % size in x
+%                           0.1460, 0.1460, 0.001, 0.150, 0.001, 0.1460 ;  % size in y
+%                           0.0825, 0.1460, 0.001, 0.150, 0.001, 0.1460] ; % size in z
+            
+            % for cylindrical links:
             link_sizes = [0.1206, 0.4635, 0.001, 0.4254, 0.001, 0.3810 ;  % size in x
                           0.1460, 0.1460, 0.001, 0.150, 0.001, 0.1460 ;  % size in y
-                          0.0825, 0.1460, 0.001, 0.150, 0.001, 0.1460] ; % size in z
-            
+                          0.1460, 0.1460, 0.001, 0.150, 0.001, 0.1460] ; % size in z
+
             joint_state_indices = 1:2:n_states ;
             
             joint_speed_indices = 2:2:n_states ;
