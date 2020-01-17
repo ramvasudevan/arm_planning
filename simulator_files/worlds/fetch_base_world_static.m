@@ -450,6 +450,10 @@ classdef fetch_base_world_static < world
                     % get the joint locations
                     J = agent_info.get_joint_locations(z) ;
                     
+                    if ~iscell(J)
+                        J = {J};
+                    end
+                    
                     % concatenate all the end effector locations into one
                     % array
                     N_J = length(J) ;

@@ -8,7 +8,7 @@
 clear; clc;
 
 trial_file_header = 'trial_scene_' ;
-trial_file_folder = '/Users/pdholmes/Documents/MATLAB/arm_planning/simulator_files/testing/trial_data/20191205/' ;
+trial_file_folder = 'arm_planning/simulator_files/testing/trial_data/20200116/' ;
 trial_file_location = sprintf('%s*%s*', trial_file_folder, trial_file_header);
 trial_file_list = dir(trial_file_location);
 
@@ -24,7 +24,7 @@ for idx = 1:length(trial_file_list)
     summary = mytrial.summary;
     
     results.scene{end+1, 1} = mytrial.world_filename;
-    results.crash(end+1, 1) = summary.crash_check;
+    results.crash(end+1, 1) = summary.collision_check;
     results.goal(end+1, 1) = summary.goal_check;
     results.avg_planning_time(end+1, 1) = mean(summary.planning_time(~isnan(summary.planning_time)));
     
