@@ -171,6 +171,11 @@ classdef robot_arm_agent < multi_link_agent
             % joint is connected to a single predecessor and a single
             % successor link
             N = A.n_links_and_joints ;
+            if isempty(N)
+                A.vdisp('Setting A.n_links_and_joints based on link sizes',1)
+                N = size(A.link_sizes,2) ;
+                A.n_links_and_joints = N ;
+            end
             
             % check dimension
             d = A.dimension ;
@@ -306,7 +311,7 @@ classdef robot_arm_agent < multi_link_agent
             end
             
             % set default joint types (all revolute)
-            if isempty(A.joint_types) || length(A.joint_types) ~=N
+            if isempty(A.joint_types) || (length(A.joint_types) ~= N)
                 A.joint_types = repmat({'revolute'},1,N) ;
             end
             
@@ -990,6 +995,10 @@ classdef robot_arm_agent < multi_link_agent
             end
         end
         
+        function move_random(A)
+            A.move(1,[0 1],zeros(A.n_inputs,2), 2.*rand(A.n_states,2) - 1)
+        end
+        
         %% dynamics
         function zd = dynamics(A,t,z,T,U,Z)
             % get desired torques and bound them
@@ -1154,10 +1163,12 @@ classdef robot_arm_agent < multi_link_agent
 %                         case 3
 %                             lims = [-L,L,-L,L,0,L] ;
 %                     end
-                    lims = [-L, L, -L, L, L, L] ;
+                    lims = [-L, L, -L, L, -L, L] ;
                     
-                    % in case base of robot is not a [0;0;0]:
-                    lims = lims + [A.joint_locations(1, 1)*ones(1, 2), A.joint_locations(2, 1)*ones(1, 2), A.joint_locations(3, 1)*ones(1, 2)];
+                    % in case base of robot is not at [0;0;0]:
+                    lims = lims + [A.joint_locations(1, 1)*ones(1, 2),...
+                        A.joint_locations(2, 1)*ones(1, 2),...
+                        A.joint_locations(3, 1)*ones(1, 2)];
             end
         end
     end
