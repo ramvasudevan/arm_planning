@@ -21,7 +21,7 @@ a cuda array for a cluster of rotatotopes
 #include <cstdint>
 #include <ctime>
 #include <cfloat>
-#include <vector>
+#include <cstring>
 
 #define k_dim 2
 #define MAX_NORM_SIZE 310
