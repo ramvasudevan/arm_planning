@@ -83,7 +83,7 @@ if dim > 1
     %get number of possible facets
 %     comb=combinator(nrOfGenerators,dim-1,'c');
 
-    if nrOfGenerators > options.maxcombs
+    if ~exist('options', 'var') || nrOfGenerators > options.maxcombs
         comb=combinator(nrOfGenerators,dim-1,'c');
     else
         comb = options.combs{nrOfGenerators};
