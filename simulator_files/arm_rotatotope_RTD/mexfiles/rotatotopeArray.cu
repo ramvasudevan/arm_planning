@@ -471,6 +471,9 @@ __global__ void origin_shift_kernel(uint32_t RZ_length, double* RZ_stack){
 void rotatotopeArray::generate_constraints(uint32_t n_obstacles_in, double* OZ, uint32_t OZ_width, uint32_t OZ_length) {
 	// obstacle constraints
 	n_obstacles = n_obstacles_in;
+
+	if(n_obstacles == 0) return;
+
 	uint32_t OZ_unit_length = OZ_length / n_obstacles;
 
 	double* dev_OZ;
@@ -952,7 +955,7 @@ __global__ void gen_zono_kernel(uint32_t link_id_1, uint32_t link_id_2, uint32_t
 
 void rotatotopeArray::evaluate_constraints(double* k_opt) {
 	start_t = clock();
-	if(con != nullptr){
+	if(n_obstacles > 0 && con != nullptr){
 		delete[] con;
 		delete[] jaco_con;
 		delete[] hess_con;
@@ -966,19 +969,21 @@ void rotatotopeArray::evaluate_constraints(double* k_opt) {
 	
 	current_k_opt = k_opt;
 
-	con = new double[n_links * n_obstacles * n_time_steps];
-	double* dev_con;
-	cudaMalloc((void**)&dev_con, n_links * n_obstacles * n_time_steps * sizeof(double));
+	double* dev_con = nullptr;
+	double* dev_jaco_con = nullptr;
+	double* dev_hess_con = nullptr;
+	if(n_obstacles > 0){
+		con = new double[n_links * n_obstacles * n_time_steps];
+		cudaMalloc((void**)&dev_con, n_links * n_obstacles * n_time_steps * sizeof(double));
 
-	jaco_con = new double[n_links * n_obstacles * n_time_steps * n_links * 2];
-	double* dev_jaco_con;
-	cudaMalloc((void**)&dev_jaco_con, n_links * n_obstacles * n_time_steps * n_links * 2 * sizeof(double));
-	cudaMemset(dev_jaco_con, 0, n_links * n_obstacles * n_time_steps * n_links * 2 * sizeof(double));
+		jaco_con = new double[n_links * n_obstacles * n_time_steps * n_links * 2];
+		cudaMalloc((void**)&dev_jaco_con, n_links * n_obstacles * n_time_steps * n_links * 2 * sizeof(double));
+		cudaMemset(dev_jaco_con, 0, n_links * n_obstacles * n_time_steps * n_links * 2 * sizeof(double));
 
-	hess_con = new double[n_links * n_obstacles * n_time_steps * n_links * (n_links * 2 - 1)];
-	double* dev_hess_con;
-	cudaMalloc((void**)&dev_hess_con, n_links * n_obstacles * n_time_steps * n_links * (n_links * 2 - 1) * sizeof(double));
-	cudaMemset(dev_hess_con, 0, n_links * n_obstacles * n_time_steps * n_links * (n_links * 2 - 1) * sizeof(double));
+		hess_con = new double[n_links * n_obstacles * n_time_steps * n_links * (n_links * 2 - 1)];
+		cudaMalloc((void**)&dev_hess_con, n_links * n_obstacles * n_time_steps * n_links * (n_links * 2 - 1) * sizeof(double));
+		cudaMemset(dev_hess_con, 0, n_links * n_obstacles * n_time_steps * n_links * (n_links * 2 - 1) * sizeof(double));
+	}
 
 	con_self = new double[n_pairs * n_time_steps];
 	double* dev_con_self;
@@ -1009,25 +1014,27 @@ void rotatotopeArray::evaluate_constraints(double* k_opt) {
 	cudaMemcpy(dev_g_k, g_k, n_links * 2 * sizeof(double), cudaMemcpyHostToDevice);
 
 	// obstacles constraint evaluation
-	for (uint32_t link_id = 0; link_id < n_links; link_id++) {
-		uint32_t buff_obstacle_length = RZ_length[link_id] + 3;
-		uint32_t constraint_length = ((buff_obstacle_length - 1) * (buff_obstacle_length - 2)) / 2;
+	if(n_obstacles > 0){
+		for (uint32_t link_id = 0; link_id < n_links; link_id++) {
+			uint32_t buff_obstacle_length = RZ_length[link_id] + 3;
+			uint32_t constraint_length = ((buff_obstacle_length - 1) * (buff_obstacle_length - 2)) / 2;
 
-		double* dev_con_result; // results of evaluation of constriants
-		bool* dev_index_factor; // whether the constraints are positive or negative
-		cudaMalloc((void**)&dev_con_result, n_obstacles * n_time_steps * constraint_length * sizeof(double));
-		cudaMalloc((void**)&dev_index_factor, n_obstacles * n_time_steps * constraint_length * sizeof(bool));
+			double* dev_con_result; // results of evaluation of constriants
+			bool* dev_index_factor; // whether the constraints are positive or negative
+			cudaMalloc((void**)&dev_con_result, n_obstacles * n_time_steps * constraint_length * sizeof(double));
+			cudaMalloc((void**)&dev_index_factor, n_obstacles * n_time_steps * constraint_length * sizeof(bool));
 
-		dim3 grid1(n_obstacles, n_time_steps, 1);
-		dim3 block1(constraint_length, 1, 1);
-		evaluate_constraints_kernel << < grid1, block1 >> > (dev_lambda, link_id, RZ_length[link_id], dev_A_con[link_id], max_k_con_num[link_id], dev_d_con[link_id], dev_delta_con[link_id], dev_k_con[link_id], dev_k_con_num[link_id], dev_con_result, dev_index_factor);
-		
-		dim3 grid2(n_obstacles, n_time_steps, 1);
-		dim3 block2((link_id + 1) * 2, (link_id + 1) * 2, 1);
-		evaluate_gradient_kernel << < grid2, block2 >> > (dev_con_result, dev_index_factor, link_id, link_id, RZ_length[link_id], constraint_length, dev_lambda, dev_g_k, dev_A_con[link_id], max_k_con_num[link_id], dev_k_con[link_id], dev_k_con_num[link_id], n_links, dev_con, dev_jaco_con, dev_hess_con);
+			dim3 grid1(n_obstacles, n_time_steps, 1);
+			dim3 block1(constraint_length, 1, 1);
+			evaluate_constraints_kernel << < grid1, block1 >> > (dev_lambda, link_id, RZ_length[link_id], dev_A_con[link_id], max_k_con_num[link_id], dev_d_con[link_id], dev_delta_con[link_id], dev_k_con[link_id], dev_k_con_num[link_id], dev_con_result, dev_index_factor);
+			
+			dim3 grid2(n_obstacles, n_time_steps, 1);
+			dim3 block2((link_id + 1) * 2, (link_id + 1) * 2, 1);
+			evaluate_gradient_kernel << < grid2, block2 >> > (dev_con_result, dev_index_factor, link_id, link_id, RZ_length[link_id], constraint_length, dev_lambda, dev_g_k, dev_A_con[link_id], max_k_con_num[link_id], dev_k_con[link_id], dev_k_con_num[link_id], n_links, dev_con, dev_jaco_con, dev_hess_con);
 
-		cudaFree(dev_con_result);
-		cudaFree(dev_index_factor);
+			cudaFree(dev_con_result);
+			cudaFree(dev_index_factor);
+		}
 	}
 
 	// self intersection constraint evaluation
@@ -1057,14 +1064,16 @@ void rotatotopeArray::evaluate_constraints(double* k_opt) {
 		cudaFree(dev_index_factor);
 	}
 
-	cudaMemcpy(con, dev_con, n_links * n_obstacles * n_time_steps * sizeof(double), cudaMemcpyDeviceToHost);
-	cudaFree(dev_con);
+	if(n_obstacles > 0){
+		cudaMemcpy(con, dev_con, n_links * n_obstacles * n_time_steps * sizeof(double), cudaMemcpyDeviceToHost);
+		cudaFree(dev_con);
 
-	cudaMemcpy(jaco_con, dev_jaco_con, n_links * n_obstacles * n_time_steps * n_links * 2 * sizeof(double), cudaMemcpyDeviceToHost);
-	cudaFree(dev_jaco_con);
+		cudaMemcpy(jaco_con, dev_jaco_con, n_links * n_obstacles * n_time_steps * n_links * 2 * sizeof(double), cudaMemcpyDeviceToHost);
+		cudaFree(dev_jaco_con);
 
-	cudaMemcpy(hess_con, dev_hess_con, n_links * n_obstacles * n_time_steps * n_links * (n_links * 2 - 1)  * sizeof(double), cudaMemcpyDeviceToHost);
-	cudaFree(dev_hess_con);
+		cudaMemcpy(hess_con, dev_hess_con, n_links * n_obstacles * n_time_steps * n_links * (n_links * 2 - 1)  * sizeof(double), cudaMemcpyDeviceToHost);
+		cudaFree(dev_hess_con);
+	}
 
 	cudaMemcpy(con_self, dev_con_self, n_pairs * n_time_steps * sizeof(double), cudaMemcpyDeviceToHost);
 	cudaFree(dev_con_self);
@@ -1080,7 +1089,7 @@ void rotatotopeArray::evaluate_constraints(double* k_opt) {
 
 	cudaFree(dev_g_k);
 
-	end_t = clock();
+	end_t = clock();mexPrintf("CUDA: constraint evaluation time: %.6f ms\n", 1000.0 * (end_t - start_t) / (double)(CLOCKS_PER_SEC));
 	if(debugMode){
 		mexPrintf("CUDA: constraint evaluation time: %.6f ms\n", 1000.0 * (end_t - start_t) / (double)(CLOCKS_PER_SEC));
 	}
@@ -1274,7 +1283,7 @@ rotatotopeArray::~rotatotopeArray() {
 		delete[] RZ_length;
 	}
 
-	if (A_con != nullptr) {
+	if (n_obstacles > 0 && A_con != nullptr) {
 		for (uint32_t i = 0; i < n_links; i++) {
 			delete[] A_con[i];
 		}
