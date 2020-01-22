@@ -8,6 +8,7 @@ classdef robot_arm_rotatotope_RTD_planner_3D_fetch < robot_arm_generic_planner
         
         % for current FRS
         R ;
+        O ; % hold on to obstacles
         
         % from previous time step
         Z_prev = [];
@@ -81,7 +82,7 @@ classdef robot_arm_rotatotope_RTD_planner_3D_fetch < robot_arm_generic_planner
                         
             P.vdisp('Generating constraints',6)
             % get current obstacles
-            O = world_info.obstacles ;
+            P.O = world_info.obstacles ;
             
             % get current state of robot
             q_0 = agent_info.state(P.arm_joint_state_indices, end) ;
@@ -91,9 +92,12 @@ classdef robot_arm_rotatotope_RTD_planner_3D_fetch < robot_arm_generic_planner
                 % generate FRS
                 P.R = robot_arm_FRS_rotatotope_fetch(q_0, q_dot_0, P.FRS_options);
                 % map obstacles to trajectory parameter space
-                P.R = P.R.generate_constraints(O);
+%                 P.R = P.R.generate_constraints(O);
                 % protect against self-intersections:
-                P.R = P.R.generate_self_intersection_constraints;                
+%                 P.R = P.R.generate_self_intersection_constraints; 
+
+                % PATRICK edit 20200121 fixing constraints
+                P.R = P.R.generate_polytope_normals(P.O);
                 P.vdisp('Replan is calling trajopt!',8)
                 %             try
                 [k_opt, trajopt_failed] = P.trajopt(q_0, q_dot_0, q_des);
@@ -192,9 +196,9 @@ classdef robot_arm_rotatotope_RTD_planner_3D_fetch < robot_arm_generic_planner
             initial_guess = rand_range(lb, ub);
            
 %             options = optimoptions('fmincon','SpecifyConstraintGradient',true, 'Algorithm', 'interior-point');
-            options = optimoptions('fmincon','SpecifyConstraintGradient',true);
+%             options = optimoptions('fmincon','SpecifyConstraintGradient',true);
 %             options = optimoptions('fmincon','SpecifyConstraintGradient',true, 'CheckGradients', true);
-%             options = optimoptions('fmincon');
+            options = optimoptions('fmincon');
             [k_opt, ~, exitflag, ~] = fmincon(cost_func, initial_guess, [], [], [], [], lb, ub, constraint_func, options) ;
             
             trajopt_failed = exitflag <= 0 ;
@@ -218,11 +222,12 @@ classdef robot_arm_rotatotope_RTD_planner_3D_fetch < robot_arm_generic_planner
         
         function [c, ceq, gradc, gradceq] = eval_constraint(P, k_opt, q_0, q_dot_0)
             epsilon = 1e-3;
-            ceq = [];
-            gradceq = [];
-            
+            ceq = [];            
             c = [];
-            gradc = [];
+            if nargout > 2
+                gradceq = [];
+                gradc = [];
+            end
             %%% Joint limit constraints:
             [q_min, q_max, q_dot_min, q_dot_max, grad_q_min, grad_q_max, grad_q_dot_min, grad_q_dot_max] = P.compute_max_min_states(q_0, q_dot_0, k_opt);
             c_joint = [];
@@ -230,109 +235,115 @@ classdef robot_arm_rotatotope_RTD_planner_3D_fetch < robot_arm_generic_planner
             c_joint = [c_joint; -P.arm_joint_state_limits(2, :)' + q_max];
             c_joint = [c_joint; P.arm_joint_speed_limits(1, :)' - q_dot_min];
             c_joint = [c_joint; -P.arm_joint_speed_limits(2, :)' + q_dot_max];
-            
-%             grad_c_joint = [grad_q_min, grad_q_max];
-            grad_c_joint = [-grad_q_min, grad_q_max, -grad_q_dot_min, grad_q_dot_max];
-            
+                        
             c = [c; c_joint];
-            gradc = [gradc, grad_c_joint];
+
+%             grad_c_joint = [grad_q_min, grad_q_max];
+            if nargout > 2
+                grad_c_joint = [-grad_q_min, grad_q_max, -grad_q_dot_min, grad_q_dot_max];
+                gradc = [gradc, grad_c_joint];
+            end
                         
             %%% Obstacle constraint generation:
-            for i = 1:length(P.R.A_con) % for each obstacle
-                for j = 1:length(P.R.A_con{i}) % for each link
-                    idx = find(~cellfun('isempty', P.R.A_con{i}{j}));
-                    k_param = k_opt(P.R.link_joints{j});
-                    c_param = P.R.c_k(P.R.link_joints{j});
-                    g_param = P.R.g_k(P.R.link_joints{j});
-%                     lambda = c_param + (k_param./g_param);
-                    lambda = (k_param - c_param)./g_param;
-                    for k = 1:length(idx) % for each time step
-                        lambdas_prod = double(P.R.k_con{i}{j}{idx(k)}).*lambda;
-                        lambdas_prod(~P.R.k_con{i}{j}{idx(k)}) = 1;
-                        lambdas_prod = prod(lambdas_prod, 1)';
-                        
-                        c_obs = P.R.A_con{i}{j}{idx(k)}*lambdas_prod - P.R.b_con{i}{j}{idx(k)};
-                        c_obs_max = max(c_obs);
-                        c_k = -(c_obs_max - epsilon);
-                        c = [c; c_k];
-                        
-                        % specify gradients
-                        % this is going to be really gross... but basically
-                        % the gradient will depend on the row of A being
-                        % multiplied by lambda, as well as which k's the
-                        % lambdas depend on. 
-                        if nargout > 2
-                            maxidx = find(c_obs == c_obs_max);
-                            k_con_temp = P.R.k_con{i}{j}{idx(k)}';
-                            lambdas_grad = double(k_con_temp);
-                            cols = 1:length(lambda);
-                            for l = 1:length(lambda)
-                                lambdas_grad_temp = double(k_con_temp(:, l));
-                                lambdas_grad_temp = lambdas_grad_temp*lambda(l);
-                                lambdas_grad_temp(~k_con_temp(:, l)) = 1;
-                                lambdas_grad(:, cols ~= l) = lambdas_grad_temp.*lambdas_grad(:, cols ~= l);
-                            end
-                            if length(maxidx) > 1
-%                                 disp('ahhh');
-                                tempgradc = P.R.A_con{i}{j}{idx(k)}(maxidx, :)*lambdas_grad;
-                                gradc = [gradc, [(-max(tempgradc)')./g_param; zeros(length(k_opt) - length(lambda), 1)]];
-                            else
-                                gradc = [gradc, [(-(P.R.A_con{i}{j}{idx(k)}(maxidx, :)*lambdas_grad)')./g_param; zeros(length(k_opt) - length(lambda), 1)]];
-                            end
-                        end
-                    end
-                end
-                
-%                 error_if_out_of_time(P.trajopt_start_tic,P.t_plan)
-            end
+            % PATRICK edit 20200121 fixing constraints
+            [h, ~] = P.R.evaluate_sliced_constraints(k_opt, P.O);
+            c = [c; h];
+%             for i = 1:length(P.R.A_con) % for each obstacle
+%                 for j = 1:length(P.R.A_con{i}) % for each link
+%                     idx = find(~cellfun('isempty', P.R.A_con{i}{j}));
+%                     k_param = k_opt(P.R.link_joints{j});
+%                     c_param = P.R.c_k(P.R.link_joints{j});
+%                     g_param = P.R.g_k(P.R.link_joints{j});
+% %                     lambda = c_param + (k_param./g_param);
+%                     lambda = (k_param - c_param)./g_param;
+%                     for k = 1:length(idx) % for each time step
+%                         lambdas_prod = double(P.R.k_con{i}{j}{idx(k)}).*lambda;
+%                         lambdas_prod(~P.R.k_con{i}{j}{idx(k)}) = 1;
+%                         lambdas_prod = prod(lambdas_prod, 1)';
+%                         
+%                         c_obs = P.R.A_con{i}{j}{idx(k)}*lambdas_prod - P.R.b_con{i}{j}{idx(k)};
+%                         c_obs_max = max(c_obs);
+%                         c_k = -(c_obs_max - epsilon);
+%                         c = [c; c_k];
+%                         
+%                         % specify gradients
+%                         % this is going to be really gross... but basically
+%                         % the gradient will depend on the row of A being
+%                         % multiplied by lambda, as well as which k's the
+%                         % lambdas depend on. 
+%                         if nargout > 2
+%                             maxidx = find(c_obs == c_obs_max);
+%                             k_con_temp = P.R.k_con{i}{j}{idx(k)}';
+%                             lambdas_grad = double(k_con_temp);
+%                             cols = 1:length(lambda);
+%                             for l = 1:length(lambda)
+%                                 lambdas_grad_temp = double(k_con_temp(:, l));
+%                                 lambdas_grad_temp = lambdas_grad_temp*lambda(l);
+%                                 lambdas_grad_temp(~k_con_temp(:, l)) = 1;
+%                                 lambdas_grad(:, cols ~= l) = lambdas_grad_temp.*lambdas_grad(:, cols ~= l);
+%                             end
+%                             if length(maxidx) > 1
+% %                                 disp('ahhh');
+%                                 tempgradc = P.R.A_con{i}{j}{idx(k)}(maxidx, :)*lambdas_grad;
+%                                 gradc = [gradc, [(-max(tempgradc)')./g_param; zeros(length(k_opt) - length(lambda), 1)]];
+%                             else
+%                                 gradc = [gradc, [(-(P.R.A_con{i}{j}{idx(k)}(maxidx, :)*lambdas_grad)')./g_param; zeros(length(k_opt) - length(lambda), 1)]];
+%                             end
+%                         end
+%                     end
+%                 end
+%                 
+% %                 error_if_out_of_time(P.trajopt_start_tic,P.t_plan)
+%             end
             
             %%% Self-intersection constraint generation:
-            for i = 1:length(P.R.A_con_self) % for each pair of joints that can intersect
-                idx = find(~cellfun('isempty', P.R.A_con_self{i}));
-                for j = 1:length(idx) % for each (nonempty) time step
-                    k_param = k_opt;
-                    c_param = P.R.c_k;
-                    g_param = P.R.g_k;
-                    
-                    lambda = (k_param - c_param)./g_param;
-                    
-                    % dumb way to do this... want to multiply rows of lambdas
-                    % together, replacing zeros with ones
-                    lambdas_prod = double(P.R.k_con_self{i}{idx(j)}).*lambda;
-                    lambdas_prod(~P.R.k_con_self{i}{idx(j)}) = 1;
-                    lambdas_prod = prod(lambdas_prod, 1)';
-                    
-                    c_obs = P.R.A_con_self{i}{idx(j)}*lambdas_prod - P.R.b_con_self{i}{idx(j)};
-                    c_obs_max = max(c_obs);
-                    c_k = -(c_obs_max - epsilon);
-                    c = [c; c_k];
-                    
-                    % specify gradients
-                    % this is going to be really gross... but basically
-                    % the gradient will depend on the row of A being
-                    % multiplied by lambda, as well as which k's the
-                    % lambdas depend on.
-                    if nargout > 2
-                        maxidx = find(c_obs == c_obs_max);
-                        k_con_temp = P.R.k_con_self{i}{idx(j)}';
-                        lambdas_grad = double(k_con_temp);
-                        cols = 1:length(lambda);
-                        for l = 1:length(lambda)
-                            lambdas_grad_temp = double(k_con_temp(:, l));
-                            lambdas_grad_temp = lambdas_grad_temp*lambda(l);
-                            lambdas_grad_temp(~k_con_temp(:, l)) = 1;
-                            lambdas_grad(:, cols ~= l) = lambdas_grad_temp.*lambdas_grad(:, cols ~= l);
-                        end
-                        if length(maxidx) > 1
-                            tempgradc = P.R.A_con_self{i}{idx(j)}(maxidx, :)*lambdas_grad;
-                            gradc = [gradc, (-max(tempgradc)')./g_param];
-                        else
-                            gradc = [gradc, (-(P.R.A_con_self{i}{idx(j)}(maxidx, :)*lambdas_grad)')./g_param];
-                        end
-                    end
-                    
-                end
-            end
+%             for i = 1:length(P.R.A_con_self) % for each pair of joints that can intersect
+%                 idx = find(~cellfun('isempty', P.R.A_con_self{i}));
+%                 for j = 1:length(idx) % for each (nonempty) time step
+%                     k_param = k_opt;
+%                     c_param = P.R.c_k;
+%                     g_param = P.R.g_k;
+%                     
+%                     lambda = (k_param - c_param)./g_param;
+%                     
+%                     % dumb way to do this... want to multiply rows of lambdas
+%                     % together, replacing zeros with ones
+%                     lambdas_prod = double(P.R.k_con_self{i}{idx(j)}).*lambda;
+%                     lambdas_prod(~P.R.k_con_self{i}{idx(j)}) = 1;
+%                     lambdas_prod = prod(lambdas_prod, 1)';
+%                     
+%                     c_obs = P.R.A_con_self{i}{idx(j)}*lambdas_prod - P.R.b_con_self{i}{idx(j)};
+%                     c_obs_max = max(c_obs);
+%                     c_k = -(c_obs_max - epsilon);
+%                     c = [c; c_k];
+%                     
+%                     % specify gradients
+%                     % this is going to be really gross... but basically
+%                     % the gradient will depend on the row of A being
+%                     % multiplied by lambda, as well as which k's the
+%                     % lambdas depend on.
+%                     if nargout > 2
+%                         maxidx = find(c_obs == c_obs_max);
+%                         k_con_temp = P.R.k_con_self{i}{idx(j)}';
+%                         lambdas_grad = double(k_con_temp);
+%                         cols = 1:length(lambda);
+%                         for l = 1:length(lambda)
+%                             lambdas_grad_temp = double(k_con_temp(:, l));
+%                             lambdas_grad_temp = lambdas_grad_temp*lambda(l);
+%                             lambdas_grad_temp(~k_con_temp(:, l)) = 1;
+%                             lambdas_grad(:, cols ~= l) = lambdas_grad_temp.*lambdas_grad(:, cols ~= l);
+%                         end
+%                         if length(maxidx) > 1
+%                             tempgradc = P.R.A_con_self{i}{idx(j)}(maxidx, :)*lambdas_grad;
+%                             gradc = [gradc, (-max(tempgradc)')./g_param];
+%                         else
+%                             gradc = [gradc, (-(P.R.A_con_self{i}{idx(j)}(maxidx, :)*lambdas_grad)')./g_param];
+%                         end
+%                     end
+%                     
+%                 end
+%             end
+            
         end
         
         function [T, U, Z] = generate_trajectory(P, q_0, q_dot_0, k_opt)

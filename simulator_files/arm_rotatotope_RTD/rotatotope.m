@@ -41,8 +41,17 @@ classdef rotatotope
         Rg = []; % resulting zonotope generator matrix
         RZ = []; % resulting zonotope [c, g]
         
-        c_idx = false(0); % keep track of which generators get sliced to a point
-        k_idx = false(0); % keep track of which generators depend on which k
+%         c_idx = false(0); % keep track of which generators are multiplied by zonotope C
+%         C_idx = false(0); % keep track of which generators are multiplied by mat zonotopes C's
+%         k_idx = false(0); % keep track of which generators depend on which k
+        c_idx = []; % keep track of which generators are multiplied by zonotope C
+        C_idx = []; % keep track of which generators are multiplied by mat zonotopes C's
+        k_idx = []; % keep track of which generators depend on which k
+        
+        % key: 1 means generator was multiplied by (c, corresponding C or
+        % k). 0 means generator was not multiplied by (c, corresponding C
+        % or k). nan (for stacking) means generator has no dependence on
+        % that (corresponding C or k).
     end
     
     methods
@@ -139,36 +148,43 @@ classdef rotatotope
 
             RZ = [obj.c, obj.g];
                                     
-            c_idx = false(1, size(RZ, 2));
-            c_idx(1) = true;
-            k_idx = false(0);
+            c_idx = zeros(1, size(RZ, 2));
+            c_idx(1) = 1;
+            
+            C_idx = [];
+            k_idx = [];
         
             for idx = length(obj.R):-1:1
                 
-                c_idx_new = false(0);
-                k_idx_new = false(0);
+                c_idx_new = [];
+                k_idx_new = [];
+                C_idx_new = [];
                 RZ_new = [];
                 
+                % multiply C matrix by center and generators
                 RZ_new = obj.C{idx}*RZ; % new center is C*c
                 c_idx_new = [c_idx_new, c_idx];
-                k_idx_new = [k_idx_new, [false(size(c_idx)); k_idx]];
+                k_idx_new = [k_idx_new, [zeros(size(c_idx)); k_idx]];
+                C_idx_new = [C_idx_new, [ones(size(c_idx)); C_idx]];
 
                 % multiply k dep matrices by center and generators
                 for i = 1:length(obj.G_k{idx})
                     RZ_new(:, (end+1):(end+size(RZ, 2))) = obj.G_k{idx}{i}*RZ;
                     c_idx_new = [c_idx_new, c_idx];
-                    k_idx_new = [k_idx_new, [true(size(c_idx)); k_idx]];
+                    k_idx_new = [k_idx_new, [ones(size(c_idx)); k_idx]];
+                    C_idx_new = [C_idx_new, [zeros(size(c_idx)); C_idx]];
                 end
 
                 % multiply non k dep matrices by center and generators
                 for i = 1:length(obj.G{idx})
                     RZ_new(:, (end+1):(end+size(RZ, 2))) = obj.G{idx}{i}*RZ;
                     c_idx_new = [c_idx_new, c_idx];
-                    k_idx_new = [k_idx_new, [false(size(c_idx)); k_idx]];
+                    k_idx_new = [k_idx_new, [zeros(size(c_idx)); k_idx]];
+                    C_idx_new = [C_idx_new, [zeros(size(c_idx)); C_idx]];
                 end
                 
                 % reduce number of generators
-                [RZ, c_idx, k_idx] = obj.reduce(RZ_new, c_idx_new, k_idx_new);
+                [RZ, c_idx, k_idx, C_idx] = obj.reduce(RZ_new, c_idx_new, k_idx_new, C_idx_new);
             end
             
             % store info
@@ -177,6 +193,7 @@ classdef rotatotope
             obj.Rg = RZ(:, 2:end);
             obj.c_idx = c_idx(1, 2:end);
             obj.k_idx = k_idx(:, 2:end);
+            obj.C_idx = C_idx(:, 2:end);
         end
         
         function [] = plot(obj, color)
@@ -204,12 +221,13 @@ classdef rotatotope
                 color = 'b';
             end
             Z = slice(obj, k);
+            Z = zonotope(Z);
             switch obj.dim
                 case 2
                     p = plotFilled(Z, [1, 2], color);
                     p.FaceAlpha = 0.1;
                 case 3
-                    Z = reduce(Z, 'girard', 4);
+%                     Z = reduce(Z, 'girard', 4);
                     V = vertices(project(Z, [1, 2, 3]));
                     shp = alphaShape(V(1, :)', V(2, :)', V(3, :)', inf);
                     p = plot(shp);
@@ -219,27 +237,27 @@ classdef rotatotope
             end
         end
         
-        function [] = plot_slice_gensIncluded(obj, k, color)
-            if ~exist('color', 'var')
-                color = 'b';
-            end
-            Z = slice_gensIncluded(obj, k);
-            switch obj.dim
-                case 2
-                    p = plotFilled(Z, [1, 2], color);
-                    p.FaceAlpha = 0.1;
-                case 3
-                    Z = reduce(Z, 'girard', 4);
-                    V = vertices(project(Z, [1, 2, 3]));
-                    shp = alphaShape(V(1, :)', V(2, :)', V(3, :)', inf);
-                    p = plot(shp);
-                    p.FaceAlpha = 0;
-                    p.EdgeAlpha = 0.15;
-                    p.EdgeColor = color;
-            end
-        end
+%         function [] = plot_slice_gensIncluded(obj, k, color)
+%             if ~exist('color', 'var')
+%                 color = 'b';
+%             end
+%             Z = slice_gensIncluded(obj, k);
+%             switch obj.dim
+%                 case 2
+%                     p = plotFilled(Z, [1, 2], color);
+%                     p.FaceAlpha = 0.1;
+%                 case 3
+%                     Z = reduce(Z, 'girard', 4);
+%                     V = vertices(project(Z, [1, 2, 3]));
+%                     shp = alphaShape(V(1, :)', V(2, :)', V(3, :)', inf);
+%                     p = plot(shp);
+%                     p.FaceAlpha = 0;
+%                     p.EdgeAlpha = 0.15;
+%                     p.EdgeColor = color;
+%             end
+%         end
         
-        function [Z] = slice_gensIncluded(obj, k)
+        function [Z] = slice(obj, k)
             % this slicing function slices generators that don't slice
             % to a point
             % take in a value for k, slice along dimension
@@ -254,49 +272,51 @@ classdef rotatotope
                 end
                 lambda = (k(i) - obj.c_k(i))/obj.g_k(i);
                 
-                g(:, obj.k_idx(i, :))  = g(:, obj.k_idx(i, :))*lambda; % slice gens
+                g(:, obj.k_idx(i, :) == 1)  = g(:, obj.k_idx(i, :) == 1)*lambda; % slice gens
             end
             
             % take the k dep gens that slice to points... add to center
-            c = c + sum(g(:, any(obj.k_idx, 1) & obj.c_idx), 2);
-            g(:, any(obj.k_idx, 1) & obj.c_idx) = [];
+            c = c + sum(g(:, all(obj.k_idx ~= 0 | obj.C_idx ~= 0, 1) & obj.c_idx == 1), 2);
+            g(:, all(obj.k_idx ~= 0 | obj.C_idx ~= 0, 1) & obj.c_idx == 1) = [];
             
-            Z = zonotope([c, g]);
+            Z = [c, g];
         end
         
-        function [Z] = slice(obj, k)
-            % this slicing function only slices generators that slice to a
-            % point
-            % take in a value for k, slice along dimension
-            if length(k) ~= length(obj.c_k)
-                error('Slice point not correct dimension');
-            end
-            g = obj.Rg;
-            c = obj.Rc;
-            for i = 1:length(k)
-                if abs(k(i) - obj.c_k(i)) > obj.g_k(i)
-                    error('Slice point is out of bounds');
-                end
-                lambda = (k(i) - obj.c_k(i))/obj.g_k(i);
-                
-                slice_idx =  obj.k_idx(i, :) & obj.c_idx; % only gens that slice to c
-                g(:, slice_idx)  = g(:, slice_idx)*lambda; % slice gens
-            end
-            
-            % take the k dep gens that slice to points... add to center
-            c = c + sum(g(:, any(obj.k_idx, 1) & obj.c_idx), 2);
-            g(:, any(obj.k_idx, 1) & obj.c_idx) = [];
-            
-            Z = zonotope([c, g]);
-        end
+%         function [Z] = slice(obj, k)
+%             % PATRICK EDIT 20200121 this function is incorrect
+%             % this slicing function only slices generators that slice to a
+%             % point
+%             % take in a value for k, slice along dimension
+%             if length(k) ~= length(obj.c_k)
+%                 error('Slice point not correct dimension');
+%             end
+%             g = obj.Rg;
+%             c = obj.Rc;
+%             for i = 1:length(k)
+%                 if abs(k(i) - obj.c_k(i)) > obj.g_k(i)
+%                     error('Slice point is out of bounds');
+%                 end
+%                 lambda = (k(i) - obj.c_k(i))/obj.g_k(i);
+%                 
+%                 slice_idx =  obj.k_idx(i, :) & obj.c_idx; % only gens that slice to c
+%                 g(:, slice_idx)  = g(:, slice_idx)*lambda; % slice gens
+%             end
+%             
+%             % take the k dep gens that slice to points... add to center
+%             c = c + sum(g(:, all(obj.k_idx, 1) & obj.c_idx), 2);
+%             g(:, all(obj.k_idx, 1) & obj.c_idx) = [];
+%             
+%             Z = zonotope([c, g]);
+%         end
         
-        function [Z_new, c_idx_new, k_idx_new] = reduce(obj, Z, c_idx, k_idx)
+        function [Z_new, c_idx_new, k_idx_new, C_idx_new] = reduce(obj, Z, c_idx, k_idx, C_idx)
             % based off of the "reduceGirard.m" function included in CORA            
             c = Z(:, 1);
             G = Z(:, 2:end);
             
             c_idx_temp = c_idx(:, 2:end);
             k_idx_temp = k_idx(:, 2:end);
+            C_idx_temp = C_idx(:, 2:end);
             
             Gunred = [];
             Gred = [];
@@ -331,13 +351,15 @@ classdef rotatotope
                     Gbox=diag(d);
                     
                     Z_new = [c, Gunred, Gbox];
-                    c_idx_new = [c_idx(:, 1), c_idx_temp(:, indices((nReduced+1):end)), false(1, size(Gbox, 2))];
-                    k_idx_new = [k_idx(:, 1), k_idx_temp(:, indices((nReduced+1):end)), false(size(k_idx, 1), size(Gbox, 2))];
+                    c_idx_new = [c_idx(:, 1), c_idx_temp(:, indices((nReduced+1):end)), zeros(1, size(Gbox, 2))];
+                    k_idx_new = [k_idx(:, 1), k_idx_temp(:, indices((nReduced+1):end)), zeros(size(k_idx, 1), size(Gbox, 2))];
+                    C_idx_new = [C_idx(:, 1), C_idx_temp(:, indices((nReduced+1):end)), zeros(size(C_idx, 1), size(Gbox, 2))];
                 else
                     Gunred = G;
                     Z_new = [c, Gunred];
                     c_idx_new = [c_idx(:, 1), c_idx_temp];
                     k_idx_new = [k_idx(:, 1), k_idx_temp];
+                    C_idx_new = [C_idx(:, 1), C_idx_temp];
                 end
             end
         end
@@ -354,53 +376,79 @@ classdef rotatotope
            k_rows_1 = size(obj.k_idx, 1);
            [k_rows_2, k_cols_2] = size(base.k_idx);
            
-           obj.k_idx = [obj.k_idx, [base.k_idx; false(k_rows_1 - k_rows_2, k_cols_2)]];
+           % if C_idx not same size, add zeros
+           C_rows_1 = size(obj.C_idx, 1);
+           [C_rows_2, C_cols_2] = size(base.C_idx);
+           
+           obj.k_idx = [obj.k_idx, [base.k_idx; nan(k_rows_1 - k_rows_2, k_cols_2)]];
+           obj.C_idx = [obj.C_idx, [base.C_idx; nan(C_rows_1 - C_rows_2, C_cols_2)]];
         end
         
-        function [A_con, b_con, k_con] = generate_constraints(obj, obstacle, options, link_number)
-           % takes in an obstacle (Z matrix of zonotope) and generates linear constraint matrices
-           % Acon and bcon, as well as the combinations of k_idxs (kcon) these
-           % constraints depend on.
-           
-           nGen = size(obj.Rg, 2);
-           [~, kc_col] = find(any(obj.k_idx) & obj.c_idx);
-           
-           frs_k_ind_G = obj.Rg;
-           frs_k_ind_G(:, kc_col) = [];
-           
-           frs_k_dep_G = obj.Rg(:, kc_col);
-           
-           % buffer the obstacle by k-independent generators, as well as
-           % buffer_dist specified by planner:
-           buff_obstacle_c = [obstacle(:, 1) - obj.Rc];
-           buff_obstacle_G = [obstacle(:, 2:end), frs_k_ind_G, options.buffer_dist/2*eye(3)];
-           buff_obstacle_G(:, ~any(buff_obstacle_G)) = []; % delete zero columns of G
-           buff_obstacle = [buff_obstacle_c, buff_obstacle_G];
-           
-           [A_poly, b_poly] = polytope_PH(buff_obstacle, options);
-           
-           A_con = A_poly*frs_k_dep_G;
-           b_con = b_poly;
-           k_con = obj.k_idx(:, kc_col);
-           
-           % add a test here that throws out unnecessary constraints.
-           % ( not entirely sure this is still valid!! )
-%            intersection_possible = 0;
-%            for i = 1:size(options.kV_lambda{link_number}, 2)
-%                lambdas = double(k_con).*options.kV_lambda{link_number}(:, i);
-%                lambdas(~k_con) = 1;
-%                lambdas = prod(lambdas, 1)';
-%                
-%                kVc = A_con*lambdas - b_con;
-%                test_kV = max(kVc);
-%                if test_kV <= 0
-%                    intersection_possible = 1;                  
-%                end
-%            end
-%            if ~intersection_possible
-%               A_con = []; b_con = []; k_con = []; 
-%            end
+%         function [A_con, b_con, k_con] = generate_constraints(obj, obstacle, options, link_number)
+%            % takes in an obstacle (Z matrix of zonotope) and generates linear constraint matrices
+%            % Acon and bcon, as well as the combinations of k_idxs (kcon) these
+%            % constraints depend on.
+%            
+%            nGen = size(obj.Rg, 2);
+%            [~, kc_col] = find(any(obj.k_idx) & obj.c_idx);
+%            
+%            frs_k_ind_G = obj.Rg;
+%            frs_k_ind_G(:, kc_col) = [];
+%            
+%            frs_k_dep_G = obj.Rg(:, kc_col);
+%            
+%            % buffer the obstacle by k-independent generators, as well as
+%            % buffer_dist specified by planner:
+%            buff_obstacle_c = [obstacle(:, 1) - obj.Rc];
+%            buff_obstacle_G = [obstacle(:, 2:end), frs_k_ind_G, options.buffer_dist/2*eye(3)];
+%            buff_obstacle_G(:, ~any(buff_obstacle_G)) = []; % delete zero columns of G
+%            buff_obstacle = [buff_obstacle_c, buff_obstacle_G];
+%            
+%            [A_poly, b_poly] = polytope_PH(buff_obstacle, options);
+%            
+%            A_con = A_poly*frs_k_dep_G;
+%            b_con = b_poly;
+%            k_con = obj.k_idx(:, kc_col);
+%            
+%            % add a test here that throws out unnecessary constraints.
+%            % ( not entirely sure this is still valid!! )
+% %            intersection_possible = 0;
+% %            for i = 1:size(options.kV_lambda{link_number}, 2)
+% %                lambdas = double(k_con).*options.kV_lambda{link_number}(:, i);
+% %                lambdas(~k_con) = 1;
+% %                lambdas = prod(lambdas, 1)';
+% %                
+% %                kVc = A_con*lambdas - b_con;
+% %                test_kV = max(kVc);
+% %                if test_kV <= 0
+% %                    intersection_possible = 1;                  
+% %                end
+% %            end
+% %            if ~intersection_possible
+% %               A_con = []; b_con = []; k_con = []; 
+% %            end
+%         end
+
+        function [A] = generate_polytope_normals(obj, obstacle, options)
+            % takes in an obstacle (Z matrix of zonotope) and generates
+            % normal vectors to the FRS zono buffered by the obstacle
+            
+            buff_zono_G = [obj.RZ(:, 2:end), obstacle(:, 2:end)];
+            buff_zono_G(:, ~any(buff_zono_G)) = []; % delete zero columns
+            buff_zono_c = obj.RZ(:, 1);
+            buff_zono = [buff_zono_c, buff_zono_G];
+            
+            [~, b, A] = polytope_PH(buff_zono, options); % A are polytope normals
+            x = obstacle(:, 1); % test if obs center is in zonotope.
+            
+            % add a test here that throws out unnecessary constraints.
+            h = [A; -A]*x - b;
+            if max(h) > 0
+                % intersection not possible
+                A = [];
+            end
         end
+        
     end
 end
 

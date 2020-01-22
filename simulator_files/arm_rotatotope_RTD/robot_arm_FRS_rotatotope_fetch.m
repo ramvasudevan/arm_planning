@@ -20,7 +20,7 @@ classdef robot_arm_FRS_rotatotope_fetch
         n_base = 1;
         n_time_steps = 0;
         dim = 3;
-        FRS_path = 'FRS_trig/';
+        FRS_path = 'FRS_trig_constantK/';
         FRS_key = [];
         
         q = zeros(6, 1);
@@ -34,9 +34,7 @@ classdef robot_arm_FRS_rotatotope_fetch
         
         FRS_options = {};
         
-        A_con = {};
-        b_con = {};
-        k_con = {};
+        A = {};
         
         A_con_self = {};
         b_con_self = {};
@@ -72,12 +70,12 @@ classdef robot_arm_FRS_rotatotope_fetch
             
             obj = obj.create_FRS();
             
-            % generate k vertices for each link
-            for i = 1:obj.n_links
-                cubeV = cubelet_ND(length(obj.link_joints{i}))';
-                obj.FRS_options.kV{i} = (cubeV.*obj.g_k(obj.link_joints{i})) + obj.c_k(obj.link_joints{i});
-                obj.FRS_options.kV_lambda{i} = cubeV;
-            end
+%             % generate k vertices for each link
+%             for i = 1:obj.n_links
+%                 cubeV = cubelet_ND(length(obj.link_joints{i}))';
+%                 obj.FRS_options.kV{i} = (cubeV.*obj.g_k(obj.link_joints{i})) + obj.c_k(obj.link_joints{i});
+%                 obj.FRS_options.kV_lambda{i} = cubeV;
+%             end
         end
         
         function obj = create_FRS(obj)
@@ -187,97 +185,145 @@ classdef robot_arm_FRS_rotatotope_fetch
             
         end
         
-        function [] = plot_slice_gensIncluded(obj, k, rate, colors)
-            if ~exist('colors', 'var')
-                colors = {'b', 'r', 'm'};
-            end
-            if ~exist('rate', 'var')
-                rate = 1;
-            end
-            for i = 1:length(obj.link_FRS)
-                for j = 1:rate:length(obj.link_FRS{i})
-                    obj.link_FRS{i}{j}.plot_slice_gensIncluded(k(obj.link_joints{i}), colors{i});
-                end
-            end
-            
-        end
+%         function [] = plot_slice_gensIncluded(obj, k, rate, colors)
+%             if ~exist('colors', 'var')
+%                 colors = {'b', 'r', 'm'};
+%             end
+%             if ~exist('rate', 'var')
+%                 rate = 1;
+%             end
+%             for i = 1:length(obj.link_FRS)
+%                 for j = 1:rate:length(obj.link_FRS{i})
+%                     obj.link_FRS{i}{j}.plot_slice_gensIncluded(k(obj.link_joints{i}), colors{i});
+%                 end
+%             end
+%             
+%         end
         
-        function [obj] = generate_constraints(obj, obstacles)
+%         function [obj] = generate_constraints(obj, obstacles)
+%             for i = 1:length(obstacles)
+%                 for j = 1:length(obj.link_FRS)
+%                     for k = 1:length(obj.link_FRS{j})
+% %                         if (j == 1 && isprop(obstacles{i}, 'is_base_obstacle') && obstacles{i}.is_base_obstacle) % skip base obstacles for first link
+% %                             obj.A_con{i}{j}{k} = [];
+% %                             obj.b_con{i}{j}{k} = [];
+% %                             obj.k_con{i}{j}{k} = [];
+% %                         else
+%                             [obj.A_con{i}{j}{k}, obj.b_con{i}{j}{k}, obj.k_con{i}{j}{k}] = obj.link_FRS{j}{k}.generate_constraints(obstacles{i}.zono.Z, obj.FRS_options, j);
+% %                         end
+%                     end
+%                 end
+%             end
+%         end
+        
+%         function [obj] = generate_self_intersection_constraints(obj)
+%             % EDIT PATRICK 20200121 THIS IS BROKEN RIGHT NOW
+%             % takes in pairs of links that could intersect and generates
+%            % Acon and bcon, as well as the combinations of k_idxs (kcon) these
+%            % constraints depend on.
+%            for i = 1:length(obj.link_self_intersection) % for each pair of links
+%                 for j = 1:length(obj.link_FRS{1}) % for each time step
+%                     R1 = obj.link_FRS{obj.link_self_intersection{i}(1)}{j};
+%                     R2 = obj.link_FRS{obj.link_self_intersection{i}(2)}{j};
+%                     
+%                     nGen_1 = size(R1.Rg, 2);
+%                     [~, kc_col_1] = find(any(R1.k_idx) & R1.c_idx);
+%                     frs_k_ind_G_1 = R1.Rg;
+%                     frs_k_ind_G_1(:, kc_col_1) = [];
+%                     frs_k_dep_G_1 = R1.Rg(:, kc_col_1);
+%                     
+%                     nGen_2 = size(R2.Rg, 2);
+%                     [~, kc_col_2] = find(any(R2.k_idx) & R2.c_idx);
+%                     frs_k_ind_G_2 = R2.Rg;
+%                     frs_k_ind_G_2(:, kc_col_2) = [];
+%                     frs_k_dep_G_2 = R2.Rg(:, kc_col_2);
+%                     
+%                     gen_concat = [frs_k_ind_G_1, frs_k_ind_G_2, 2*obj.FRS_options.buffer_dist/2*eye(3)]; % add buffer distance accounting for 2 links
+%                     gen_concat(:, ~any(gen_concat)) = []; % delete zero columns
+%                     gen_zono = [(R1.Rc - R2.Rc), gen_concat]; % centered at R1.Rc - R2.Rc
+% 
+%                     [A_poly, b_poly] = polytope_PH(gen_zono, obj.FRS_options);
+%                     
+%                     % the difference in "sliced" points should be outside
+%                     % this zono:
+%                     k_dep_pt = [-frs_k_dep_G_1, frs_k_dep_G_2];
+%                     A_con = A_poly*k_dep_pt;
+%                     b_con = b_poly;
+%                     k_con = [[R1.k_idx(:, kc_col_1); zeros(size(R2.k_idx, 1) - size(R1.k_idx, 1), length(kc_col_1))], R2.k_idx(:, kc_col_2)];
+%                     
+%                     % add a test here that throws out unnecessary constraints.
+%                     % ( not entirely sure this is still valid!! )
+% %                     intersection_possible = 0;
+% %                     for k = 1:size(obj.FRS_options.kV_lambda{end}, 2)
+% %                         lambdas_prod = double(k_con).*obj.FRS_options.kV_lambda{end}(:, k);
+% %                         lambdas_prod(~k_con) = 1;
+% %                         lambdas_prod = prod(lambdas_prod, 1)';
+% %                         
+% %                         kVc = A_con*lambdas_prod - b_con;
+% %                         test_kV = max(kVc);
+% %                         if test_kV <= 0
+% %                             intersection_possible = 1;
+% %                         end
+% %                     end
+% %                     if ~intersection_possible
+% %                         A_con = []; b_con = []; k_con = [];
+% %                     end
+%                     
+%                     obj.A_con_self{i}{j} = A_con;
+%                     obj.b_con_self{i}{j} = b_con;
+%                     obj.k_con_self{i}{j} = k_con;
+%                     
+%                 end
+%             end
+%         end
+        
+        function [obj] = generate_polytope_normals(obj, obstacles)
             for i = 1:length(obstacles)
                 for j = 1:length(obj.link_FRS)
                     for k = 1:length(obj.link_FRS{j})
-%                         if (j == 1 && isprop(obstacles{i}, 'is_base_obstacle') && obstacles{i}.is_base_obstacle) % skip base obstacles for first link
-%                             obj.A_con{i}{j}{k} = [];
-%                             obj.b_con{i}{j}{k} = [];
-%                             obj.k_con{i}{j}{k} = [];
-%                         else
-                            [obj.A_con{i}{j}{k}, obj.b_con{i}{j}{k}, obj.k_con{i}{j}{k}] = obj.link_FRS{j}{k}.generate_constraints(obstacles{i}.zono.Z, obj.FRS_options, j);
-%                         end
+                        [obj.A{i}{j}{k}] = obj.link_FRS{j}{k}.generate_polytope_normals(obstacles{i}.zono.Z, obj.FRS_options);
                     end
                 end
             end
         end
         
-        function [obj] = generate_self_intersection_constraints(obj)
-            % takes in pairs of links that could intersect and generates
-           % Acon and bcon, as well as the combinations of k_idxs (kcon) these
-           % constraints depend on.
-           for i = 1:length(obj.link_self_intersection) % for each pair of links
-                for j = 1:length(obj.link_FRS{1}) % for each time step
-                    R1 = obj.link_FRS{obj.link_self_intersection{i}(1)}{j};
-                    R2 = obj.link_FRS{obj.link_self_intersection{i}(2)}{j};
+        function [h, grad_h] = evaluate_sliced_constraints(obj, k_opt, obstacles)
+            h = [];
+            grad_h = [];
+            epsilon = 1e-6;
+            for i = 1:length(obstacles)
+                obs_Z = obstacles{i}.zono.Z;
+                for j = 1:length(obj.link_FRS)
+                    for k = 1:length(obj.link_FRS{j})
+                        
+                        if isempty(obj.A{i}{j}{k})
+                            h = [h; -1000000];
+                            grad_h = [grad_h, []];
+                            continue;
+                        end
+                        
+                        Z = obj.link_FRS{j}{k}.slice(k_opt(obj.link_joints{j}));
+                        c = Z(:, 1) - obs_Z(:, 1); % shift so that obstacle is zero centered!
+                        G = [Z(:, 2:end), obs_Z(:, 2:end)];
+                        
+                        deltaD = sum(abs((obj.A{i}{j}{k}*G)'))';
                     
-                    nGen_1 = size(R1.Rg, 2);
-                    [~, kc_col_1] = find(any(R1.k_idx) & R1.c_idx);
-                    frs_k_ind_G_1 = R1.Rg;
-                    frs_k_ind_G_1(:, kc_col_1) = [];
-                    frs_k_dep_G_1 = R1.Rg(:, kc_col_1);
-                    
-                    nGen_2 = size(R2.Rg, 2);
-                    [~, kc_col_2] = find(any(R2.k_idx) & R2.c_idx);
-                    frs_k_ind_G_2 = R2.Rg;
-                    frs_k_ind_G_2(:, kc_col_2) = [];
-                    frs_k_dep_G_2 = R2.Rg(:, kc_col_2);
-                    
-                    gen_concat = [frs_k_ind_G_1, frs_k_ind_G_2, 2*obj.FRS_options.buffer_dist/2*eye(3)]; % add buffer distance accounting for 2 links
-                    gen_concat(:, ~any(gen_concat)) = []; % delete zero columns
-                    gen_zono = [(R1.Rc - R2.Rc), gen_concat]; % centered at R1.Rc - R2.Rc
-
-                    [A_poly, b_poly] = polytope_PH(gen_zono, obj.FRS_options);
-                    
-                    % the difference in "sliced" points should be outside
-                    % this zono:
-                    k_dep_pt = [-frs_k_dep_G_1, frs_k_dep_G_2];
-                    A_con = A_poly*k_dep_pt;
-                    b_con = b_poly;
-                    k_con = [[R1.k_idx(:, kc_col_1); zeros(size(R2.k_idx, 1) - size(R1.k_idx, 1), length(kc_col_1))], R2.k_idx(:, kc_col_2)];
-                    
-                    % add a test here that throws out unnecessary constraints.
-                    % ( not entirely sure this is still valid!! )
-%                     intersection_possible = 0;
-%                     for k = 1:size(obj.FRS_options.kV_lambda{end}, 2)
-%                         lambdas_prod = double(k_con).*obj.FRS_options.kV_lambda{end}(:, k);
-%                         lambdas_prod(~k_con) = 1;
-%                         lambdas_prod = prod(lambdas_prod, 1)';
-%                         
-%                         kVc = A_con*lambdas_prod - b_con;
-%                         test_kV = max(kVc);
-%                         if test_kV <= 0
-%                             intersection_possible = 1;
-%                         end
-%                     end
-%                     if ~intersection_possible
-%                         A_con = []; b_con = []; k_con = [];
-%                     end
-                    
-                    obj.A_con_self{i}{j} = A_con;
-                    obj.b_con_self{i}{j} = b_con;
-                    obj.k_con_self{i}{j} = k_con;
-                    
+                        d = obj.A{i}{j}{k}*c;
+                        
+                        Pb = [d+deltaD; -d+deltaD];
+                        
+                        h_obs = -Pb; % equivalent to A*[0;0;0] - b
+                        h_obs_max = max(h_obs);
+                        h_tmp = -(h_obs_max - epsilon);
+                        
+                        h = [h; h_tmp];
+                        grad_h = [grad_h, []];
+                    end
                 end
             end
             
-            
+            % how to write gradients??
         end
+        
     end
 end

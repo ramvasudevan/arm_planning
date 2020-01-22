@@ -10,7 +10,7 @@ classdef robot_arm_FRS_rotatotope_1link
         n_links = 1;
         n_time_steps = 0;
         dim = 3;
-        FRS_path = 'FRS_trig/';
+        FRS_path = 'FRS_trig_constantK/';
         FRS_key = [];
         
         q = zeros(2, 1);
@@ -22,9 +22,7 @@ classdef robot_arm_FRS_rotatotope_1link
         
         FRS_options = {};
         
-        A_con = {};
-        b_con = {};
-        k_con = {};
+        A = {}; % polytope (buffered by obs) normal vectors
         
         c_k = [];
         g_k = [];
@@ -134,15 +132,61 @@ classdef robot_arm_FRS_rotatotope_1link
             
         end
         
-        function [obj] = generate_constraints(obj, obstacles)
+%         function [obj] = generate_constraints(obj, obstacles)
+%             for i = 1:length(obstacles)
+%                 for j = 1:length(obj.link_FRS)
+%                     for k = 1:length(obj.link_FRS{j})
+%                         [obj.A_con{i}{j}{k}, obj.b_con{i}{j}{k}, obj.k_con{i}{j}{k}] = obj.link_FRS{j}{k}.generate_constraints(obstacles{i}.zono.Z, obj.FRS_options, j);
+%                     end
+%                 end
+%             end
+%         end
+
+        function [obj] = generate_polytope_normals(obj, obstacles)
             for i = 1:length(obstacles)
                 for j = 1:length(obj.link_FRS)
                     for k = 1:length(obj.link_FRS{j})
-                        [obj.A_con{i}{j}{k}, obj.b_con{i}{j}{k}, obj.k_con{i}{j}{k}] = obj.link_FRS{j}{k}.generate_constraints(obstacles{i}.zono.Z, obj.FRS_options, j);
+                        [obj.A{i}{j}{k}] = obj.link_FRS{j}{k}.generate_polytope_normals(obstacles{i}.zono.Z, obj.FRS_options);
                     end
                 end
             end
         end
+        
+        function [h, grad_h] = evaluate_sliced_constraints(obj, k_opt, obstacles)
+            h = [];
+            epsilon = 1e-6;
+            for i = 1:length(obstacles)
+                obs_Z = obstacles{i}.zono.Z;
+                for j = 1:length(obj.link_FRS)
+                    for k = 1:length(obj.link_FRS{j})
+                        
+                        if isempty(obj.A{i}{j}{k})
+                            h = [h; -inf];
+                            grad_h = [grad_h, []];
+                            continue;
+                        end
+                        
+                        Z = obj.link_FRS{j}{k}.slice(k_opt);
+                        c = Z(:, 1) - obs_Z(:, 1); % shift so that obstacle is zero centered!
+                        G = [Z(:, 2:end), obs_Z(:, 2:end)];
+                        
+                        deltaD = sum(abs((obj.A{i}{j}{k}*G)'))';
+                    
+                        d = obj.A{i}{j}{k}*c;
+                        
+                        Pb = [d+deltaD; -d+deltaD];
+                        
+                        h_obs = -Pb; % equivalent to A*[0;0;0] - b
+                        h_obs_max = max(h_obs);
+                        h_tmp = -(h_obs_max - epsilon);
+                        
+                        h = [h; h_tmp];
+                        grad_h = [grad_h, []];
+                    end
+                end
+            end
+        end
+
         
     end
 end

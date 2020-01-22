@@ -16,7 +16,7 @@
 clear; clc;
 %% user parameters
 %%% CHOOSE SCENARIO %%%
-scenario = 6; % 1 2 3 4 5 6 or 7
+scenario = 7; % 1 2 3 4 5 6 or 7
 sub_scenario = 1; % sub_scenario only changes for scenario 4
 
 %%% EXPORTING TO CSV %%%
@@ -29,7 +29,7 @@ end
 csv_filename = sprintf('%s/scene_%03d_%03d.csv', world_save_dir, scenario, sub_scenario);
 
 %%% PLANNING PARAMETERS %%%
-use_cuda_flag = true ;
+use_cuda_flag = false ;
 agent_move_mode = 'direct' ; % pick 'direct' or 'integrator'
 
 % add more obstacles

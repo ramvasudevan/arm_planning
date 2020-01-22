@@ -1,4 +1,4 @@
-function [PA, Pb] = polytope_PH(Z, options)
+function [PA, Pb, C] = polytope_PH(Z, options)
 % polytope - Converts a zonotope from a G- to a H-representation
 %
 % This function is implemented based on Theorem 7 of

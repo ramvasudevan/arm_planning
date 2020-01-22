@@ -48,7 +48,8 @@ R = robot_arm_FRS_rotatotope_fetch(q_0, q_dot_0, FRS_options);
 % R.plot_slice_gensIncluded(bad_k, 10, {'r', 'r', 'r'});
 
 % map obstacles to trajectory parameter space
-R = R.generate_constraints(O);
+% R = R.generate_constraints(O);
+R = R.generate_polytope_normals(O);
 
 % generate self intersection constraints
 % R = R.generate_self_intersection_constraints();
@@ -60,10 +61,10 @@ if teston
 %     for idx2 = 1:100
             idx3 = 100;
         
-        A_con = R.A_con{idx1}{idx2}{idx3};
-        b_con = R.b_con{idx1}{idx2}{idx3};
-        k_con = R.k_con{idx1}{idx2}{idx3};
-        
+%         A_con = R.A_con{idx1}{idx2}{idx3};
+%         b_con = R.b_con{idx1}{idx2}{idx3};
+%         k_con = R.k_con{idx1}{idx2}{idx3};
+%         
         c_k = R.c_k;
         g_k = R.g_k;
         
@@ -77,19 +78,20 @@ if teston
         for i = 1:length(myk)
             for j = 1:length(myk)
                 K = [0;0;0;Xk(i, j); 0;Yk(i, j)];
-                lambda = (K - c_k)./g_k;
-                lambdas_prod = k_con.*lambda;
+%                 lambda = (K - c_k)./g_k;
+%                 lambdas_prod = k_con.*lambda;
                 
                 % dumb way to do this... want to multiply rows of lambdas
                 % together, replacing zeros with ones
 %                 lambdas_prod = lambdas_orig;
-                lambdas_prod(~k_con) = 1;
-                lambdas_prod = prod(lambdas_prod, 1)';
+%                 lambdas_prod(~k_con) = 1;
+%                 lambdas_prod = prod(lambdas_prod, 1)';
 %                 lambdas_prod(~any(lambdas_orig)) = 0; % set lambdas corresponding to all zero columns equal to zero
                 
-                Zk = A_con*lambdas_prod - b_con;
-                Zk = max(Zk);
-                Zk = -Zk;
+%                 Zk = A_con*lambdas_prod - b_con;
+                h = R.evaluate_sliced_constraints(K, O);
+                Zk = max(h);
+%                 Zk = -Zk;
 %                 disp(Zk);
                 %             Zk = -Zk; % hmm i'm off by this extra negative sign somewhere
                 if Zk >= 0
@@ -113,7 +115,8 @@ if teston
     slice_pt = [0;0;0;p1;0;p2];
 %     patch1 = plotFilled(R.link_FRS{1}{100}.slice(slice_pt(1:2)), [1, 3], 'k');
 %     patch1.FaceAlpha = 0.2;
-    patch2 = plotFilled(R.link_FRS{3}{100}.slice(slice_pt), [1, 3], 'k');
+    myzono = zonotope(R.link_FRS{3}{100}.slice(slice_pt));
+    patch2 = plotFilled(myzono, [1, 3], 'k');
     patch2.FaceAlpha = 0.2;
     
     figure(3); clf; view(3); axis equal; hold on;
