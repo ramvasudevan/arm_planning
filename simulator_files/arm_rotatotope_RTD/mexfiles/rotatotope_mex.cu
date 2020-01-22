@@ -35,7 +35,7 @@ The hyperparameters that are directly hardcoded in this code are:
 
 using namespace Ipopt;
 
-const bool debugMode = false;
+const bool debugMode = true;
 
 /*
 Instruction:
@@ -184,7 +184,7 @@ P4.	solve the NLP
     }
 
     // Ask Ipopt to solve the problem
-	status = app->OptimizeTNLP(mynlp);
+	//status = app->OptimizeTNLP(mynlp);
 	
 	//mynlp->try_joint_limits(k_opt);
 
@@ -194,7 +194,7 @@ P4.	solve the NLP
         plhs[0] = mxCreateNumericMatrix(n_links * 2, 1, mxDOUBLE_CLASS, mxREAL);
 		double *output0 = (double*)mxGetData(plhs[0]);
 		for (uint32_t i = 0; i < n_links * 2; i++) {
-			output0[i] = mynlp->solution[i];
+			output0[i] = 0;//mynlp->solution[i];
 		}
     }
     else {
@@ -249,12 +249,18 @@ P5. handle the output, release the memory
 
 		mxArray* output3 = mxCreateCellMatrix(1, n_time_steps);
 		for (uint32_t k = 0; k < n_time_steps; k++) {
-			mxArray* time_step_k = mxCreateLogicalMatrix(2 * (link_id + 1), RZ_length);
+			mxArray* time_step_k = mxCreateLogicalMatrix(4 * (link_id + 1), RZ_length);
 			bool *pt = (bool*)mxGetData(time_step_k);
 
 			for (uint32_t t = 0; t < RZ_length; t++) {
 				for (uint32_t p = 0; p < 2 * (link_id + 1); p++) {
-					pt[t * 2 * (link_id + 1) + p] = links.debug_k_idx[(p * n_time_steps + k) * RZ_length + t];
+					pt[t * 4 * (link_id + 1) + p] = links.debug_k_idx[(p * n_time_steps + k) * RZ_length + t];
+				}
+			}
+
+			for (uint32_t t = 0; t < RZ_length; t++) {
+				for (uint32_t p = 2 * (link_id + 1); p < 4 * (link_id + 1); p++) {
+					pt[t * 4 * (link_id + 1) + p] = links.debug_C_idx[((p - 2 * (link_id + 1)) * n_time_steps + k) * RZ_length + t];
 				}
 			}
 
