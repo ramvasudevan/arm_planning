@@ -279,9 +279,10 @@ classdef robot_arm_FRS_rotatotope_fetch
         
         function [obj] = generate_polytope_normals(obj, obstacles)
             for i = 1:length(obstacles)
+                obs_Z = [obstacles{i}.zono.Z, obj.FRS_options.buffer_dist/2*eye(3)];
                 for j = 1:length(obj.link_FRS)
                     for k = 1:length(obj.link_FRS{j})
-                        [obj.A{i}{j}{k}] = obj.link_FRS{j}{k}.generate_polytope_normals(obstacles{i}.zono.Z, obj.FRS_options);
+                        [obj.A{i}{j}{k}] = obj.link_FRS{j}{k}.generate_polytope_normals(obs_Z, obj.FRS_options);
                     end
                 end
             end
@@ -292,7 +293,7 @@ classdef robot_arm_FRS_rotatotope_fetch
             grad_h = [];
             k_opt_length = length(k_opt);
             for i = 1:length(obstacles)
-                obs_Z = obstacles{i}.zono.Z;
+                obs_Z = [obstacles{i}.zono.Z, obj.FRS_options.buffer_dist/2*eye(3)];
                 for j = 1:length(obj.link_FRS)
                     idx = find(~cellfun('isempty', obj.A{i}{j}));
                     for k = 1:length(idx)

@@ -464,8 +464,8 @@ classdef rotatotope
             % take dot product with normal vectors to construct Pb
             deltaD = sum(abs((A*g_poly)'))';
             d = A*c_poly;
-            PA = [A; -A];
             Pb = [d+deltaD; -d+deltaD];
+            PA = [A; -A];
 %             Pb_sign = [ones(size(A, 1)); -1*ones(size(A, 1))];
             
             % evaluate constraints
@@ -504,7 +504,7 @@ classdef rotatotope
                             if slice_to_pt_idx(j) % this component is in d
                                 grad_h(i) = grad_h(i) + min(a*g_sliced(:, j)*(1/obj.g_k(i))*(1/lambda(i)));
                             else % this component is in deltaD
-                                grad_h(i) = grad_h(i) + min(abs(a*g_sliced(:, j)*(1/obj.g_k(i))*(1/lambda(i)))); % same as above, but with absolute value
+                                grad_h(i) = grad_h(i) + sign(lambda(i))*min(abs(a*g_sliced(:, j)*(1/obj.g_k(i))*(1/lambda(i)))); % same as above, but with absolute value
                             end
                         end
 %                         disp(grad_h);
@@ -512,6 +512,8 @@ classdef rotatotope
                     end
                 end
             end
+            grad_h = [grad_h; zeros(length(k) - length(myk), 1)];
+%             disp(k);
             
 %             grad_h = -grad_h; % important!!!
             

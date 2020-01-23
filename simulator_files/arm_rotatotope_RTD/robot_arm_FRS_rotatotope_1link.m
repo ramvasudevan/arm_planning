@@ -47,7 +47,7 @@ classdef robot_arm_FRS_rotatotope_1link
             obj.FRS_options.combs = generate_combinations_upto(200);
             obj.FRS_options.maxcombs = 200;
             
-            obj.FRS_options.buffer_dist = 0; %% HACK
+            obj.FRS_options.buffer_dist = 0.0; %% HACK
             
             % all rotatotopes defined for same parameter set:
             obj.c_k = obj.link_rotatotopes{end}{end}.c_k;
@@ -144,9 +144,10 @@ classdef robot_arm_FRS_rotatotope_1link
 
         function [obj] = generate_polytope_normals(obj, obstacles)
             for i = 1:length(obstacles)
+                obs_Z = [obstacles{i}.zono.Z, obj.FRS_options.buffer_dist/2*eye(3)];
                 for j = 1:length(obj.link_FRS)
                     for k = 1:length(obj.link_FRS{j})
-                        [obj.A{i}{j}{k}] = obj.link_FRS{j}{k}.generate_polytope_normals(obstacles{i}.zono.Z, obj.FRS_options);
+                        [obj.A{i}{j}{k}] = obj.link_FRS{j}{k}.generate_polytope_normals(obs_Z, obj.FRS_options);
                     end
                 end
             end
@@ -157,7 +158,7 @@ classdef robot_arm_FRS_rotatotope_1link
             grad_h = [];
             k_opt_length = length(k_opt);
             for i = 1:length(obstacles)
-                obs_Z = obstacles{i}.zono.Z;
+                obs_Z = [obstacles{i}.zono.Z, obj.FRS_options.buffer_dist/2*eye(3)];
                 for j = 1:length(obj.link_FRS)
                     idx = find(~cellfun('isempty', obj.A{i}{j}));
                     for k = 1:length(idx)
@@ -168,7 +169,6 @@ classdef robot_arm_FRS_rotatotope_1link
                 end
             end
         end
-        
 %         function [h, grad_h] = evaluate_sliced_constraints(obj, k_opt, obstacles)
 %             h = [];
 %             epsilon = 1e-6;

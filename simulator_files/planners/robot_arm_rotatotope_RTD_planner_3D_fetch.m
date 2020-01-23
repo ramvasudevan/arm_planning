@@ -196,9 +196,9 @@ classdef robot_arm_rotatotope_RTD_planner_3D_fetch < robot_arm_generic_planner
             initial_guess = rand_range(lb, ub);
            
 %             options = optimoptions('fmincon','SpecifyConstraintGradient',true, 'Algorithm', 'interior-point');
-%             options = optimoptions('fmincon','SpecifyConstraintGradient',true);
+            options = optimoptions('fmincon','SpecifyConstraintGradient',true);
 %             options = optimoptions('fmincon','SpecifyConstraintGradient',true, 'CheckGradients', true);
-            options = optimoptions('fmincon','SpecifyConstraintGradient',true, 'CheckGradients', true);
+%             options = optimoptions('fmincon','SpecifyConstraintGradient',true, 'CheckGradients', true);
 %             options = optimoptions('fmincon');
             [k_opt, ~, exitflag, ~] = fmincon(cost_func, initial_guess, [], [], [], [], lb, ub, constraint_func, options) ;
             

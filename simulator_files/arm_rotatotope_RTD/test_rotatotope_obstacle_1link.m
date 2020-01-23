@@ -25,7 +25,7 @@ q_dot_0 = [pi/2; pi/2];
 
 % slice_pt1 = pi/6-0.001;
 % slice_pt2 = -pi/6+0.001;
-slice_pt = [ pi/6 - 0.001; pi/6 - 0.001];
+slice_pt = [ pi/6 - 0.001; -pi/6 + 0.001];
 
 tic
 FRS = robot_arm_FRS_rotatotope_1link(q_0, q_dot_0);
@@ -98,15 +98,15 @@ if teston
 end
 
 if testgradon
-    k1 = [-0.1; 0.5];
+    k1 = [0.1; 0.5];
     k_step_size = 1e-6;
-    deltak = k_step_size*[1; 0];
+    deltak = k_step_size*[0; 1];
     k1plus = k1 + deltak;
     
     [h1, gradh1] = FRS.evaluate_sliced_constraints(k1, obstacles);
     [h1plus, gradh1plus] = FRS.evaluate_sliced_constraints(k1plus, obstacles);
     
-    gradcheck = (h1plus - h1)./k_step_size - gradh1(1, :)';
+    gradcheck = (h1plus - h1)./k_step_size - gradh1(2, :)';
     disp(gradcheck);
 end
             
