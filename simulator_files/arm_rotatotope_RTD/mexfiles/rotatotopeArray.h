@@ -141,11 +141,14 @@ public:
 	// reduce order for each link
 	uint32_t reduce_order;
 
-	// keep track of the center
+	// keep track of the center in zonotope
 	bool* dev_c_idx;
 
 	// keep track of k-dependent generators
 	bool* dev_k_idx;
+
+	// keep track of the center in rotatotope
+	bool* dev_C_idx;
 
 	// stacking results
 	double** RZ_stack;
@@ -157,11 +160,15 @@ public:
 	bool** k_idx_stack;
 	bool** dev_k_idx_stack;
 
+	bool** C_idx_stack;
+	bool** dev_C_idx_stack;
+
 	uint32_t* RZ_length;
 
 	double* debug_RZ = nullptr;
 	bool* debug_c_idx = nullptr;
 	bool* debug_k_idx = nullptr;
+	bool* debug_C_idx = nullptr;
 
 	// number of obstacles
 	uint32_t n_obstacles;
@@ -248,18 +255,21 @@ Requires:
 		--> the Z of zonotopes in trig_FRS
 	7. c_idx
 	8. k_idx
-	9. RZ_new
+	9. C_idx
+	10. RZ_new
 		--> the Z of zonotopes after rotation
-	10. c_idx_new
+	11. c_idx_new
 		--> index of who are multiplied with a center
-	11. k_idx_new
-		--> index of who are multiplied with a k-dep generator
+	12. k_idx_new
+		--> index of who are multiplied with a k-dep generator in the link rotatotope
+	13. C_idx_new
+		--> index of who are multiplied with a center in the FRS rotatotope
 Modifies:
 	1. RZ_new
 	2. c_idx_new
 	3. k_idx_new
 */
-__global__ void multiply_kernel(uint8_t* rot_axes, uint32_t link_offset, uint32_t joint_offset, uint32_t reduce_order, double* RZ, double* R, bool* c_idx, bool* k_idx, double* RZ_new, bool* c_idx_new, bool* k_idx_new);
+__global__ void multiply_kernel(uint8_t* rot_axes, uint32_t link_offset, uint32_t joint_offset, uint32_t reduce_order, double* RZ, double* R, bool* c_idx, bool* k_idx, bool* C_idx, double* RZ_new, bool* c_idx_new, bool* k_idx_new, bool* C_idx_new);
 
 /*
 Instruction:
@@ -269,18 +279,21 @@ Requires:
 		--> the temporary array for RZ, will be reduced to RZ
 	2. c_idx_new
 	3. k_idx_new
-	4. link_offset
+	4. C_idx_new
+	5. link_offset
 		--> which link should be reduced
-	5. reduce_order
-	6. RZ
-	7. c_idx
-	8. k_idx
+	6. reduce_order
+	7. RZ
+	8. c_idx
+	9. k_idx
+	10. C_idx
 Modifies:
 	1. RZ
 	2. c_idx
 	3. k_idx
+	4. C_idx
 */
-__global__ void reduce_kernel(double* RZ_new, bool* c_idx_new, bool* k_idx_new, uint32_t link_offset, uint32_t reduce_order, double* RZ, bool* c_idx, bool* k_idx);
+__global__ void reduce_kernel(double* RZ_new, bool* c_idx_new, bool* k_idx_new, bool* C_idx_new, uint32_t link_offset, uint32_t reduce_order, double* RZ, bool* c_idx, bool* k_idx, bool* C_idx);
 
 /*
 Instruction:
@@ -292,18 +305,21 @@ Requires:
 		--> the Z of zonotopes of links
 	3. link_c_idx
 	4. link_k_idx
-	5. link reduce_order
-	6. point reduce_order
-	7. RZ_stack
+	5. link_C_idx
+	6. link reduce_order
+	7. point reduce_order
+	8. RZ_stack
 		--> for stacking
-	8. c_idx_stack
-	9. k_idx_stack
+	9. c_idx_stack
+	10. k_idx_stack
+	11. C_idx_stack
 Modifies:
 	1. RZ_stack
 	2. c_idx_stack
 	3. k_idx_stack
+	4. C_idx_stack
 */
-__global__ void copy_kernel(uint32_t link_id, double* RZ, bool* c_idx, bool* k_idx, uint32_t link_reduce_order, uint32_t point_reduce_order, double* RZ_stack, bool* c_idx_stack, bool* k_idx_stack);
+__global__ void copy_kernel(uint32_t link_id, double* RZ, bool* c_idx, bool* k_idx, bool* C_idx, uint32_t link_reduce_order, uint32_t point_reduce_order, double* RZ_stack, bool* c_idx_stack, bool* k_idx_stack, bool* C_idx_stack);
 
 /*
 Instruction:
@@ -324,12 +340,15 @@ Requires:
 	9. EE_c_idx
 	10. k_idx_stack
 	11. EE_k_idx
+	12. C_idx_stack
+	13. EE_C_idx
 Modifies:
 	1. RZ_stack
 	2. c_idx_stack
 	3. k_idx_stack
+	4. C_idx_stack
 */
-__global__ void stack_kernel(uint32_t link_id, uint32_t EE_id, uint32_t stack_offset, uint32_t link_reduce_order, uint32_t point_reduce_order, double* RZ_stack, double* EE_RZ, bool* c_idx_stack, bool* EE_c_idx, bool* k_idx_stack, bool* EE_k_idx);
+__global__ void stack_kernel(uint32_t link_id, uint32_t EE_id, uint32_t stack_offset, uint32_t link_reduce_order, uint32_t point_reduce_order, double* RZ_stack, double* EE_RZ, bool* c_idx_stack, bool* EE_c_idx, bool* k_idx_stack, bool* EE_k_idx, bool* C_idx_stack, bool* EE_C_idx);
 
 /*
 Instruction:

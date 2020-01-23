@@ -5,6 +5,29 @@ Oct. 22 2019
 arm_planning mex
 
 This code aims to replace the contructor of the rotatotope
+
+The hyperparameters that are directly hardcoded in this code are:
+1. k_dim
+	--> which dimension in R is k-dependent
+2. origin shift [x,y,z]
+	--> origin shift of the robot links
+3. buffer distance
+	--> the total distance buffered for the obstacles
+4. TOO_SMALL_POLYTOPE_JUDGE
+	--> A criteria for the square of the 2-norm of the generator
+5. CONSERVATIVE_BUFFER
+	--> a small offset directly applied to the constraint functions
+6. t_plan
+7. t_move
+8. t_total
+9. number of links
+10. number of time steps
+11. the zonotope of links
+12. the zonotope of end effectors
+13. the zonotope of base
+14. rot_axes
+	--> which axis should be rotated around for each joint
+15. link / EE reduce order
 */
 
 #include "rotatotope_NLP.h"
@@ -12,7 +35,7 @@ This code aims to replace the contructor of the rotatotope
 
 using namespace Ipopt;
 
-const bool debugMode = false;
+const bool debugMode = true;
 
 /*
 Instruction:
@@ -21,26 +44,19 @@ Instruction:
 	multiply()
 	in the constructor of rotatotope
 Requires:
-	1. n_links
-		--> number of links
-	2. n_time_steps
-		--> number of time steps
-	3. trig_FRS{j}(i) . Z
+	1. trig_FRS{j}(i) . Z
 		--> the Z of zonotopes in trig_FRS,
 			index: i \in 1 : n_links * 2
 				   j \in 1 : n_time_steps
 				   trig_FRS(i,j).Z = (i * n_time_steps + j) * 10 : (i * n_time_steps + j + 1) * 10 - 1
 			we need trig_FRS(:, 1 : n * 2) for n th link
-	4. link_zonotopes{i} . Z
-		--> the Z of link zonotopes
-			index: i \in 1 : n_links
-	5. EE_zonotopes{i} . Z
-		--> the Z of link zonotopes
-			index: i \in 1 : n_links
-Returns:
-	1. RZ
-	2. c_idx
-	3. k_idx
+	2. number of obstacles
+	3. zonotopes of obstacles (1 center with 3 generators)
+	4. k_opt input for debugging
+	5. q
+	6. q_dot
+	7. q_des
+	8. g_k
 */
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 	std::clock_t start_t, end_t; // timing  
@@ -128,16 +144,12 @@ P3.	generate the constraints
 	*/
 	links.generate_constraints(n_obstacles, OZ, OZ_width, OZ_length);
 
-	end_t = clock();
-	mexPrintf("CUDA: Construct rotatotopes time: %.6f ms\n", 1000.0 * (end_t - start_t) / (double)(CLOCKS_PER_SEC));
-	start_t = clock();
-
 	uint32_t n_pairs = 1;
 	uint32_t self_pairs[2] = {0, 2}; // the latter one in the pair is always higher
 	links.generate_self_constraints(n_pairs, self_pairs);
 
 	end_t = clock();
-	mexPrintf("CUDA: Generate self intersection time: %.6f ms\n", 1000.0 * (end_t - start_t) / (double)(CLOCKS_PER_SEC));
+	mexPrintf("CUDA: Construct Rotatotopes time: %.6f ms\n", 1000.0 * (end_t - start_t) / (double)(CLOCKS_PER_SEC));
 	
 	/*
 P4.	solve the NLP
@@ -172,7 +184,7 @@ P4.	solve the NLP
     }
 
     // Ask Ipopt to solve the problem
-	status = app->OptimizeTNLP(mynlp);
+	//status = app->OptimizeTNLP(mynlp);
 	
 	//mynlp->try_joint_limits(k_opt);
 
@@ -182,7 +194,7 @@ P4.	solve the NLP
         plhs[0] = mxCreateNumericMatrix(n_links * 2, 1, mxDOUBLE_CLASS, mxREAL);
 		double *output0 = (double*)mxGetData(plhs[0]);
 		for (uint32_t i = 0; i < n_links * 2; i++) {
-			output0[i] = mynlp->solution[i];
+			output0[i] = 0;//mynlp->solution[i];
 		}
     }
     else {
@@ -237,12 +249,18 @@ P5. handle the output, release the memory
 
 		mxArray* output3 = mxCreateCellMatrix(1, n_time_steps);
 		for (uint32_t k = 0; k < n_time_steps; k++) {
-			mxArray* time_step_k = mxCreateLogicalMatrix(2 * (link_id + 1), RZ_length);
+			mxArray* time_step_k = mxCreateLogicalMatrix(4 * (link_id + 1), RZ_length);
 			bool *pt = (bool*)mxGetData(time_step_k);
 
 			for (uint32_t t = 0; t < RZ_length; t++) {
 				for (uint32_t p = 0; p < 2 * (link_id + 1); p++) {
-					pt[t * 2 * (link_id + 1) + p] = links.debug_k_idx[(p * n_time_steps + k) * RZ_length + t];
+					pt[t * 4 * (link_id + 1) + p] = links.debug_k_idx[(p * n_time_steps + k) * RZ_length + t];
+				}
+			}
+
+			for (uint32_t t = 0; t < RZ_length; t++) {
+				for (uint32_t p = 2 * (link_id + 1); p < 4 * (link_id + 1); p++) {
+					pt[t * 4 * (link_id + 1) + p] = links.debug_C_idx[((p - 2 * (link_id + 1)) * n_time_steps + k) * RZ_length + t];
 				}
 			}
 
