@@ -52,44 +52,50 @@ classdef fetch_base_world_static < world
 %             if W.include_base_obstacle
 %                 W.create_base_obstacle() ;
 %             end
+
+            W.setup() ;
         end
         
         %% setup
         function setup(W,I)
             W.vdisp('Running arm world setup',1)
             
-            % make sure the world's properties agree with the arm's
-            W.get_arm_info(I)
-            
             % generate obstacles representing the fetch's body
             if W.include_base_obstacle
                 W.create_base_obstacle() ;
             end
             
-            W.setting_up = true;
-            
-            % create a start configuration
-            if isempty(W.start)
-                W.create_start(I) ;
-            end
-            
-            % create a goal configuration
-            if isempty(W.goal)
-                W.create_goal(I) ;
-            end
-            
-            if strcmp(W.goal_type,'configuration')
-                W.goal_plot_patch_data = I.get_collision_check_volume(W.goal) ;
-            end
-            
-            % create random obstacles
-            if W.create_random_obstacles_flag && (W.N_random_obstacles > 0)
-                for idx = 1:W.N_random_obstacles
-                    O = W.create_collision_free_obstacle(I) ;
-                    if ~isempty(O)
-                        W.add_obstacle(O) ;
+            if nargin > 1
+                % make sure the world's properties agree with the arm's
+                W.get_arm_info(I)
+                
+                W.setting_up = true;
+                
+                % create a start configuration
+                if isempty(W.start)
+                    W.create_start(I) ;
+                end
+                
+                % create a goal configuration
+                if isempty(W.goal)
+                    W.create_goal(I) ;
+                end
+                
+                if strcmp(W.goal_type,'configuration')
+                    W.goal_plot_patch_data = I.get_collision_check_volume(W.goal) ;
+                end
+                
+                % create random obstacles
+                if W.create_random_obstacles_flag && (W.N_random_obstacles > 0)
+                    for idx = 1:W.N_random_obstacles
+                        O = W.create_collision_free_obstacle(I) ;
+                        if ~isempty(O)
+                            W.add_obstacle(O) ;
+                        end
                     end
                 end
+            else
+                W.vdisp('Please run W.setup with agent info!',5)
             end
             
             % update the number of obstacles
@@ -105,9 +111,9 @@ classdef fetch_base_world_static < world
                     J = I.get_joint_locations(W.goal) ;
                     W.goal_in_workspace = J(:,end) ;
             end
+            W.vdisp('Arm world setup complete',2)
                     
             
-            W.vdisp('Arm world setup complete',2)
             W.setting_up = false;
         end
         
