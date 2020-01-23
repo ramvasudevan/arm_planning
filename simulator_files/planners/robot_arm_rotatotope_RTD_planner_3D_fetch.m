@@ -198,7 +198,8 @@ classdef robot_arm_rotatotope_RTD_planner_3D_fetch < robot_arm_generic_planner
 %             options = optimoptions('fmincon','SpecifyConstraintGradient',true, 'Algorithm', 'interior-point');
 %             options = optimoptions('fmincon','SpecifyConstraintGradient',true);
 %             options = optimoptions('fmincon','SpecifyConstraintGradient',true, 'CheckGradients', true);
-            options = optimoptions('fmincon');
+            options = optimoptions('fmincon','SpecifyConstraintGradient',true, 'CheckGradients', true);
+%             options = optimoptions('fmincon');
             [k_opt, ~, exitflag, ~] = fmincon(cost_func, initial_guess, [], [], [], [], lb, ub, constraint_func, options) ;
             
             trajopt_failed = exitflag <= 0 ;
@@ -246,8 +247,11 @@ classdef robot_arm_rotatotope_RTD_planner_3D_fetch < robot_arm_generic_planner
                         
             %%% Obstacle constraint generation:
             % PATRICK edit 20200121 fixing constraints
-            [h, ~] = P.R.evaluate_sliced_constraints(k_opt, P.O);
+            [h, gradh] = P.R.evaluate_sliced_constraints(k_opt, P.O);
             c = [c; h];
+            if nargout > 2
+                gradc = [gradc, gradh];
+            end
 %             for i = 1:length(P.R.A_con) % for each obstacle
 %                 for j = 1:length(P.R.A_con{i}) % for each link
 %                     idx = find(~cellfun('isempty', P.R.A_con{i}{j}));

@@ -257,29 +257,31 @@ classdef rotatotope
 %             end
 %         end
         
-        function [Z] = slice(obj, k)
+        function [Z, lambda, c, g_sliced, slice_to_pt_idx] = slice(obj, k)
             % this slicing function slices generators that don't slice
             % to a point
             % take in a value for k, slice along dimension
             if length(k) ~= length(obj.c_k)
                 error('Slice point not correct dimension');
             end
-            g = obj.Rg;
+            g_sliced = obj.Rg;
             c = obj.Rc;
+            lambda = zeros(length(k), 1);
             for i = 1:length(k)
                 if abs(k(i) - obj.c_k(i)) > obj.g_k(i)
                     error('Slice point is out of bounds');
                 end
-                lambda = (k(i) - obj.c_k(i))/obj.g_k(i);
+                lambda(i) = (k(i) - obj.c_k(i))/obj.g_k(i);
                 
-                g(:, obj.k_idx(i, :) == 1)  = g(:, obj.k_idx(i, :) == 1)*lambda; % slice gens
+                g_sliced(:, obj.k_idx(i, :) == 1) = g_sliced(:, obj.k_idx(i, :) == 1)*lambda(i); % slice gens
             end
             
+            slice_to_pt_idx = all(obj.k_idx ~= 0 | obj.C_idx ~= 0, 1) & obj.c_idx == 1;
             % take the k dep gens that slice to points... add to center
-            c = c + sum(g(:, all(obj.k_idx ~= 0 | obj.C_idx ~= 0, 1) & obj.c_idx == 1), 2);
-            g(:, all(obj.k_idx ~= 0 | obj.C_idx ~= 0, 1) & obj.c_idx == 1) = [];
+            c_out = c + sum(g_sliced(:, slice_to_pt_idx), 2);
+            g_out = g_sliced(:, ~slice_to_pt_idx);
             
-            Z = [c, g];
+            Z = [c_out, g_out];
         end
         
 %         function [Z] = slice(obj, k)
@@ -447,6 +449,93 @@ classdef rotatotope
                 % intersection not possible
                 A = [];
             end
+        end
+        
+        function [h, grad_h] = evaluate_sliced_constraints(obj, k, obs_Z, A)
+            epsilon = 1e-6;
+            myk = k(1:length(obj.c_k));
+            
+            % first, slice by k. g_sliced has been multiplied through by
+            % lambda. c should be the same as obj.Rc
+            [~, lambda, c, g_sliced, slice_to_pt_idx] = obj.slice(myk);
+            c_poly = c + sum(g_sliced(:, slice_to_pt_idx), 2) - obs_Z(:, 1); % shift so that obstacle is zero centered!
+            g_poly = [g_sliced(:, ~slice_to_pt_idx), obs_Z(:, 2:end)];
+            
+            % take dot product with normal vectors to construct Pb
+            deltaD = sum(abs((A*g_poly)'))';
+            d = A*c_poly;
+            PA = [A; -A];
+            Pb = [d+deltaD; -d+deltaD];
+%             Pb_sign = [ones(size(A, 1)); -1*ones(size(A, 1))];
+            
+            % evaluate constraints
+            h_obs = -Pb; % equivalent to A*[0;0;0] - b
+            h_obs_max = max(h_obs);
+            h = -(h_obs_max - epsilon);
+            
+            % evaluate constraint gradients
+            max_idx = find(h_obs == h_obs_max);
+            if length(max_idx) > 1
+%                 disp('AHHHH');
+                a = PA(max_idx, :);
+%                 a = unique(a, 'rows');
+            else
+                a = PA(max_idx, :);
+            end
+
+            
+            grad_h = zeros(length(myk), 1);
+            for i = 1:length(myk)
+                for j = 1:size(g_sliced, 2)
+                    if obj.k_idx(i, j) == 1% if gen was multiplied by this lambda_i(k_i)
+                        if lambda(i) == 0 % shit... essentially have to reslice in this case because of a 0/0 when trying to divide by lambda.
+                            g_crap = obj.Rg;
+                            for poop = 1:length(lambda)
+                                if ~(poop == i)
+                                    g_crap(:, obj.k_idx(poop, :) == 1) = g_crap(:, obj.k_idx(poop, :) == 1)*lambda(poop); % reslice gens
+                                end
+                            end
+                            if slice_to_pt_idx(j) % this component is in d
+                                grad_h(i) = grad_h(i) + min(a*g_crap(:, j)*(1/obj.g_k(i)));
+                            else % this component is in deltaD
+                                grad_h(i) = grad_h(i) + min(abs(a*g_crap(:, j)*(1/obj.g_k(i)))); % same as above, but with absolute value
+                            end
+                        else
+                            if slice_to_pt_idx(j) % this component is in d
+                                grad_h(i) = grad_h(i) + min(a*g_sliced(:, j)*(1/obj.g_k(i))*(1/lambda(i)));
+                            else % this component is in deltaD
+                                grad_h(i) = grad_h(i) + min(abs(a*g_sliced(:, j)*(1/obj.g_k(i))*(1/lambda(i)))); % same as above, but with absolute value
+                            end
+                        end
+%                         disp(grad_h);
+%                         pause
+                    end
+                end
+            end
+            
+%             grad_h = -grad_h; % important!!!
+            
+            
+            
+%                         
+            %%%% OLD BELOW THIS LINE
+%             Z = obj.link_FRS{j}{k}.slice(k_opt(obj.link_joints{j}));
+%             c = Z(:, 1) - obs_Z(:, 1); % shift so that obstacle is zero centered!
+%             G = [Z(:, 2:end), obs_Z(:, 2:end)];
+%             
+%             deltaD = sum(abs((obj.A{i}{j}{k}*G)'))';
+%             
+%             d = obj.A{i}{j}{k}*c;
+%             
+%             Pb = [d+deltaD; -d+deltaD];
+%             
+%             h_obs = -Pb; % equivalent to A*[0;0;0] - b
+%             h_obs_max = max(h_obs);
+%             h_tmp = -(h_obs_max - epsilon);
+%             
+%             h = [h; h_tmp];
+%             grad_h = [grad_h, []];
+%             
         end
         
     end

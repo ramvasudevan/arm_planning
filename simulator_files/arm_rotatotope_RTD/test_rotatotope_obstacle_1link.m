@@ -3,7 +3,8 @@
 clear all; clc;
 figure(1); clf; hold on; view(3); axis equal;
 
-teston = 1;
+teston = 0;
+testgradon = 1;
 
 % where's your obstacle?
 % obs_center = [cos(pi/4)*0.33; sin(pi/4)*0.33; 0.08];
@@ -94,5 +95,18 @@ if teston
     
     figure(1);
     FRS.plot_slice([p1;p2], 1, {'b'});
+end
+
+if testgradon
+    k1 = [-0.1; 0.5];
+    k_step_size = 1e-6;
+    deltak = k_step_size*[1; 0];
+    k1plus = k1 + deltak;
+    
+    [h1, gradh1] = FRS.evaluate_sliced_constraints(k1, obstacles);
+    [h1plus, gradh1plus] = FRS.evaluate_sliced_constraints(k1plus, obstacles);
+    
+    gradcheck = (h1plus - h1)./k_step_size - gradh1(1, :)';
+    disp(gradcheck);
 end
             
