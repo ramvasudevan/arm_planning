@@ -53,8 +53,7 @@ obs_center = [0.6; -0.4; -0.7];
 obs_width = [0.1];
 O{5} = box_obstacle_zonotope('center', obs_center(:), 'side_lengths', [obs_width, obs_width, obs_width]);
 
-R = R.generate_constraints(O);
-R = R.generate_self_intersection_constraints();
+R = R.generate_polytope_normals(O);
 
 good_k = -pi/6*ones(6, 1) ;
 bad_k = [pi/6 - 0.001; pi/6 - 0.001; pi/12; pi/24; -pi/36; pi/48];
@@ -68,7 +67,7 @@ eval_out = R_cuda.eval_output;
 eval_grad_out = R_cuda.eval_grad_output;
 eval_hess_out = R_cuda.eval_hess_output;
 mex_res = R_cuda.mex_res;
-return;
+
 % direc = 1;
 % step = 1e-7;
 % bad_k_step = bad_k;
@@ -83,19 +82,22 @@ return;
 % plot(simu,'r.');hold on;plot(real,'b.');
 
 %% analysis
-% link_id = 1;
-% time_id = 66;
-% rot = R.link_FRS;
-% data = [rot{link_id}{time_id}.RZ;
-%     [0,any(rot{link_id}{time_id}.k_idx)&rot{link_id}{time_id}.c_idx]];
-% [d,id] = sort(vnorm(data(1:3,:)),'descend');
-% disp(data(:,id));
-% 
-% mex_data = [R_cuda.RZ{time_id};
-%     any(R_cuda.k_idx{time_id})&R_cuda.c_idx{time_id}];
-% [d,id] = sort(vnorm(mex_data(1:3,:)),'descend');
-% disp(mex_data(:,id));
+link_id = 1;
+time_id = 66;
+rot = R.link_FRS;
+data = [rot{link_id}{time_id}.RZ;
+    [0,rot{link_id}{time_id}.c_idx];
+    [zeros(link_id*2,1),rot{link_id}{time_id}.k_idx];
+    [zeros(link_id*2,1),rot{link_id}{time_id}.C_idx];];
+[d,id] = sort(vnorm(data(1:3,:)),'descend');
+disp(data(:,id));
 
+mex_data = [R_cuda.RZ{time_id};
+    double(R_cuda.c_idx{time_id});
+    double(R_cuda.k_idx{time_id})];
+[d,id] = sort(vnorm(mex_data(1:3,:)),'descend');
+disp(mex_data(:,id));
+return;
 [c, ceq, gradc, gradceq] = eval_constraints(R, bad_k, q, q_dot);
 % plot(c,'r.');hold on;plot(eval_out,'b.')
 % return;

@@ -12,12 +12,11 @@ FRS_options.L = 0.33;
 FRS_options.buffer_dist = 0;
 FRS_options.combs = generate_combinations_upto(200);
 FRS_options.maxcombs = 200;
-% FRS_options.origin_shift = [-0.0326; 0; 0.7260];
-FRS_options.origin_shift = zeros(3, 1);
+FRS_options.origin_shift = [-0.03265; 0; 0.72601];
 
 
 % get current obstacles
-obs_center = [0; 0; 0];
+obs_center = [-0.0326; 0; 0.7260];
 obs_width = [0.06];
 O{1} = box_obstacle_zonotope('center', obs_center(:), 'side_lengths', [obs_width, obs_width, obs_width]);
 obs_patch = plotFilled(O{1}.zono, [1, 3], 'r');
@@ -30,6 +29,12 @@ obs_patch.FaceAlpha = 0.2;
 q_0 = [0; 0; 0; pi/2 + 5*pi/48; 0; pi/2 + 5*pi/48];
 % q_0 = [pi/6; pi/4; pi/6; -pi/4; pi/6; pi/4];
 q_dot_0 = 0*ones(6, 1) ;
+q_des = [0.6441;
+        0.6902;
+        0.5426;
+       -1.4591;
+        0.4469;
+       -0.9425];
 % good_k = -pi/6*ones(6, 1) ;
 % bad_k = pi/6*ones(6, 1) - 0.001 ;
 % bad_k = [pi/6 - 0.001; pi/6 - 0.001; pi/12; pi/24; -pi/36; pi/48];
@@ -51,9 +56,53 @@ R = robot_arm_FRS_rotatotope_fetch(q_0, q_dot_0, FRS_options);
 % R = R.generate_constraints(O);
 R = R.generate_polytope_normals(O);
 
+% cuda FRS
+R_cuda = robot_arm_FRS_rotatotope_fetch_cuda(q_0, q_dot_0, q_des, O, bad_k, FRS_options);
+
+% link_id = 1;
+% time_id = 66;
+% rot = R.link_FRS;
+% data = [rot{link_id}{time_id}.RZ;
+%     [0,rot{link_id}{time_id}.c_idx];
+%     [zeros(link_id*2,1),rot{link_id}{time_id}.k_idx];
+%     [zeros(link_id*2,1),rot{link_id}{time_id}.C_idx];];
+% [d,id] = sort(vnorm(data(1:3,:)),'descend');
+% disp(data(:,id));
+% 
+% mex_data = [R_cuda.RZ{time_id};
+%     double(R_cuda.c_idx{time_id});
+%     double(R_cuda.k_idx{time_id})];
+% [d,id] = sort(vnorm(mex_data(1:3,:)),'descend');
+% disp(mex_data(:,id));
+
 % generate self intersection constraints
 % R = R.generate_self_intersection_constraints();
 
+for link_id = 1:3
+    for time_id = 1:100
+%         if isempty(R.A{1}{link_id}{time_id})
+%             if R_cuda.A{1}{link_id}{time_id}(1,1) ~= -1000000
+%                 disp({'Wrong',link_id, time_id});
+%             else
+%                 
+%             end
+%         else
+%             
+%         end
+%         
+%         if R_cuda.A{1}{link_id}{time_id}(1,1) == -1000000
+%             if ~isempty(R.A{1}{link_id}{time_id})
+%                 disp({'Wrong',link_id, time_id});
+%             else
+%                 
+%             end
+%         else
+%             
+%         end
+    end
+end
+
+return;
 % grid the k_4, k_6 constraint space
 if teston
     idx1 = 1;

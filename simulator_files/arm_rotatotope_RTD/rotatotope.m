@@ -18,7 +18,7 @@ classdef rotatotope
         rot_axes = []; % axes about which we are rotating
         Z; % zonotope representing the set to rotate
         dim double;
-        red_order = 10; % desired order of reduced zonotope
+        red_order = 5; % desired order of reduced zonotope
         
         % hold on to dimensions of first zonotope
         pos_dim = [1, 2];
@@ -436,7 +436,7 @@ classdef rotatotope
             % normal vectors to the FRS zono buffered by the obstacle
             
             buff_zono_G = [obj.RZ(:, 2:end), obstacle(:, 2:end)];
-            buff_zono_G(:, ~any(buff_zono_G)) = []; % delete zero columns
+%             buff_zono_G(:, ~any(buff_zono_G)) = []; % delete zero columns
             buff_zono_c = obj.RZ(:, 1);
             buff_zono = [buff_zono_c, buff_zono_G];
             
@@ -447,7 +447,7 @@ classdef rotatotope
             h = [A; -A]*x - b;
             if max(h) > 0
                 % intersection not possible
-                A = [];
+%                 A = [];
             end
         end
         
