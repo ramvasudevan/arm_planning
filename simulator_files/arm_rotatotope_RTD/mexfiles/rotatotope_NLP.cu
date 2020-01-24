@@ -494,7 +494,7 @@ bool rotatotope_NLP::eval_h(
          for (Index row = 0; row < n; row++) {
             for (Index col = 0; col <= row; col++) {
                if(row != col){
-                  values[idx] += 0;//lambda[i] * ra_info->hess_con[i * n * (n - 1) / 2 + hess_idx];
+                  values[idx] += lambda[i] * ra_info->hess_con[i * n * (n - 1) / 2 + hess_idx];
                   hess_idx++;
                }
                idx++;

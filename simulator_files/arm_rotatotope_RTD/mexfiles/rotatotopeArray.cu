@@ -975,7 +975,53 @@ __global__ void evaluate_sliced_constraints(uint32_t link_id, uint32_t pos_id, u
 		jaco_con[jaco_con_base + c_id] = result / g_k[c_id];
 	}
 	else if(c_id < 2 * (link_id + 1) + (link_id + 1) * ((link_id + 1) * 2 - 1)){ // fill in hessian
+		c_id -= 2 * (link_id + 1);
+		uint32_t fir, sec;
+		for(fir = 0; fir < 2 * (link_id + 1); fir++){
+			if(fir * (fir + 1) / 2 <= c_id && c_id < (fir + 1) * (fir + 2) / 2){
+				sec = c_id - fir * (fir + 1) / 2;
+				break;
+			}
+		}
+		fir++;
 
+		double result = 0;
+		for(uint32_t i = 1; i < RZ_length; i++){
+			if(k_idx[(fir * n_time_steps + time_id) * RZ_length + i] == 2 && k_idx[(sec * n_time_steps + time_id) * RZ_length + i] == 2){ // lambda differentiated exists in this term
+				if(sliced_to_pt[i]){ // for d, note +-d
+					double prod = A_factor * (A_1_min * RZ[(RZ_base + i) * 3] + A_2_min * RZ[(RZ_base + i) * 3 + 1] + A_3_min * RZ[(RZ_base + i) * 3 + 2]);
+
+					for(uint32_t j = 0; j < 2 * (link_id + 1); j++){
+						if(j != fir && j != sec && k_idx[(j * n_time_steps + time_id) * RZ_length + i] == 2){
+							prod *= shared_lambda[j];
+						}
+					}
+
+					result += prod;
+				}
+				else{ // for deltaD
+					double abs_value = A_1_min * g_sliced[i * 3] + A_2_min * g_sliced[i * 3 + 1] + A_3_min * g_sliced[i * 3 + 2];
+					double sign;
+					if(abs_value >= 0){
+						sign = 1.0;
+					}
+					else{
+						sign = -1.0;
+					}
+					double prod = sign * (A_1_min * RZ[(RZ_base + i) * 3] + A_2_min * RZ[(RZ_base + i) * 3 + 1] + A_3_min * RZ[(RZ_base + i) * 3 + 2]);
+
+					for(uint32_t j = 0; j < 2 * (link_id + 1); j++){
+						if(j != fir && j != sec && k_idx[(j * n_time_steps + time_id) * RZ_length + i] == 2){
+							prod *= shared_lambda[j];
+						}
+					}
+
+					result += prod;
+				}
+			}
+		}
+
+		hess_con[hess_con_base + c_id] = result / g_k[fir] / g_k[sec];
 	}
 }
 
