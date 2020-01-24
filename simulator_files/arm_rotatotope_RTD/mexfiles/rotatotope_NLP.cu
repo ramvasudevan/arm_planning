@@ -273,7 +273,7 @@ bool rotatotope_NLP::eval_g(
 
    Index offset = ra_info->n_links * n_obstacles * ra_info->n_time_steps;
 
-   //memcpy(g, ra_info->con, offset * sizeof(double));
+   memcpy(g, ra_info->con, offset * sizeof(double));
    //memcpy(g + offset, ra_info->con_self, ra_info->n_pairs * ra_info->n_time_steps * sizeof(double));
 
    offset += ra_info->n_pairs * ra_info->n_time_steps;
@@ -356,7 +356,7 @@ bool rotatotope_NLP::eval_jac_g(
       // return the values of the Jacobian of the constraints
       Index offset = ra_info->n_links * n_obstacles * ra_info->n_time_steps;
 
-      //memcpy(values, ra_info->jaco_con, offset * n * sizeof(double));
+      memcpy(values, ra_info->jaco_con, offset * n * sizeof(double));
       //memcpy(values + offset * n, ra_info->jaco_con_self, ra_info->n_pairs * ra_info->n_time_steps * n * sizeof(double));
 
       offset += ra_info->n_pairs * ra_info->n_time_steps;

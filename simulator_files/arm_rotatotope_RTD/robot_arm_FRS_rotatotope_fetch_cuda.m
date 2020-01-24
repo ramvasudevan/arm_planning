@@ -114,7 +114,7 @@ classdef robot_arm_FRS_rotatotope_fetch_cuda
                 mexin_OZ = [mexin_OZ, obj.obstacles{i}.zono.Z]; 
             end
            
-            [obj.mex_res, obj.RZ, obj.c_idx, obj.k_idx, obj.A] = rotatotope_mex(mexin_R, length(obj.obstacles), mexin_OZ, obj.k_opt, obj.q, obj.q_dot, obj.q_des, obj.g_k);
+            [obj.mex_res, obj.RZ, obj.c_idx, obj.k_idx, obj.A, obj.eval_output, obj.eval_grad_output, obj.eval_hess_output] = rotatotope_mex(mexin_R, length(obj.obstacles), mexin_OZ, obj.k_opt, obj.q, obj.q_dot, obj.q_des, obj.g_k);
             %obj.mex_res = rotatotope_mex(mexin_R, length(obj.obstacles), mexin_OZ, obj.k_opt, obj.q, obj.q_dot, obj.q_des, obj.g_k);
             toc;
         end

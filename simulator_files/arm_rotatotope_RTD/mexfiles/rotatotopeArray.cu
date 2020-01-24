@@ -377,7 +377,7 @@ void rotatotopeArray::stack(rotatotopeArray &EEs, rotatotopeArray &base) {
 		origin_shift_kernel <<< n_time_steps, 1 >>> (RZ_length[link_id], dev_RZ_stack[link_id]);
 	}
 
-	uint32_t link_id = 0;
+	uint32_t link_id = 2;
 	if(debugMode){
 		debug_RZ = new double[n_time_steps * RZ_length[link_id] * Z_width];
 		cudaMemcpy(debug_RZ, dev_RZ_stack[link_id], n_time_steps * RZ_length[link_id] * Z_width * sizeof(double), cudaMemcpyDeviceToHost);
@@ -499,15 +499,15 @@ __global__ void origin_shift_kernel(uint32_t RZ_length, double* RZ_stack){
 	RZ_stack[stack_Z * 3 + 2] += ORIGIN_SHIFT_Z;
 }
 
-void rotatotopeArray::generate_constraints(uint32_t n_obstacles_in, double* OZ, uint32_t OZ_width, uint32_t OZ_length) {
+void rotatotopeArray::generate_constraints(uint32_t n_obstacles_in, double* OZ_input, uint32_t OZ_width, uint32_t OZ_length) {
 	// obstacle constraints
 	n_obstacles = n_obstacles_in;
 
 	if(n_obstacles == 0) return;
 
-	uint32_t OZ_unit_length = OZ_length / n_obstacles;
+	OZ_unit_length = OZ_length / n_obstacles;
 
-	double* dev_OZ;
+	OZ = OZ_input;
 	cudaMalloc((void**)&dev_OZ, OZ_length * OZ_width * sizeof(double));
 	cudaMemcpy(dev_OZ, OZ, OZ_length * OZ_width * sizeof(double), cudaMemcpyHostToDevice);
 
@@ -533,8 +533,6 @@ void rotatotopeArray::generate_constraints(uint32_t n_obstacles_in, double* OZ, 
 			A[link_id] = nullptr;
 		}
 	}
-
-	cudaFree(dev_OZ);
 }
 
 __global__ void generate_polytope_normals(uint32_t buff_obstacle_length, double* RZ, double* OZ, uint32_t OZ_unit_length, double* A){
@@ -605,12 +603,17 @@ __global__ void generate_polytope_normals(uint32_t buff_obstacle_length, double*
 		deltaD += abs(A_1 * buff_obstacles[i * 3] + A_2 * buff_obstacles[i * 3 + 1] + A_3 * buff_obstacles[i * 3 + 2]);
 	}
 
-	// add a test here that throws out unnecessary constraints.
+	// add a test here that throws out unnecessary constraints, test = true for max(h) > 0, false for max(h) <= 0
 	double Ax = A_1 * obs_center[0] + A_2 * obs_center[1] + A_3 * obs_center[2];
 	double pos_res = Ax - d - deltaD;
 	double neg_res = Ax + d - deltaD;
 
-	test[c_id] = (pos_res > 0) || (neg_res > 0);
+	if(A_s_q > 0){
+		test[c_id] = (pos_res > 0) || (neg_res > 0);
+	}
+	else{
+		test[c_id] = false;
+	}
 
 	__syncthreads();
 
@@ -631,7 +634,7 @@ __global__ void generate_polytope_normals(uint32_t buff_obstacle_length, double*
 	intersection_possible = true;
 	if(!intersection_possible){ // intersection is impossible, label A as empty
 		if(c_id == 0){
-			A[A_base * 3] = -A_BIG_NUMBER;
+			A[A_base * 3] = A_BIG_NUMBER;
 		}
 	}
 	else{ // intersection is possible, copy the A matrix
@@ -687,10 +690,9 @@ void rotatotopeArray::evaluate_constraints(double* k_opt) {
 	cudaMalloc((void**)&dev_hess_con_self, n_pairs * n_time_steps * n_links * (n_links * 2 - 1) * sizeof(double));
 	cudaMemset(dev_hess_con_self, 0, n_pairs * n_time_steps * n_links * (n_links * 2 - 1) * sizeof(double));
 
-
 	double* lambda = new double[n_links * 2];
 	for (uint32_t joint_id = 0; joint_id < n_links * 2; joint_id++) {
-		lambda[joint_id] = c_k[joint_id] + k_opt[joint_id] / g_k[joint_id];
+		lambda[joint_id] = (k_opt[joint_id] - c_k[joint_id]) / g_k[joint_id];
 	}
 
 	double* dev_lambda;
@@ -706,6 +708,10 @@ void rotatotopeArray::evaluate_constraints(double* k_opt) {
 		for (uint32_t link_id = 0; link_id < n_links; link_id++) {
 			uint32_t buff_obstacle_length = RZ_length[link_id] + 3;
 			uint32_t constraint_length = ((buff_obstacle_length - 1) * (buff_obstacle_length - 2)) / 2;
+
+			dim3 grid1(n_obstacles, n_time_steps, 1);
+			dim3 block1(constraint_length, 1, 1);
+			evaluate_sliced_constraints <<< grid1, block1 >>> (link_id, link_id, n_links, RZ_length[link_id], dev_RZ_stack[link_id], dev_c_idx_stack[link_id], dev_k_idx_stack[link_id], dev_C_idx_stack[link_id], dev_lambda, dev_OZ, OZ_unit_length, dev_A[link_id], dev_g_k, dev_con, dev_jaco_con, dev_hess_con);
 
 		}
 	}
@@ -746,9 +752,222 @@ void rotatotopeArray::evaluate_constraints(double* k_opt) {
 
 	cudaFree(dev_g_k);
 
-	end_t = clock();mexPrintf("CUDA: constraint evaluation time: %.6f ms\n", 1000.0 * (end_t - start_t) / (double)(CLOCKS_PER_SEC));
+	end_t = clock();
 	if(debugMode){
 		mexPrintf("CUDA: constraint evaluation time: %.6f ms\n", 1000.0 * (end_t - start_t) / (double)(CLOCKS_PER_SEC));
+	}
+}
+
+__global__ void evaluate_sliced_constraints(uint32_t link_id, uint32_t pos_id, uint32_t n_links, uint32_t RZ_length, double* RZ, bool* c_idx, uint8_t* k_idx, uint8_t* C_idx, double* lambda, double* OZ, uint32_t OZ_unit_length, double* A, double* g_k, double* con, double* jaco_con, double* hess_con){
+	uint32_t obstacle_id = blockIdx.x;
+	uint32_t n_obstacles = gridDim.x;
+	uint32_t time_id = blockIdx.y;
+	uint32_t n_time_steps = gridDim.y;
+	uint32_t RZ_base = time_id * RZ_length;
+	uint32_t buff_obstacle_length = RZ_length + (OZ_unit_length - 1);
+	uint32_t c_id = threadIdx.x;
+	uint32_t constraint_length = blockDim.x;
+	uint32_t obstacle_base = obstacle_id * OZ_unit_length;
+	uint32_t A_base = (obstacle_id * n_time_steps + time_id) * constraint_length + c_id;
+	uint32_t valu_con_base = (pos_id * n_obstacles + obstacle_id) * n_time_steps + time_id;
+	uint32_t jaco_con_base = ((pos_id * n_obstacles + obstacle_id) * n_time_steps + time_id) * n_links * 2;
+	uint32_t hess_con_base = ((pos_id * n_obstacles + obstacle_id) * n_time_steps + time_id) * n_links * (n_links * 2 - 1);
+
+	__shared__ bool A_is_empty;
+	A_is_empty = false;
+	if(c_id == 0 && A[A_base * 3] == A_BIG_NUMBER){ // confirm whether A is empty
+		con[valu_con_base] = -A_BIG_NUMBER;
+		A_is_empty = true;
+	}
+
+	__syncthreads();
+
+	if(A_is_empty) return;
+	
+	__shared__ double g_sliced[MAX_BUFF_OBSTACLE_SIZE]; // omit the center, index starts from 1
+	__shared__ bool   sliced_to_pt[MAX_RZ_LENGTH];
+	__shared__ double shared_lambda[6];
+	__shared__ double c_poly[3];
+	__shared__ double g_poly[MAX_BUFF_OBSTACLE_SIZE]; // index starts from 0
+	__shared__ uint32_t g_poly_num;
+	__shared__ double con_res[1024]; // store array Pb here
+	__shared__ bool   index_factor[1024]; // true for d+deltaD and false for -d+deltaD
+
+	if(c_id < (link_id + 1) * 2){ // copy the lambda to shared memory
+		shared_lambda[c_id] = lambda[c_id];
+	}
+
+	__syncthreads();
+
+	if (c_id == 0) {
+		c_poly[0] = RZ[RZ_base * 3    ] - OZ[obstacle_base * 3    ];
+		c_poly[1] = RZ[RZ_base * 3 + 1] - OZ[obstacle_base * 3 + 1];
+		c_poly[2] = RZ[RZ_base * 3 + 2] - OZ[obstacle_base * 3 + 2];
+	}
+	else if(c_id < RZ_length) { // copy the original FRS
+		g_sliced[c_id * 3    ] = RZ[(RZ_base + c_id) * 3    ];
+		g_sliced[c_id * 3 + 1] = RZ[(RZ_base + c_id) * 3 + 1];
+		g_sliced[c_id * 3 + 2] = RZ[(RZ_base + c_id) * 3 + 2];
+
+		// slice the generators, label the ones sliced to a point
+		bool all = false;
+		for(uint32_t i = 0; i < 2 * (link_id + 1); i++){
+			bool k_idx_res = k_idx[(i * n_time_steps + time_id) * RZ_length + c_id];
+			bool C_idx_res = C_idx[(i * n_time_steps + time_id) * RZ_length + c_id];
+
+			if(k_idx_res == 2){
+				for(uint32_t j = 0; j < 3; j++){
+					g_sliced[c_id * 3 + j] *= shared_lambda[i];
+				}
+			}
+
+			all |= (k_idx_res != 1) || (C_idx_res != 1);
+		}
+		
+		sliced_to_pt[c_id] = all & c_idx[RZ_base + c_id];
+	}
+
+	__syncthreads();
+
+	if(c_id == 0){ // find c_poly
+		for(uint32_t i = 1; i < RZ_length; i++){
+			if(sliced_to_pt[i]){
+				c_poly[0] += g_sliced[i * 3    ];
+				c_poly[1] += g_sliced[i * 3 + 1];
+				c_poly[2] += g_sliced[i * 3 + 2];
+			}
+		}
+	}
+	else if(c_id == 1){ // find g_poly
+		g_poly_num = 0;
+
+		for(uint32_t i = 1; i < RZ_length; i++){
+			if(!sliced_to_pt[i]){
+				g_poly[g_poly_num * 3    ] = g_sliced[i * 3    ];
+				g_poly[g_poly_num * 3 + 1] = g_sliced[i * 3 + 1];
+				g_poly[g_poly_num * 3 + 2] = g_sliced[i * 3 + 2];
+				g_poly_num++;
+			}
+		}
+
+		// buffer using obstacle
+		for(uint32_t i = 1; i < OZ_unit_length; i++){
+			for(uint32_t j = 0; j < 3; j++){
+				if(i == j + 1){
+					g_poly[g_poly_num * 3 + j] = OZ[(obstacle_base + i) * 3 + j] + BUFFER_DIST / 2;
+				}
+				else{
+					g_poly[g_poly_num * 3 + j] = 0;
+				}
+			}
+			g_poly_num++;
+		}
+	}
+
+	__syncthreads();
+
+	// define Pb Pb = min(d+deltaD; -d+deltaD)
+	double A_1 = A[A_base * 3    ];
+	double A_2 = A[A_base * 3 + 1];
+	double A_3 = A[A_base * 3 + 2];
+
+	// generate d and deltaD
+	double d, deltaD;
+	if(A_1 == 0 && A_2 == 0 && A_3 == 0){ // invalid constraints
+		d = 0;
+		deltaD = A_BIG_NUMBER;
+	}
+	else{ // valid
+		d = A_1 * c_poly[0] + A_2 * c_poly[1] + A_3 * c_poly[2];
+		deltaD = 0;
+		for (uint32_t i = 0; i < g_poly_num; i++) {
+			deltaD += abs(A_1 * g_poly[i * 3] + A_2 * g_poly[i * 3 + 1] + A_3 * g_poly[i * 3 + 2]);
+		}
+	}
+
+	double pos_res =  d + deltaD;
+	double neg_res = -d + deltaD;
+
+	if(pos_res > neg_res){
+		con_res[c_id] = neg_res;
+		index_factor[c_id] = false;
+	}
+	else{
+		con_res[c_id] = pos_res;
+		index_factor[c_id] = true;
+	}
+
+	__syncthreads();
+	
+	__shared__ uint32_t min_idx;
+	__shared__ double   minimum;
+
+	if(c_id == 0){ // find all the minimum in Pb, fill in con
+		minimum = A_BIG_NUMBER + A_BIG_NUMBER;
+		min_idx = 0;
+
+		for(uint32_t i = 0; i < constraint_length; i++){
+			if(con_res[i] < minimum){
+				minimum = con_res[i];
+				min_idx = i;
+			}
+		}
+
+		con[valu_con_base] = minimum + CONSERVATIVE_BUFFER;
+	}
+
+	__syncthreads();
+
+	if(c_id < 2 * (link_id + 1)){ // fill in jaco_con
+		double A_1_min = A[((obstacle_id * n_time_steps + time_id) * constraint_length + min_idx) * 3    ];
+		double A_2_min = A[((obstacle_id * n_time_steps + time_id) * constraint_length + min_idx) * 3 + 1];
+		double A_3_min = A[((obstacle_id * n_time_steps + time_id) * constraint_length + min_idx) * 3 + 2];
+		double A_factor;
+
+		if(index_factor[min_idx]){
+			A_factor = 1.0;
+		}
+		else{
+			A_factor = -1.0;
+		}
+
+		double result = 0;
+		for(uint32_t i = 1; i < RZ_length; i++){
+			if(k_idx[(c_id * n_time_steps + time_id) * RZ_length + i] == 2){ // lambda differentiated exists in this term
+				if(sliced_to_pt[i]){ // for d, note +-d
+					double prod = A_factor * (A_1_min * RZ[(RZ_base + i) * 3] + A_2_min * RZ[(RZ_base + i) * 3 + 1] + A_3_min * RZ[(RZ_base + i) * 3 + 2]);
+
+					for(uint32_t j = 0; j < 2 * (link_id + 1); j++){
+						if(j != c_id && k_idx[(j * n_time_steps + time_id) * RZ_length + i] == 2){
+							prod *= shared_lambda[j];
+						}
+					}
+
+					result += prod;
+				}
+				else{ // for deltaD
+					double abs_value = A_1_min * g_sliced[i * 3] + A_2_min * g_sliced[i * 3 + 1] + A_3_min * g_sliced[i * 3 + 2];
+					double sign;
+					if(abs_value >= 0){
+						sign = 1.0;
+					}
+					else{
+						sign = -1.0;
+					}
+					double prod = sign * A_1_min * RZ[(RZ_base + i) * 3] + A_2_min * RZ[(RZ_base + i) * 3 + 1] + A_3_min * RZ[(RZ_base + i) * 3 + 2];
+
+					for(uint32_t j = 0; j < 2 * (link_id + 1); j++){
+						if(j != c_id && k_idx[(j * n_time_steps + time_id) * RZ_length + i] == 2){
+							prod *= shared_lambda[j];
+						}
+					}
+
+					result += prod;
+				}
+			}
+		}
+
+		jaco_con[jaco_con_base + c_id] = result / g_k[c_id];
 	}
 }
 
@@ -822,7 +1041,7 @@ rotatotopeArray::~rotatotopeArray() {
 		}
 		delete[] dev_A;
 
-		
+		cudaFree(dev_OZ);
 	}
 
 	if (debug_RZ != nullptr) {

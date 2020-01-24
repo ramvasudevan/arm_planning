@@ -172,7 +172,7 @@ P4.	solve the NLP
     app->Options()->SetStringValue("mu_strategy", "adaptive");
     app->Options()->SetStringValue("output_file", "ipopt.out");
 	if(debugMode){
-		app->Options()->SetStringValue("derivative_test", "second-order");
+		app->Options()->SetStringValue("derivative_test", "first-order");
 		app->Options()->SetNumericValue("derivative_test_perturbation", 0.000001);
 	}
 
@@ -184,9 +184,7 @@ P4.	solve the NLP
     }
 
     // Ask Ipopt to solve the problem
-	//status = app->OptimizeTNLP(mynlp);
-	
-	//mynlp->try_joint_limits(k_opt);
+	status = app->OptimizeTNLP(mynlp);
 
 	nlhs = 1;
 	
@@ -212,7 +210,7 @@ P4.	solve the NLP
 P5. handle the output, release the memory
 	*/
 	if(debugMode){
-		uint32_t link_id = 0;
+		uint32_t link_id = 2;
 		uint32_t RZ_length = links.RZ_length[link_id];
 
 		if(links.debug_RZ == nullptr){
@@ -294,6 +292,42 @@ P5. handle the output, release the memory
 			mxSetCell(output4, i, obstacle_i);
 		}
 		plhs[4] = output4;
+
+		links.evaluate_constraints(k_opt);
+
+		plhs[5] = mxCreateNumericMatrix((n_links * n_obstacles + n_pairs) * n_time_steps, 1, mxDOUBLE_CLASS, mxREAL);
+		double *output5 = (double*)mxGetData(plhs[5]);
+		for (uint32_t i = 0; i < n_obstacles; i++) {
+			for (uint32_t j = 0; j < n_links; j++) {
+				for (uint32_t k = 0; k < n_time_steps; k++) {
+					output5[(i * n_links + j) * n_time_steps + k] = links.con[(j * n_obstacles + i) * n_time_steps + k];
+				}
+			}
+		}
+		
+		plhs[6] = mxCreateNumericMatrix(n_links * 2, (n_links * n_obstacles + n_pairs) * n_time_steps, mxDOUBLE_CLASS, mxREAL);
+		double *output6 = (double*)mxGetData(plhs[6]);
+		for (uint32_t i = 0; i < n_obstacles; i++) {
+			for (uint32_t j = 0; j < n_links; j++) {
+				for (uint32_t k = 0; k < n_time_steps; k++) {
+					for (uint32_t p = 0; p < n_links * 2; p++) {
+						output6[((i * n_links + j) * n_time_steps + k) * n_links * 2 + p] = links.jaco_con[((j * n_obstacles + i) * n_time_steps + k) * n_links * 2 + p];
+					}
+				}
+			}
+		}
+
+		plhs[7] = mxCreateNumericMatrix(n_links * (n_links * 2 - 1), (n_links * n_obstacles + n_pairs) * n_time_steps, mxDOUBLE_CLASS, mxREAL);
+		double *output7 = (double*)mxGetData(plhs[7]);
+		for (uint32_t i = 0; i < n_obstacles; i++) {
+			for (uint32_t j = 0; j < n_links; j++) {
+				for (uint32_t k = 0; k < n_time_steps; k++) {
+					for (uint32_t p = 0; p < n_links * (n_links * 2 - 1); p++) {
+						output7[((i * n_links + j) * n_time_steps + k) * n_links * (n_links * 2 - 1) + p] = links.hess_con[((j * n_obstacles + i) * n_time_steps + k) * n_links * (n_links * 2 - 1) + p];
+					}
+				}
+			}
+		}
 	}
 
 	cudaFree(dev_R);

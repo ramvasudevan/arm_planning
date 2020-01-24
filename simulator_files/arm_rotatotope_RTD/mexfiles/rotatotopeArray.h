@@ -29,12 +29,12 @@ a cuda array for a cluster of rotatotopes
 #define ORIGIN_SHIFT_X -0.03265
 #define ORIGIN_SHIFT_Y 0.0
 #define ORIGIN_SHIFT_Z 0.72601
+#define MAX_RZ_LENGTH 50
 #define MAX_BUFF_OBSTACLE_SIZE 150
 #define A_BIG_NUMBER 1000000.0
 #define BUFFER_DIST 0.1460
 #define TOO_SMALL_POLYTOPE_JUDGE 0.000001
-#define MAX_K_DEP_SIZE 50
-#define CONSERVATIVE_BUFFER 0.001
+#define CONSERVATIVE_BUFFER 0.000001
 
 using std::vector;
 
@@ -83,7 +83,7 @@ public:
 		3. width of the array above
 		4. length of the array above
 	*/
-	void generate_constraints(uint32_t n_obstacles, double* OZ, uint32_t OZ_width, uint32_t OZ_length);
+	void generate_constraints(uint32_t n_obstacles, double* OZ_input, uint32_t OZ_width, uint32_t OZ_length);
 
 	/*
 	Instruction:
@@ -173,6 +173,9 @@ public:
 
 	// number of obstacles
 	uint32_t n_obstacles;
+	uint32_t OZ_unit_length;
+	double* OZ;
+	double* dev_OZ;
 
 	// constraint polynomials
 	double** A;
@@ -334,11 +337,23 @@ Instruction:
 	 takes in an obstacle (Z matrix of zonotope) and generates
      normal vectors to the FRS zono buffered by the obstacle
 Requires:
+	1. buff_obstacle_length
+	2. RZ
+	3. OZ_unit_length
+	4. A
+Modifies:
+	1. A
+*/
+__global__ void generate_polytope_normals(uint32_t buff_obstacle_length, double* RZ, double* OZ, uint32_t OZ_unit_length, double* A);
+
+/*
+Instruction:
+	 evaluate the sliced constraints and their jacobians and hessians
+Requires:
 	
 Modifies:
 	
 */
-__global__ void generate_polytope_normals(uint32_t buff_obstacle_length, double* RZ, double* OZ, uint32_t OZ_unit_length, double* A);
-
+__global__ void evaluate_sliced_constraints(uint32_t link_id, uint32_t pos_id, uint32_t n_links, uint32_t RZ_length, double* RZ, bool* c_idx, uint8_t* k_idx, uint8_t* C_idx, double* lambda, double* OZ, uint32_t OZ_unit_length, double* A, double* g_k, double* con, double* jaco_con, double* hess_con);
 
 #endif // !ROTATOTOPE_ARRAY_H

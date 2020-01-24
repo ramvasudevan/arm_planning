@@ -441,7 +441,7 @@ classdef rotatotope
             buff_zono = [buff_zono_c, buff_zono_G];
             
             [~, b, A] = polytope_PH(buff_zono, options); % A are polytope normals
-            x = obstacle(:, 1); % test if obs center is in zonotope.
+            x = obstacle(:, 1); % test if obs center is in zonotope.~=
             
             % add a test here that throws out unnecessary constraints.
             h = [A; -A]*x - b;
@@ -489,17 +489,18 @@ classdef rotatotope
                 for j = 1:size(g_sliced, 2)
                     if obj.k_idx(i, j) == 1% if gen was multiplied by this lambda_i(k_i)
                         if lambda(i) == 0 % shit... essentially have to reslice in this case because of a 0/0 when trying to divide by lambda.
-                            g_crap = obj.Rg;
-                            for poop = 1:length(lambda)
-                                if ~(poop == i)
-                                    g_crap(:, obj.k_idx(poop, :) == 1) = g_crap(:, obj.k_idx(poop, :) == 1)*lambda(poop); % reslice gens
-                                end
-                            end
-                            if slice_to_pt_idx(j) % this component is in d
-                                grad_h(i) = grad_h(i) + min(a*g_crap(:, j)*(1/obj.g_k(i)));
-                            else % this component is in deltaD
-                                grad_h(i) = grad_h(i) + min(abs(a*g_crap(:, j)*(1/obj.g_k(i)))); % same as above, but with absolute value
-                            end
+                            error('ahhh!')
+%                             g_crap = obj.Rg;
+%                             for poop = 1:length(lambda)
+%                                 if ~(poop == i)
+%                                     g_crap(:, obj.k_idx(poop, :) == 1) = g_crap(:, obj.k_idx(poop, :) == 1)*lambda(poop); % reslice gens
+%                                 end
+%                             end
+%                             if slice_to_pt_idx(j) % this component is in d
+%                                 grad_h(i) = grad_h(i) + min(a*g_crap(:, j)*(1/obj.g_k(i)));
+%                             else % this component is in deltaD
+%                                 grad_h(i) = grad_h(i) + min(abs(a*g_crap(:, j)*(1/obj.g_k(i)))); % same as above, but with absolute value
+%                             end
                         else
                             if slice_to_pt_idx(j) % this component is in d
                                 grad_h(i) = grad_h(i) + min(a*g_sliced(:, j)*(1/obj.g_k(i))*(1/lambda(i)));
