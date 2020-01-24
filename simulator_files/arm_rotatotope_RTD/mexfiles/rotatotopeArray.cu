@@ -812,8 +812,8 @@ __global__ void evaluate_sliced_constraints(uint32_t link_id, uint32_t pos_id, u
 		// slice the generators, label the ones sliced to a point
 		bool all = false;
 		for(uint32_t i = 0; i < 2 * (link_id + 1); i++){
-			bool k_idx_res = k_idx[(i * n_time_steps + time_id) * RZ_length + c_id];
-			bool C_idx_res = C_idx[(i * n_time_steps + time_id) * RZ_length + c_id];
+			uint8_t k_idx_res = k_idx[(i * n_time_steps + time_id) * RZ_length + c_id];
+			uint8_t C_idx_res = C_idx[(i * n_time_steps + time_id) * RZ_length + c_id];
 
 			if(k_idx_res == 2){
 				for(uint32_t j = 0; j < 3; j++){
@@ -898,6 +898,8 @@ __global__ void evaluate_sliced_constraints(uint32_t link_id, uint32_t pos_id, u
 	}
 
 	__syncthreads();
+
+	if(c_id >= 2 * (link_id + 1) + (link_id + 1) * ((link_id + 1) * 2 - 1)) return; // end the unused threads 
 	
 	__shared__ uint32_t min_idx;
 	__shared__ double   minimum;
@@ -954,7 +956,7 @@ __global__ void evaluate_sliced_constraints(uint32_t link_id, uint32_t pos_id, u
 					else{
 						sign = -1.0;
 					}
-					double prod = sign * A_1_min * RZ[(RZ_base + i) * 3] + A_2_min * RZ[(RZ_base + i) * 3 + 1] + A_3_min * RZ[(RZ_base + i) * 3 + 2];
+					double prod = sign * (A_1_min * RZ[(RZ_base + i) * 3] + A_2_min * RZ[(RZ_base + i) * 3 + 1] + A_3_min * RZ[(RZ_base + i) * 3 + 2]);
 
 					for(uint32_t j = 0; j < 2 * (link_id + 1); j++){
 						if(j != c_id && k_idx[(j * n_time_steps + time_id) * RZ_length + i] == 2){

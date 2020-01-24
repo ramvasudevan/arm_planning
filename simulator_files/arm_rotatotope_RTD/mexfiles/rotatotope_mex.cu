@@ -174,6 +174,8 @@ P4.	solve the NLP
 	if(debugMode){
 		app->Options()->SetStringValue("derivative_test", "first-order");
 		app->Options()->SetNumericValue("derivative_test_perturbation", 0.000001);
+		app->Options()->SetStringValue("derivative_test_print_all", "no");
+		
 	}
 
     // Initialize the IpoptApplication and process the options
@@ -192,7 +194,7 @@ P4.	solve the NLP
         plhs[0] = mxCreateNumericMatrix(n_links * 2, 1, mxDOUBLE_CLASS, mxREAL);
 		double *output0 = (double*)mxGetData(plhs[0]);
 		for (uint32_t i = 0; i < n_links * 2; i++) {
-			output0[i] = 0;//mynlp->solution[i];
+			output0[i] = mynlp->solution[i];
 		}
     }
     else {

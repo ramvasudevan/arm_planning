@@ -1,8 +1,8 @@
-clear all; clc;
+close all; clc;
 
 teston = 1;
 % code for testing the constraint generation for a 3 link arm
-% figure(1); clf; hold on; axis equal;
+figure(1); clf; hold on; axis equal;
 
 % set FRS_options
 FRS_options = struct();
@@ -16,9 +16,21 @@ FRS_options.origin_shift = [-0.03265; 0; 0.72601];
 
 
 % get current obstacles
-obs_center = [-0.0326; 0; 0.7260];
+obs_center = [-0.03265 ;0; 0.72601];
 obs_width = [0.06];
 O{1} = box_obstacle_zonotope('center', obs_center(:), 'side_lengths', [obs_width, obs_width, obs_width]);
+% obs_center = [-0.03265 ;0; 0.72601];
+% obs_width = [0.06];
+% O{2} = box_obstacle_zonotope('center', obs_center(:), 'side_lengths', [obs_width, obs_width, obs_width]);
+% obs_center = [0.6; -0.4; 0.7];
+% obs_width = [0.1];
+% O{3} = box_obstacle_zonotope('center', obs_center(:), 'side_lengths', [obs_width, obs_width, obs_width]);
+% obs_center = [-0.8; 0.5; 0.7];
+% obs_width = [0.1];
+% O{4} = box_obstacle_zonotope('center', obs_center(:), 'side_lengths', [obs_width, obs_width, obs_width]);
+% obs_center = [-0.6; -0.4; -0.7];
+% obs_width = [0.1];
+% O{5} = box_obstacle_zonotope('center', obs_center(:), 'side_lengths', [obs_width, obs_width, obs_width]);
 obs_patch = plotFilled(O{1}.zono, [1, 3], 'r');
 obs_patch.FaceAlpha = 0.2;
 % plot(O{1});
@@ -62,11 +74,13 @@ R_cuda = robot_arm_FRS_rotatotope_fetch_cuda(q_0, q_dot_0, q_des, O, bad_k, FRS_
 
 mex_eval_out = R_cuda.eval_output;
 mex_eval_grad_out = R_cuda.eval_grad_output;
-figure(1);
-plot(eval_out,'r.');hold on;plot(mex_eval_out(1:(end-100)),'b.');
-legend('patrick','bohao');
-figure(2);
-plot(eval_out-mex_eval_out(1:(end-100)));
+mex_res = R_cuda.mex_res
+return;
+% figure(1);
+% plot(eval_out,'r.');hold on;plot(mex_eval_out(1:(end-100)),'b.');
+% legend('patrick','bohao');
+% figure(2);
+% plot(eval_out-mex_eval_out(1:(end-100)));
 
 % link_id = 3;
 % time_id = 79;
@@ -87,7 +101,6 @@ plot(eval_out-mex_eval_out(1:(end-100)));
 % generate self intersection constraints
 % R = R.generate_self_intersection_constraints();
 
-return;
 % grid the k_4, k_6 constraint space
 if teston
     idx1 = 1;
@@ -106,9 +119,10 @@ if teston
         lims = [-g_k(4) -g_k(4) g_k(4) g_k(4) -g_k(4); -g_k(6) g_k(6) g_k(6) -g_k(6) -g_k(6)];
         plot(lims(1, :)', lims(2, :)', 'k--', 'LineWidth', 4);
         
-        myk = linspace(-g_k(4), g_k(4), 50);
+        myk = linspace(-g_k(4), g_k(4), 20);
         [Xk, Yk] = meshgrid(myk, myk);
-        % Zk = zeros(size(Xk));
+        Zk = zeros(length(myk),length(myk));
+        Zk_cuda = zeros(length(myk),length(myk));
         for i = 1:length(myk)
             for j = 1:length(myk)
                 K = [0;0;0;Xk(i, j); 0;Yk(i, j)];
@@ -124,14 +138,25 @@ if teston
                 
 %                 Zk = A_con*lambdas_prod - b_con;
                 h = R.evaluate_sliced_constraints(K, O);
-                Zk = max(h);
+                Zk(i,j) = max(h);
 %                 Zk = -Zk;
 %                 disp(Zk);
                 %             Zk = -Zk; % hmm i'm off by this extra negative sign somewhere
-                if Zk >= 0
+                if Zk(i,j) >= 0
+                    plot(Xk(i, j), Yk(i, j), 'bx', 'MarkerSize', 10, 'LineWidth', 6);
+%                     pause;
+                end
+                
+                
+                R_cuda = robot_arm_FRS_rotatotope_fetch_cuda(q_0, q_dot_0, q_des, O, K, FRS_options);
+                mex_eval_out = R_cuda.eval_output(1:(end-100));
+                Zk_cuda(i,j) = max(mex_eval_out);
+                
+                if Zk_cuda(i,j) >= 0
                     plot(Xk(i, j), Yk(i, j), 'r.', 'MarkerSize', 10, 'LineWidth', 6);
 %                     pause;
                 end
+                
             end
 %         end
     end

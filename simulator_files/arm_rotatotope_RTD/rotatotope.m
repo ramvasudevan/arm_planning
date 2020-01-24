@@ -18,7 +18,7 @@ classdef rotatotope
         rot_axes = []; % axes about which we are rotating
         Z; % zonotope representing the set to rotate
         dim double;
-        red_order = 5; % desired order of reduced zonotope
+        red_order = 10; % desired order of reduced zonotope
         
         % hold on to dimensions of first zonotope
         pos_dim = [1, 2];
@@ -447,7 +447,7 @@ classdef rotatotope
             h = [A; -A]*x - b;
             if max(h) > 0
                 % intersection not possible
-%                 A = [];
+                A = [];
             end
         end
         
@@ -489,18 +489,18 @@ classdef rotatotope
                 for j = 1:size(g_sliced, 2)
                     if obj.k_idx(i, j) == 1% if gen was multiplied by this lambda_i(k_i)
                         if lambda(i) == 0 % shit... essentially have to reslice in this case because of a 0/0 when trying to divide by lambda.
-                            error('ahhh!')
-%                             g_crap = obj.Rg;
-%                             for poop = 1:length(lambda)
-%                                 if ~(poop == i)
-%                                     g_crap(:, obj.k_idx(poop, :) == 1) = g_crap(:, obj.k_idx(poop, :) == 1)*lambda(poop); % reslice gens
-%                                 end
-%                             end
-%                             if slice_to_pt_idx(j) % this component is in d
-%                                 grad_h(i) = grad_h(i) + min(a*g_crap(:, j)*(1/obj.g_k(i)));
-%                             else % this component is in deltaD
-%                                 grad_h(i) = grad_h(i) + min(abs(a*g_crap(:, j)*(1/obj.g_k(i)))); % same as above, but with absolute value
-%                             end
+%                             error('ahhh!')
+                            g_crap = obj.Rg;
+                            for poop = 1:length(lambda)
+                                if ~(poop == i)
+                                    g_crap(:, obj.k_idx(poop, :) == 1) = g_crap(:, obj.k_idx(poop, :) == 1)*lambda(poop); % reslice gens
+                                end
+                            end
+                            if slice_to_pt_idx(j) % this component is in d
+                                grad_h(i) = grad_h(i) + min(a*g_crap(:, j)*(1/obj.g_k(i)));
+                            else % this component is in deltaD
+                                grad_h(i) = grad_h(i) + min(abs(a*g_crap(:, j)*(1/obj.g_k(i)))); % same as above, but with absolute value
+                            end
                         else
                             if slice_to_pt_idx(j) % this component is in d
                                 grad_h(i) = grad_h(i) + min(a*g_sliced(:, j)*(1/obj.g_k(i))*(1/lambda(i)));
