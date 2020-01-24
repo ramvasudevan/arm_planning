@@ -903,6 +903,10 @@ __global__ void evaluate_sliced_constraints(uint32_t link_id, uint32_t pos_id, u
 	
 	__shared__ uint32_t min_idx;
 	__shared__ double   minimum;
+	__shared__ double   A_1_min;
+	__shared__ double   A_2_min;
+	__shared__ double   A_3_min;
+	__shared__ double   A_factor;
 
 	if(c_id == 0){ // find all the minimum in Pb, fill in con
 		minimum = A_BIG_NUMBER + A_BIG_NUMBER;
@@ -916,15 +920,10 @@ __global__ void evaluate_sliced_constraints(uint32_t link_id, uint32_t pos_id, u
 		}
 
 		con[valu_con_base] = minimum + CONSERVATIVE_BUFFER;
-	}
 
-	__syncthreads();
-
-	if(c_id < 2 * (link_id + 1)){ // fill in jaco_con
-		double A_1_min = A[((obstacle_id * n_time_steps + time_id) * constraint_length + min_idx) * 3    ];
-		double A_2_min = A[((obstacle_id * n_time_steps + time_id) * constraint_length + min_idx) * 3 + 1];
-		double A_3_min = A[((obstacle_id * n_time_steps + time_id) * constraint_length + min_idx) * 3 + 2];
-		double A_factor;
+		A_1_min = A[((obstacle_id * n_time_steps + time_id) * constraint_length + min_idx) * 3    ];
+		A_2_min = A[((obstacle_id * n_time_steps + time_id) * constraint_length + min_idx) * 3 + 1];
+		A_3_min = A[((obstacle_id * n_time_steps + time_id) * constraint_length + min_idx) * 3 + 2];
 
 		if(index_factor[min_idx]){
 			A_factor = 1.0;
@@ -932,7 +931,11 @@ __global__ void evaluate_sliced_constraints(uint32_t link_id, uint32_t pos_id, u
 		else{
 			A_factor = -1.0;
 		}
+	}
 
+	__syncthreads();
+
+	if(c_id < 2 * (link_id + 1)){ // fill in jaco_con
 		double result = 0;
 		for(uint32_t i = 1; i < RZ_length; i++){
 			if(k_idx[(c_id * n_time_steps + time_id) * RZ_length + i] == 2){ // lambda differentiated exists in this term
