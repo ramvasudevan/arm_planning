@@ -969,6 +969,9 @@ __global__ void evaluate_sliced_constraints(uint32_t link_id, uint32_t pos_id, u
 
 		jaco_con[jaco_con_base + c_id] = result / g_k[c_id];
 	}
+	else if(c_id < 2 * (link_id + 1) + (link_id + 1) * ((link_id + 1) * 2 - 1)){ // fill in hessian
+
+	}
 }
 
 rotatotopeArray::~rotatotopeArray() {
