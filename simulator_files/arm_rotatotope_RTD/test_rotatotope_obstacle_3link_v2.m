@@ -8,7 +8,7 @@ FRS_options = struct();
 FRS_options.t_plan = 0.01;
 FRS_options.T = 1;
 FRS_options.L = 0.33;
-FRS_options.buffer_dist = 0;
+FRS_options.buffer_dist = 0.1460;
 FRS_options.combs = generate_combinations_upto(200);
 FRS_options.maxcombs = 200;
 FRS_options.origin_shift = [-0.03265; 0; 0.72601];
@@ -49,10 +49,10 @@ q_des = [0.6441;
        -1.4591;
         0.4469;
        -0.9425];
-% good_k = -pi/6*ones(6, 1) ;
+good_k = -pi/6*ones(6, 1) ;
 % bad_k = pi/6*ones(6, 1) - 0.001 ;
 % bad_k = [pi/6 - 0.001; pi/6 - 0.001; pi/12; pi/24; -pi/36; pi/48];
-bad_k = [pi/6 - 0.001; -pi/6 + 0.001; pi/6 - 0.001; pi/6 - 0.001; -pi/6 + 0.001; pi/6 - 0.001];
+% bad_k = [pi/6 - 0.001; -pi/6 + 0.001; pi/6 - 0.001; pi/6 - 0.001; -pi/6 + 0.001; pi/6 - 0.001];
 % bad_k = [pi/6 - 0.001; -pi/6 + 0.001 ; pi/6 - 0.001 ; -pi/6 + 0.001; pi/6 - 0.001; pi/6 - 0.001];
 % bad_k = -pi/6*ones(6, 1) + 0.001;
 % good_k = [0; 0; 0; -pi/6 + 0.001; 0; -pi/6 + 0.001];
@@ -60,10 +60,11 @@ bad_k = [pi/6 - 0.001; -pi/6 + 0.001; pi/6 - 0.001; pi/6 - 0.001; -pi/6 + 0.001;
 
 
 % generate FRS
+figure(1); clf; hold on;
 R = robot_arm_FRS_rotatotope_fetch(q_0, q_dot_0, FRS_options);
-% R.plot(99, {'b', 'b', 'b'});
+R.plot(10, {'b', 'b', 'b'});
 % R.plot_slice(good_k, 10, {'g', 'g', 'g'});
-% R.plot_slice(bad_k, 10, {'r', 'r', 'r'});
+% R.plot_slice(good_k, 10, {'r', 'r', 'r'});
 % R.plot_slice_gensIncluded(bad_k, 10, {'r', 'r', 'r'});
 
 % map obstacles to trajectory parameter space
@@ -78,12 +79,12 @@ mex_eval_out = R_cuda.eval_output;
 mex_eval_grad_out = R_cuda.eval_grad_output;
 mex_res = R_cuda.mex_res;
 
-% figure(1);
-% plot(eval_out,'r.');hold on;plot(mex_eval_out(1:(end-100)),'b.');
-% legend('patrick','bohao');
-% figure(2);
-% plot(eval_out-mex_eval_out(1:(end-100)));
-
+figure(1);
+plot(eval_out,'r.');hold on;plot(mex_eval_out(1:(end-100)),'b.');
+legend('patrick','bohao');
+figure(2);
+plot(eval_out-mex_eval_out(1:(end-100)));
+return;
 % link_id = 3;
 % time_id = 79;
 % rot = R.link_FRS;

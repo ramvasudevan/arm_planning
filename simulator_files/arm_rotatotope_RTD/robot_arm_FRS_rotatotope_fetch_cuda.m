@@ -12,7 +12,7 @@ classdef robot_arm_FRS_rotatotope_fetch_cuda
         n_links = 3;
         n_time_steps = 0;
         dim = 3;
-        FRS_path = 'FRS_trig_constantK/';
+        FRS_path = 'FRS_trig/';
         FRS_key = [];
         
         q;
@@ -32,6 +32,16 @@ classdef robot_arm_FRS_rotatotope_fetch_cuda
         c_k = [];
         
         A = [];
+        
+        A_con = [];
+        d_con = [];
+        delta_con = [];
+        k_con = [];
+        
+        A_con_self = [];
+        d_con_self = [];
+        delta_con_self = [];
+        k_con_self = [];
         
         eval_output = [];
         eval_grad_output = [];
@@ -114,7 +124,12 @@ classdef robot_arm_FRS_rotatotope_fetch_cuda
                 mexin_OZ = [mexin_OZ, obj.obstacles{i}.zono.Z]; 
             end
            
-            [obj.mex_res, obj.RZ, obj.c_idx, obj.k_idx, obj.A, obj.eval_output, obj.eval_grad_output, obj.eval_hess_output] = rotatotope_mex(mexin_R, length(obj.obstacles), mexin_OZ, obj.k_opt, obj.q, obj.q_dot, obj.q_des, obj.g_k);
+            % fully sliced
+            %[obj.mex_res, obj.RZ, obj.c_idx, obj.k_idx, obj.A_con, obj.d_con, obj.delta_con, obj.k_con, obj.eval_output, obj.eval_grad_output, obj.eval_hess_output, obj.A_con_self, obj.d_con_self, obj.delta_con_self, obj.k_con_self] = rotatotope_mex_fully(mexin_R, length(obj.obstacles), mexin_OZ, obj.k_opt, obj.q, obj.q_dot, obj.q_des, obj.g_k);
+            obj.mex_res = rotatotope_mex_fully(mexin_R, length(obj.obstacles), mexin_OZ, obj.k_opt, obj.q, obj.q_dot, obj.q_des, obj.g_k);
+            
+            % partially sliced
+            %[obj.mex_res, obj.RZ, obj.c_idx, obj.k_idx, obj.A, obj.eval_output, obj.eval_grad_output, obj.eval_hess_output] = rotatotope_mex_partial(mexin_R, length(obj.obstacles), mexin_OZ, obj.k_opt, obj.q, obj.q_dot, obj.q_des, obj.g_k);
             %obj.mex_res = rotatotope_mex(mexin_R, length(obj.obstacles), mexin_OZ, obj.k_opt, obj.q, obj.q_dot, obj.q_des, obj.g_k);
             toc;
         end
