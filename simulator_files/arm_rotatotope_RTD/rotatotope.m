@@ -276,7 +276,7 @@ classdef rotatotope
                 g_sliced(:, obj.k_idx(i, :) == 1) = g_sliced(:, obj.k_idx(i, :) == 1)*lambda(i); % slice gens
             end
             
-            slice_to_pt_idx = all(obj.k_idx ~= 0 | obj.C_idx ~= 0, 1) & obj.c_idx == 1;
+            slice_to_pt_idx = all(obj.k_idx ~= 0 | obj.C_idx ~= 0, 1) & (obj.c_idx == 1);
             % take the k dep gens that slice to points... add to center
             c_out = c + sum(g_sliced(:, slice_to_pt_idx), 2);
             g_out = g_sliced(:, ~slice_to_pt_idx);
@@ -447,7 +447,7 @@ classdef rotatotope
             h = [A; -A]*x - b;
             if max(h) > 0
                 % intersection not possible
-                A = [];
+%                 A = [];
             end
         end
         

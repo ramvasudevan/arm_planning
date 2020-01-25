@@ -618,9 +618,9 @@ __global__ void generate_polytope_normals(uint32_t buff_obstacle_length, double*
 	__syncthreads();
 
 	__shared__ bool intersection_possible;
-	intersection_possible = true;
 
 	if(c_id == 0){
+		intersection_possible = true;
 		for(uint32_t i = 0; i < constraint_length; i++){
 			if(test[i]){
 				intersection_possible = false;
@@ -752,7 +752,7 @@ void rotatotopeArray::evaluate_constraints(double* k_opt) {
 
 	cudaFree(dev_g_k);
 
-	end_t = clock();
+	end_t = clock();mexPrintf("CUDA: constraint evaluation time: %.6f ms\n", 1000.0 * (end_t - start_t) / (double)(CLOCKS_PER_SEC));
 	if(debugMode){
 		mexPrintf("CUDA: constraint evaluation time: %.6f ms\n", 1000.0 * (end_t - start_t) / (double)(CLOCKS_PER_SEC));
 	}
@@ -774,10 +774,15 @@ __global__ void evaluate_sliced_constraints(uint32_t link_id, uint32_t pos_id, u
 	uint32_t hess_con_base = ((pos_id * n_obstacles + obstacle_id) * n_time_steps + time_id) * n_links * (n_links * 2 - 1);
 
 	__shared__ bool A_is_empty;
-	A_is_empty = false;
-	if(c_id == 0 && A[A_base * 3] == A_BIG_NUMBER){ // confirm whether A is empty
-		con[valu_con_base] = -A_BIG_NUMBER;
-		A_is_empty = true;
+	
+	if(c_id == 0){ // confirm whether A is empty
+		if (A[A_base * 3] == A_BIG_NUMBER) {
+			con[valu_con_base] = -A_BIG_NUMBER;
+			A_is_empty = true;
+		}
+		else{
+			A_is_empty = false;
+		}
 	}
 
 	__syncthreads();
@@ -810,7 +815,7 @@ __global__ void evaluate_sliced_constraints(uint32_t link_id, uint32_t pos_id, u
 		g_sliced[c_id * 3 + 2] = RZ[(RZ_base + c_id) * 3 + 2];
 
 		// slice the generators, label the ones sliced to a point
-		bool all = false;
+		bool all = true;
 		for(uint32_t i = 0; i < 2 * (link_id + 1); i++){
 			uint8_t k_idx_res = k_idx[(i * n_time_steps + time_id) * RZ_length + c_id];
 			uint8_t C_idx_res = C_idx[(i * n_time_steps + time_id) * RZ_length + c_id];
@@ -821,7 +826,7 @@ __global__ void evaluate_sliced_constraints(uint32_t link_id, uint32_t pos_id, u
 				}
 			}
 
-			all |= (k_idx_res != 1) || (C_idx_res != 1);
+			all &= (k_idx_res != 1) || (C_idx_res != 1);
 		}
 		
 		sliced_to_pt[c_id] = all & c_idx[RZ_base + c_id];

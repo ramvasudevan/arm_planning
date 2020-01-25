@@ -2,7 +2,7 @@ close all; clc;
 
 teston = 1;
 % code for testing the constraint generation for a 3 link arm
-figure(1); clf; hold on; axis equal;
+% figure(1); clf; hold on; axis equal;
 
 % set FRS_options
 FRS_options = struct();
@@ -16,24 +16,24 @@ FRS_options.origin_shift = [-0.03265; 0; 0.72601];
 
 
 % get current obstacles
-% obs_center = [-0.03265 ;0; 0.72601];
-% obs_width = [0.06];
-% O{1} = box_obstacle_zonotope('center', obs_center(:), 'side_lengths', [obs_width, obs_width, obs_width]);
-obs_center = [0.8; 0.2; -0.2];
-obs_width = [0.1];
+obs_center = [-0.03265 ;0; 0.72601];
+obs_width = [0.06];
 O{1} = box_obstacle_zonotope('center', obs_center(:), 'side_lengths', [obs_width, obs_width, obs_width]);
-obs_center = [0.6; 0.4; -0.7];
-obs_width = [0.15];
-O{2} = box_obstacle_zonotope('center', obs_center(:), 'side_lengths', [obs_width, obs_width, obs_width]);
-obs_center = [0.6; -0.4; 0.7];
-obs_width = [0.1];
-O{3} = box_obstacle_zonotope('center', obs_center(:), 'side_lengths', [obs_width, obs_width, obs_width]);
-obs_center = [-0.8; 0.5; 0.7];
-obs_width = [0.1];
-O{4} = box_obstacle_zonotope('center', obs_center(:), 'side_lengths', [obs_width, obs_width, obs_width]);
-obs_center = [0.6; -0.4; -0.7];
-obs_width = [0.1];
-O{5} = box_obstacle_zonotope('center', obs_center(:), 'side_lengths', [obs_width, obs_width, obs_width]);
+% obs_center = [0.8; 0.2; -0.2];
+% obs_width = [0.1];
+% O{1} = box_obstacle_zonotope('center', obs_center(:), 'side_lengths', [obs_width, obs_width, obs_width]);
+% obs_center = [0.6; 0.4; -0.7];
+% obs_width = [0.15];
+% O{2} = box_obstacle_zonotope('center', obs_center(:), 'side_lengths', [obs_width, obs_width, obs_width]);
+% obs_center = [0.6; -0.4; 0.7];
+% obs_width = [0.1];
+% O{3} = box_obstacle_zonotope('center', obs_center(:), 'side_lengths', [obs_width, obs_width, obs_width]);
+% obs_center = [-0.8; 0.5; 0.7];
+% obs_width = [0.1];
+% O{4} = box_obstacle_zonotope('center', obs_center(:), 'side_lengths', [obs_width, obs_width, obs_width]);
+% obs_center = [0.6; -0.4; -0.7];
+% obs_width = [0.1];
+% O{5} = box_obstacle_zonotope('center', obs_center(:), 'side_lengths', [obs_width, obs_width, obs_width]);
 obs_patch = plotFilled(O{1}.zono, [1, 3], 'r');
 obs_patch.FaceAlpha = 0.2;
 % plot(O{1});
@@ -77,14 +77,14 @@ R_cuda = robot_arm_FRS_rotatotope_fetch_cuda(q_0, q_dot_0, q_des, O, bad_k, FRS_
 
 mex_eval_out = R_cuda.eval_output;
 mex_eval_grad_out = R_cuda.eval_grad_output;
-mex_res = R_cuda.mex_res
-return;
-% figure(1);
-% plot(eval_out,'r.');hold on;plot(mex_eval_out(1:(end-100)),'b.');
-% legend('patrick','bohao');
-% figure(2);
-% plot(eval_out-mex_eval_out(1:(end-100)));
+mex_res = R_cuda.mex_res;
 
+figure(1);
+plot(eval_out,'r.');hold on;plot(mex_eval_out(1:(end-100)),'b.');
+legend('patrick','bohao');
+figure(2);
+plot(eval_out-mex_eval_out(1:(end-100)));
+return;
 % link_id = 3;
 % time_id = 79;
 % rot = R.link_FRS;

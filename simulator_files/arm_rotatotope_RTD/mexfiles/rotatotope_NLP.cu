@@ -175,7 +175,7 @@ bool rotatotope_NLP::get_starting_point(
 
    // initialize to the given starting point
    for( Index i = 0; i < n; i++ ) {
-      x[i] = 0;
+      x[i] = 0.1;
    }
 
    return true;
