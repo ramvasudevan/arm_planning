@@ -2,14 +2,13 @@ close all; clc;
 
 teston = 1;
 % code for testing the constraint generation for a 3 link arm
-% figure(1); clf; hold on; axis equal;
 
 % set FRS_options
 FRS_options = struct();
 FRS_options.t_plan = 0.01;
 FRS_options.T = 1;
 FRS_options.L = 0.33;
-FRS_options.buffer_dist = 0.1460;
+FRS_options.buffer_dist = 0;
 FRS_options.combs = generate_combinations_upto(200);
 FRS_options.maxcombs = 200;
 FRS_options.origin_shift = [-0.03265; 0; 0.72601];
@@ -79,12 +78,12 @@ mex_eval_out = R_cuda.eval_output;
 mex_eval_grad_out = R_cuda.eval_grad_output;
 mex_res = R_cuda.mex_res;
 
-figure(1);
-plot(eval_out,'r.');hold on;plot(mex_eval_out(1:(end-100)),'b.');
-legend('patrick','bohao');
-figure(2);
-plot(eval_out-mex_eval_out(1:(end-100)));
-return;
+% figure(1);
+% plot(eval_out,'r.');hold on;plot(mex_eval_out(1:(end-100)),'b.');
+% legend('patrick','bohao');
+% figure(2);
+% plot(eval_out-mex_eval_out(1:(end-100)));
+
 % link_id = 3;
 % time_id = 79;
 % rot = R.link_FRS;
@@ -105,6 +104,7 @@ return;
 % R = R.generate_self_intersection_constraints();
 
 % grid the k_4, k_6 constraint space
+figure(1); clf; hold on; axis equal;
 if teston
     idx1 = 1;
     idx2 = 3;
@@ -149,7 +149,6 @@ if teston
                     plot(Xk(i, j), Yk(i, j), 'bx', 'MarkerSize', 10, 'LineWidth', 6);
 %                     pause;
                 end
-                
                 
                 R_cuda = robot_arm_FRS_rotatotope_fetch_cuda(q_0, q_dot_0, q_des, O, K, FRS_options);
                 mex_eval_out = R_cuda.eval_output(1:(end-100));

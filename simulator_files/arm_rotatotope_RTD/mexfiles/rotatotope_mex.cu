@@ -185,7 +185,7 @@ P4.	solve the NLP
     }
 
     // Ask Ipopt to solve the problem
-	status = app->OptimizeTNLP(mynlp);
+	//status = app->OptimizeTNLP(mynlp);
 
 	nlhs = 1;
 	
@@ -193,7 +193,7 @@ P4.	solve the NLP
         plhs[0] = mxCreateNumericMatrix(n_links * 2, 1, mxDOUBLE_CLASS, mxREAL);
 		double *output0 = (double*)mxGetData(plhs[0]);
 		for (uint32_t i = 0; i < n_links * 2; i++) {
-			output0[i] = mynlp->solution[i];
+			output0[i] = 0;//mynlp->solution[i];
 		}
     }
     else {

@@ -32,7 +32,7 @@ a cuda array for a cluster of rotatotopes
 #define MAX_RZ_LENGTH 50
 #define MAX_BUFF_OBSTACLE_SIZE 150
 #define A_BIG_NUMBER 1000000.0
-#define BUFFER_DIST 0.1460
+#define BUFFER_DIST 0
 #define CONSERVATIVE_BUFFER 0.000001
 
 using std::vector;

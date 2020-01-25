@@ -605,8 +605,8 @@ __global__ void generate_polytope_normals(uint32_t buff_obstacle_length, double*
 
 	// add a test here that throws out unnecessary constraints, test = true for max(h) > 0, false for max(h) <= 0
 	double Ax = A_1 * obs_center[0] + A_2 * obs_center[1] + A_3 * obs_center[2];
-	double pos_res = Ax - d - deltaD;
-	double neg_res = Ax + d - deltaD;
+	double pos_res =  Ax - d - deltaD;
+	double neg_res = -Ax + d - deltaD;
 
 	if(A_s_q > 0){
 		test[c_id] = (pos_res > 0) || (neg_res > 0);
@@ -631,7 +631,7 @@ __global__ void generate_polytope_normals(uint32_t buff_obstacle_length, double*
 
 	__syncthreads();
 
-	intersection_possible = true;
+	//intersection_possible = true;
 	if(!intersection_possible){ // intersection is impossible, label A as empty
 		if(c_id == 0){
 			A[A_base * 3] = A_BIG_NUMBER;
@@ -752,10 +752,8 @@ void rotatotopeArray::evaluate_constraints(double* k_opt) {
 
 	cudaFree(dev_g_k);
 
-	end_t = clock();mexPrintf("CUDA: constraint evaluation time: %.6f ms\n", 1000.0 * (end_t - start_t) / (double)(CLOCKS_PER_SEC));
-	if(debugMode){
-		mexPrintf("CUDA: constraint evaluation time: %.6f ms\n", 1000.0 * (end_t - start_t) / (double)(CLOCKS_PER_SEC));
-	}
+	end_t = clock();
+	mexPrintf("CUDA: constraint evaluation time: %.6f ms\n", 1000.0 * (end_t - start_t) / (double)(CLOCKS_PER_SEC));
 }
 
 __global__ void evaluate_sliced_constraints(uint32_t link_id, uint32_t pos_id, uint32_t n_links, uint32_t RZ_length, double* RZ, bool* c_idx, uint8_t* k_idx, uint8_t* C_idx, double* lambda, double* OZ, uint32_t OZ_unit_length, double* A, double* g_k, double* con, double* jaco_con, double* hess_con){

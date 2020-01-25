@@ -447,7 +447,7 @@ classdef rotatotope
             h = [A; -A]*x - b;
             if max(h) > 0
                 % intersection not possible
-%                 A = [];
+                A = [];
             end
         end
         
