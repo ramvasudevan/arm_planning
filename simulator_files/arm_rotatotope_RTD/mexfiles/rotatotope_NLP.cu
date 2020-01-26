@@ -173,9 +173,10 @@ bool rotatotope_NLP::get_starting_point(
       mexErrMsgIdAndTxt("MyProg:ConvertString", "*** Error wrong value of n in get_starting_point!");
    }
 
-   // initialize to the given starting point
+   // initialize to a random point
+   std::srand(std::time(NULL));
    for( Index i = 0; i < n; i++ ) {
-      x[i] = 0.1;
+      x[i] = 2 * g_k[i] * ((double)std::rand() / RAND_MAX) - g_k[i];
    }
 
    return true;
@@ -246,19 +247,13 @@ bool rotatotope_NLP::eval_g(
       mexErrMsgIdAndTxt("MyProg:ConvertString", "*** Error wrong value of m in eval_g!");
    }
    
-   bool compute_new_constraints;
-   if(ra_info->current_k_opt != nullptr){
-        compute_new_constraints = false;
-        for(uint32_t i = 0; i < n; i++){
-            if(ra_info->current_k_opt[i] != x[i]){
-                compute_new_constraints = true;
-                break;
-            }
-        }
-    }
-    else{
-        compute_new_constraints = true;
-    }
+   bool compute_new_constraints = false;
+   for(uint32_t i = 0; i < n; i++){
+      if(ra_info->current_k_opt[i] != (double)x[i]){
+            compute_new_constraints = true;
+            break;
+      }
+   }
 
     if(compute_new_constraints){
         double* x_double = new double[n];
@@ -328,18 +323,12 @@ bool rotatotope_NLP::eval_jac_g(
       }
    }
    else {
-      bool compute_new_constraints;
-      if(ra_info->current_k_opt != nullptr){
-         compute_new_constraints = false;
-         for(uint32_t i = 0; i < n; i++){
-            if(ra_info->current_k_opt[i] != x[i]){
+      bool compute_new_constraints = false;
+      for(uint32_t i = 0; i < n; i++){
+         if(ra_info->current_k_opt[i] != (double)x[i]){
                compute_new_constraints = true;
                break;
-            }
          }
-      }
-      else{
-         compute_new_constraints = true;
       }
    
       if(compute_new_constraints){
@@ -451,18 +440,12 @@ bool rotatotope_NLP::eval_h(
       }
     }
     else {
-      bool compute_new_constraints;
-      if(ra_info->current_k_opt != nullptr){
-         compute_new_constraints = false;
-         for(uint32_t i = 0; i < n; i++){
-            if(ra_info->current_k_opt[i] != x[i]){
+      bool compute_new_constraints = false;
+      for(uint32_t i = 0; i < n; i++){
+         if(ra_info->current_k_opt[i] != (double)x[i]){
                compute_new_constraints = true;
                break;
-            }
          }
-      }
-      else{
-         compute_new_constraints = true;
       }
    
       if(compute_new_constraints){

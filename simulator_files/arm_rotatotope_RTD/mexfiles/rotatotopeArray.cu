@@ -102,7 +102,7 @@ rotatotopeArray::rotatotopeArray(uint32_t n_links_input, uint32_t n_time_steps_i
 	A = nullptr;
 	dev_A = nullptr;
 
-	current_k_opt = nullptr;
+	current_k_opt = new double[n_links * 2];
 	con = nullptr;
 	jaco_con = nullptr;
 	hess_con = nullptr;
@@ -658,7 +658,7 @@ void rotatotopeArray::evaluate_constraints(double* k_opt) {
 		delete[] hess_con_self;
 	}
 	
-	current_k_opt = k_opt;
+	memcpy(current_k_opt, k_opt, n_links * 2 * sizeof(double));
 
 	double* dev_con = nullptr;
 	double* dev_jaco_con = nullptr;
@@ -1118,6 +1118,8 @@ rotatotopeArray::~rotatotopeArray() {
 		delete[] jaco_con_self;
 		delete[] hess_con_self;
 	}
+
+	delete[] current_k_opt;
 }
 
 #endif // !ROTATOTOPE_ARRAY_CPPs

@@ -282,7 +282,7 @@ bool rotatotope_NLP::eval_g(
       }
    }
 
-   mexPrintf("max constraint value: %d %f\n", max_idx, max_con);
+   //mexPrintf("max constraint value: %d %f\n", max_idx, max_con);
 
    memcpy(g + offset, ra_info->con_self, ra_info->n_pairs * ra_info->n_time_steps * sizeof(double));
 
