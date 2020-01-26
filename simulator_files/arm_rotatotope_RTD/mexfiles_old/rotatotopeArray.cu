@@ -126,7 +126,7 @@ rotatotopeArray::rotatotopeArray(uint32_t n_links_input, uint32_t n_time_steps_i
 	dev_k_con_num_self = nullptr;
 	max_k_con_num_self = nullptr;
 
-	current_k_opt = nullptr;
+	current_k_opt = new double[n_links * 2];
 	con = nullptr;
 	jaco_con = nullptr;
 	hess_con = nullptr;
@@ -723,7 +723,7 @@ __global__ void generate_polytope_normals(uint32_t buff_obstacle_length, double*
 			}
 		}
 
-		intersection_possible[ip_base] = intersection_possible_value;
+		intersection_possible[ip_base] = true;//intersection_possible_value;
 	}
 }
 
@@ -1161,12 +1161,7 @@ void rotatotopeArray::evaluate_constraints(double* k_opt) {
 		delete[] hess_con_self;
 	}
 	
-	current_k_opt = k_opt;
-
-	for(uint32_t i = 0; i < n_links * 2; i++){
-		mexPrintf("%f ",current_k_opt[i]);
-	}
-	mexPrintf("\n");
+	memcpy(current_k_opt, k_opt, n_links * 2 * sizeof(double));
 
 	double* dev_con = nullptr;
 	double* dev_jaco_con = nullptr;
@@ -1651,6 +1646,8 @@ rotatotopeArray::~rotatotopeArray() {
 		delete[] jaco_con_self;
 		delete[] hess_con_self;
 	}
+
+	delete[] current_k_opt;
 }
 
 #endif // !ROTATOTOPE_ARRAY_CPPs
