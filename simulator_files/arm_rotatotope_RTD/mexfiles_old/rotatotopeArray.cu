@@ -723,7 +723,7 @@ __global__ void generate_polytope_normals(uint32_t buff_obstacle_length, double*
 			}
 		}
 
-		intersection_possible[ip_base] = true;//intersection_possible_value;
+		intersection_possible[ip_base] = intersection_possible_value;
 	}
 }
 

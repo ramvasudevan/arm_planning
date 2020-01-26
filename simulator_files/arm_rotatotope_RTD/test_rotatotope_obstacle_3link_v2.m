@@ -82,7 +82,7 @@ mex_eval_out = R_cuda.eval_output;
 mex_eval_out(mex_eval_out == -100000.0) = nan;
 mex_eval_grad_out = R_cuda.eval_grad_output;
 mex_res = R_cuda.mex_res;
-return;
+
 figure(1);
 plot(eval_out,'r.');hold on;plot(mex_eval_out,'b.');
 legend('patrick','bohao');
