@@ -21,18 +21,18 @@ O{1} = box_obstacle_zonotope('center', obs_center(:), 'side_lengths', [obs_width
 % obs_center = [0.8; 0.2; -0.2];
 % obs_width = [0.1];
 % O{1} = box_obstacle_zonotope('center', obs_center(:), 'side_lengths', [obs_width, obs_width, obs_width]);
-% obs_center = [0.6; 0.4; -0.7];
-% obs_width = [0.15];
-% O{2} = box_obstacle_zonotope('center', obs_center(:), 'side_lengths', [obs_width, obs_width, obs_width]);
-% obs_center = [0.6; -0.4; 0.7];
-% obs_width = [0.1];
-% O{3} = box_obstacle_zonotope('center', obs_center(:), 'side_lengths', [obs_width, obs_width, obs_width]);
-% obs_center = [-0.8; 0.5; 0.7];
-% obs_width = [0.1];
-% O{4} = box_obstacle_zonotope('center', obs_center(:), 'side_lengths', [obs_width, obs_width, obs_width]);
-% obs_center = [0.6; -0.4; -0.7];
-% obs_width = [0.1];
-% O{5} = box_obstacle_zonotope('center', obs_center(:), 'side_lengths', [obs_width, obs_width, obs_width]);
+obs_center = [-0.03265 ;-0.03265; 0.72601];
+obs_width = [0.15];
+O{2} = box_obstacle_zonotope('center', obs_center(:), 'side_lengths', [obs_width, obs_width, obs_width]);
+obs_center = [0.03265 ;0; 0.72601];
+obs_width = [0.1];
+O{3} = box_obstacle_zonotope('center', obs_center(:), 'side_lengths', [obs_width, obs_width, obs_width]);
+obs_center = [-0.03265 ;0; 0.72601];
+obs_width = [0.1];
+O{4} = box_obstacle_zonotope('center', obs_center(:), 'side_lengths', [obs_width, obs_width, obs_width]);
+obs_center = [0.03265 ;0; -0.72601];
+obs_width = [0.1];
+O{5} = box_obstacle_zonotope('center', obs_center(:), 'side_lengths', [obs_width, obs_width, obs_width]);
 obs_patch = plotFilled(O{1}.zono, [1, 3], 'r');
 obs_patch.FaceAlpha = 0.2;
 % plot(O{1});
@@ -49,23 +49,25 @@ q_des = [0.6441;
        -1.4591;
         0.4469;
        -0.9425];
-good_k = -pi/6*ones(6, 1) ;
+% good_k = -pi/6*ones(6, 1) ;
 % bad_k = pi/6*ones(6, 1) - 0.001 ;
 % bad_k = [pi/6 - 0.001; pi/6 - 0.001; pi/12; pi/24; -pi/36; pi/48];
 % bad_k = [pi/6 - 0.001; -pi/6 + 0.001; pi/6 - 0.001; pi/6 - 0.001; -pi/6 + 0.001; pi/6 - 0.001];
 % bad_k = [pi/6 - 0.001; -pi/6 + 0.001 ; pi/6 - 0.001 ; -pi/6 + 0.001; pi/6 - 0.001; pi/6 - 0.001];
+% bad_k = [0.05; -0.04; 0.03; 0.09; 0.05; -0.07];
 % bad_k = -pi/6*ones(6, 1) + 0.001;
 % good_k = [0; 0; 0; -pi/6 + 0.001; 0; -pi/6 + 0.001];
+bad_k = [-0.045553; -0.130900+0.0001; -0.050731; -0.130900+0.0001; -0.028154; 0.130900-0.0001 ];
 % bad_k = [0; 0; 0; pi/6 - 0.001; 0; pi/6 - 0.001];
 
 
 % generate FRS
-figure(1); clf; hold on;
+% figure(1); clf; hold on;
 R = robot_arm_FRS_rotatotope_fetch(q_0, q_dot_0, FRS_options);
-R.plot(10, {'b', 'b', 'b'});
+% R.plot(10, {'b', 'b', 'b'});
 % R.plot_slice(good_k, 10, {'g', 'g', 'g'});
 % R.plot_slice(good_k, 10, {'r', 'r', 'r'});
-% R.plot_slice_gensIncluded(bad_k, 10, {'r', 'r', 'r'});
+% R.plot_slice_gensIncluded(bad_k, 10, {'r', 'r', 'r'});    
 
 % map obstacles to trajectory parameter space
 % R = R.generate_constraints(O);
@@ -75,15 +77,17 @@ R = R.generate_polytope_normals(O);
 R_cuda = robot_arm_FRS_rotatotope_fetch_cuda(q_0, q_dot_0, q_des, O, bad_k, FRS_options);
 [eval_out,eval_grad_out] = R.evaluate_sliced_constraints(bad_k, O);
 
+%% analysis
 mex_eval_out = R_cuda.eval_output;
+mex_eval_out(mex_eval_out == -100000.0) = nan;
 mex_eval_grad_out = R_cuda.eval_grad_output;
 mex_res = R_cuda.mex_res;
-
+return;
 figure(1);
-plot(eval_out,'r.');hold on;plot(mex_eval_out(1:(end-100)),'b.');
+plot(eval_out,'r.');hold on;plot(mex_eval_out,'b.');
 legend('patrick','bohao');
-figure(2);
-plot(eval_out-mex_eval_out(1:(end-100)));
+% figure(2);
+% plot(eval_out-mex_eval_out);
 return;
 % link_id = 3;
 % time_id = 79;

@@ -95,7 +95,7 @@ bool rotatotope_NLP::get_nlp_info(
    n = ra_info->n_links * 2;
 
    // number of inequality constraint
-   m = ra_info->n_links * n_obstacles * ra_info->n_time_steps + ra_info->n_pairs * ra_info->n_time_steps + ra_info->n_links * 8;
+   m = ra_info->constraint_num + ra_info->n_pairs * ra_info->n_time_steps + ra_info->n_links * 8;
 
    nnz_jac_g = m * n;
    nnz_h_lag = n * (n + 1) / 2;
@@ -123,7 +123,7 @@ bool rotatotope_NLP::get_bounds_info(
    if(n != ra_info->n_links * 2){
       mexErrMsgIdAndTxt("MyProg:ConvertString", "*** Error wrong value of n in get_bounds_info!");
    }
-   if(m != ra_info->n_links * n_obstacles * ra_info->n_time_steps + ra_info->n_pairs * ra_info->n_time_steps + ra_info->n_links * 8){
+   if(m != ra_info->constraint_num + ra_info->n_pairs * ra_info->n_time_steps + ra_info->n_links * 8){
       mexErrMsgIdAndTxt("MyProg:ConvertString", "*** Error wrong value of m in get_bounds_info!");
    }
 
@@ -243,7 +243,7 @@ bool rotatotope_NLP::eval_g(
    if(n != ra_info->n_links * 2){
       mexErrMsgIdAndTxt("MyProg:ConvertString", "*** Error wrong value of n in eval_g!");
    }
-   if(m != ra_info->n_links * n_obstacles * ra_info->n_time_steps + ra_info->n_pairs * ra_info->n_time_steps + n * 4){
+   if(m != ra_info->constraint_num + ra_info->n_pairs * ra_info->n_time_steps + n * 4){
       mexErrMsgIdAndTxt("MyProg:ConvertString", "*** Error wrong value of m in eval_g!");
    }
    
@@ -261,6 +261,8 @@ bool rotatotope_NLP::eval_g(
         compute_new_constraints = true;
     }
 
+    compute_new_constraints = true;
+
     if(compute_new_constraints){
         double* x_double = new double[n];
         for(uint32_t i = 0; i < n; i++){
@@ -272,8 +274,24 @@ bool rotatotope_NLP::eval_g(
         compute_max_min_states(x);
     }
 
-   Index offset = ra_info->n_links * n_obstacles * ra_info->n_time_steps;
-   memcpy(g, ra_info->con, offset * sizeof(double));
+    double max_con = -1000.0; uint32_t max_idx;
+
+   Index offset = 0;
+   for(Index i = 0; i < ra_info->n_links; i++) {
+      for(Index j = 0; j < n_obstacles * ra_info->n_time_steps; j++){
+         if(ra_info->intersection_possible[i][j]){
+            g[offset++] = ra_info->con[i * n_obstacles * ra_info->n_time_steps + j];
+
+            if(ra_info->con[i * n_obstacles * ra_info->n_time_steps + j] > max_con){
+               max_con = ra_info->con[i * n_obstacles * ra_info->n_time_steps + j];
+               max_idx = i * n_obstacles * ra_info->n_time_steps + j;
+            }
+         }
+      }
+   }
+
+   mexPrintf("max constraint value: %d %f\n", max_idx, max_con);
+
    memcpy(g + offset, ra_info->con_self, ra_info->n_pairs * ra_info->n_time_steps * sizeof(double));
 
    offset += ra_info->n_pairs * ra_info->n_time_steps;
@@ -291,6 +309,10 @@ bool rotatotope_NLP::eval_g(
    offset += n;
    for(Index i = offset; i < offset + n; i++) {
       g[i] = -joint_speed_limits[i - offset + n] + q_dot_max[i - offset];
+   }
+
+   if(offset + n != m){
+      mexPrintf("Wrong in g\n");
    }
 
    return true;
@@ -313,7 +335,7 @@ bool rotatotope_NLP::eval_jac_g(
    if(n != ra_info->n_links * 2){
       mexErrMsgIdAndTxt("MyProg:ConvertString", "*** Error wrong value of n in eval_jac_g!");
    }
-   if(m != ra_info->n_links * n_obstacles * ra_info->n_time_steps + ra_info->n_pairs * ra_info->n_time_steps + ra_info->n_links * 8){
+   if(m != ra_info->constraint_num + ra_info->n_pairs * ra_info->n_time_steps + ra_info->n_links * 8){
       mexErrMsgIdAndTxt("MyProg:ConvertString", "*** Error wrong value of m in eval_jac_g!");
    }
 
@@ -354,8 +376,18 @@ bool rotatotope_NLP::eval_jac_g(
       }
       
       // return the values of the Jacobian of the constraints
-      Index offset = ra_info->n_links * n_obstacles * ra_info->n_time_steps;
-      memcpy(values, ra_info->jaco_con, offset * n * sizeof(double));
+      Index offset = 0;
+      for(Index i = 0; i < ra_info->n_links; i++) {
+         for(Index j = 0; j < n_obstacles * ra_info->n_time_steps; j++){
+            if(ra_info->intersection_possible[i][j]){
+               for(Index p = 0; p < n; p++){
+                  values[offset * n + p] = ra_info->jaco_con[(i * n_obstacles * ra_info->n_time_steps + j) * n + p];
+               }
+               offset++;
+            }
+         }
+      }
+
       memcpy(values + offset * n, ra_info->jaco_con_self, ra_info->n_pairs * ra_info->n_time_steps * n * sizeof(double));
 
       offset += ra_info->n_pairs * ra_info->n_time_steps;
@@ -402,6 +434,10 @@ bool rotatotope_NLP::eval_jac_g(
             }
          }
       }
+
+      if(offset + n != m){
+         mexPrintf("Wrong in jac m: %d, offset: %d\n", m, offset);
+      }
    }
 
    return true;
@@ -427,7 +463,7 @@ bool rotatotope_NLP::eval_h(
    if(n != ra_info->n_links * 2){
       mexErrMsgIdAndTxt("MyProg:ConvertString", "*** Error wrong value of n in eval_h!");
    }
-   if(m != ra_info->n_links * n_obstacles * ra_info->n_time_steps + ra_info->n_pairs * ra_info->n_time_steps + ra_info->n_links * 8){
+   if(m != ra_info->constraint_num + ra_info->n_pairs * ra_info->n_time_steps + ra_info->n_links * 8){
       mexErrMsgIdAndTxt("MyProg:ConvertString", "*** Error wrong value of m in eval_h!");
    }
 
@@ -486,17 +522,22 @@ bool rotatotope_NLP::eval_h(
          }
       }
 
-      Index offset = ra_info->n_links * n_obstacles * ra_info->n_time_steps;
-      for(Index i = 0; i < offset; i++){
-         idx = 0;
-         Index hess_idx = 0;
-         for (Index row = 0; row < n; row++) {
-            for (Index col = 0; col <= row; col++) {
-               if(row != col){
-                  values[idx] += lambda[i] * ra_info->hess_con[i * n * (n - 1) / 2 + hess_idx];
-                  hess_idx++;
+      Index offset = 0;
+      for(Index i = 0; i < ra_info->n_links; i++) {
+         for(Index j = 0; j < n_obstacles * ra_info->n_time_steps; j++){
+            if(ra_info->intersection_possible[i][j]){
+               idx = 0;
+               Index hess_idx = 0;
+               for (Index row = 0; row < n; row++) {
+                  for (Index col = 0; col <= row; col++) {
+                     if(row != col){
+                        values[idx] += lambda[offset] * ra_info->hess_con[(i * n_obstacles * ra_info->n_time_steps + j) * n * (n - 1) / 2 + hess_idx];
+                        hess_idx++;
+                     }
+                     idx++;
+                  }
                }
-               idx++;
+               offset++;
             }
          }
       }
@@ -516,6 +557,10 @@ bool rotatotope_NLP::eval_h(
       }
 
       // joint and speed limit has zero hessian
+
+      if(offset + n * 4 != m){
+         mexPrintf("Wrong in hess: %d, offset: %d\n", m, offset);
+      }
     }
 
    return true;

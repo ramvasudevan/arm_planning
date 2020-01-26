@@ -144,9 +144,13 @@ P3.	generate the constraints
 	*/
 	links.generate_constraints(n_obstacles, OZ, OZ_width, OZ_length);
 
+	/*
 	uint32_t n_pairs = 1;
 	uint32_t self_pairs[2] = {0, 2}; // the latter one in the pair is always higher
-	//links.generate_self_constraints(n_pairs, self_pairs);
+	links.generate_self_constraints(n_pairs, self_pairs);
+	*/
+
+	uint32_t n_pairs = 0;
 
 	end_t = clock();
 	mexPrintf("CUDA: Construct Rotatotopes time: %.6f ms\n", 1000.0 * (end_t - start_t) / (double)(CLOCKS_PER_SEC));
@@ -185,8 +189,6 @@ P4.	solve the NLP
 
     // Ask Ipopt to solve the problem
 	status = app->OptimizeTNLP(mynlp);
-	
-	//mynlp->try_joint_limits(k_opt);
 
 	nlhs = 1;
 	
@@ -433,6 +435,7 @@ P5. handle the output, release the memory
 			}
 		}
 
+		/*
 		if(links.A_con_self[0] == nullptr){
 			mexErrMsgIdAndTxt("MyProg:ConvertString","*** A_con_self is empty!");
 		}
@@ -518,7 +521,9 @@ P5. handle the output, release the memory
 			mxSetCell(output14, i, pair_i);
 		}
 		plhs[14] = output14;
+		*/
 	}
+	
 
 	cudaFree(dev_R);
 	cudaFree(dev_rot_axes);

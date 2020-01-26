@@ -99,6 +99,9 @@ rotatotopeArray::rotatotopeArray(uint32_t n_links_input, uint32_t n_time_steps_i
 	RZ_length = nullptr;
 
 	n_obstacles = 0;
+	constraint_num = 0;
+	intersection_possible = nullptr;
+	dev_intersection_possible = nullptr;
 	A_con = nullptr;
 	dev_A_con = nullptr;
 	d_con = nullptr;
@@ -532,6 +535,8 @@ void rotatotopeArray::generate_constraints(uint32_t n_obstacles_in, double* OZ, 
 	cudaMalloc((void**)&dev_OZ, OZ_length * OZ_width * sizeof(double));
 	cudaMemcpy(dev_OZ, OZ, OZ_length * OZ_width * sizeof(double), cudaMemcpyHostToDevice);
 
+	intersection_possible = new bool*[n_links];
+	dev_intersection_possible = new bool*[n_links];
 	A_con = new double*[n_links];
 	dev_A_con = new double*[n_links];
 	d_con = new double*[n_links];
@@ -545,8 +550,22 @@ void rotatotopeArray::generate_constraints(uint32_t n_obstacles_in, double* OZ, 
 	max_k_con_num = new uint32_t[n_links];
 
 	for (uint32_t link_id = 0; link_id < n_links; link_id++) {
-		uint32_t buff_obstacle_length = RZ_length[link_id] + 3;
+		uint32_t buff_obstacle_length = RZ_length[link_id] + (OZ_unit_length - 1);
 		uint32_t constraint_length = ((buff_obstacle_length - 1) * (buff_obstacle_length - 2)) / 2;
+
+		intersection_possible[link_id] = new bool[n_obstacles * n_time_steps];
+		cudaMalloc((void**)&(dev_intersection_possible[link_id]), n_obstacles * n_time_steps * sizeof(bool));
+
+		dim3 grid1(n_obstacles, n_time_steps, 1);
+		generate_polytope_normals << < grid1, constraint_length >> > (buff_obstacle_length, dev_RZ_stack[link_id], dev_OZ, OZ_unit_length, dev_intersection_possible[link_id]);
+		cudaMemcpy(intersection_possible[link_id], dev_intersection_possible[link_id], n_obstacles * n_time_steps * sizeof(bool), cudaMemcpyDeviceToHost);
+
+		// check how many constraints are valid
+		for(uint32_t i = 0; i < n_obstacles * n_time_steps; i++){
+			if(intersection_possible[link_id][i]){
+				constraint_num++;
+			}
+		}
 
 		// buffer the obstacle by k-independent generators
 		k_con[link_id] = new bool[2 * (link_id + 1) * n_time_steps * RZ_length[link_id]];
@@ -562,8 +581,8 @@ void rotatotopeArray::generate_constraints(uint32_t n_obstacles_in, double* OZ, 
 		cudaMalloc((void**)&dev_frs_k_dep_G, n_time_steps * RZ_length[link_id] * 3 * sizeof(double));
 		cudaMemset(dev_frs_k_dep_G, 0, n_time_steps * RZ_length[link_id] * 3 * sizeof(double));
 
-		dim3 grid1(n_obstacles, n_time_steps, 1);
-		buff_obstacles_kernel << < grid1, RZ_length[link_id] >> > (link_id, RZ_length[link_id], dev_RZ_stack[link_id], dev_c_idx_stack[link_id], dev_k_idx_stack[link_id], dev_C_idx_stack[link_id], dev_OZ, OZ_unit_length, dev_buff_obstacles, dev_frs_k_dep_G, dev_k_con[link_id], dev_k_con_num[link_id]);
+		dim3 grid2(n_obstacles, n_time_steps, 1);
+		buff_obstacles_kernel << < grid2, RZ_length[link_id] >> > (link_id, dev_intersection_possible[link_id], RZ_length[link_id], dev_RZ_stack[link_id], dev_c_idx_stack[link_id], dev_k_idx_stack[link_id], dev_C_idx_stack[link_id], dev_OZ, OZ_unit_length, dev_buff_obstacles, dev_frs_k_dep_G, dev_k_con[link_id], dev_k_con_num[link_id]);
 
 		if(debugMode){
 			cudaMemcpy(k_con[link_id], dev_k_con[link_id], 2 * (link_id + 1) * n_time_steps * RZ_length[link_id] * sizeof(bool), cudaMemcpyDeviceToHost);
@@ -583,8 +602,8 @@ void rotatotopeArray::generate_constraints(uint32_t n_obstacles_in, double* OZ, 
 		cudaMalloc((void**)&(dev_d_con[link_id]), n_obstacles * n_time_steps * constraint_length * sizeof(double));
 		cudaMalloc((void**)&(dev_delta_con[link_id]), n_obstacles * n_time_steps * constraint_length * sizeof(double));
 		
-		dim3 grid2(n_obstacles, n_time_steps, 1);
-		polytope << < grid2, constraint_length >> > (buff_obstacle_length, RZ_length[link_id], dev_buff_obstacles, dev_frs_k_dep_G, dev_k_con_num[link_id], max_k_con_num[link_id], dev_A_con[link_id], dev_d_con[link_id], dev_delta_con[link_id]);
+		dim3 grid3(n_obstacles, n_time_steps, 1);
+		polytope << < grid2, constraint_length >> > (buff_obstacle_length, dev_intersection_possible[link_id], RZ_length[link_id], dev_buff_obstacles, dev_frs_k_dep_G, dev_k_con_num[link_id], max_k_con_num[link_id], dev_A_con[link_id], dev_d_con[link_id], dev_delta_con[link_id]);
 
 		if(debugMode){
 			A_con[link_id] = new double[n_obstacles * n_time_steps * constraint_length * max_k_con_num[link_id]];
@@ -609,7 +628,106 @@ void rotatotopeArray::generate_constraints(uint32_t n_obstacles_in, double* OZ, 
 	cudaFree(dev_OZ);
 }
 
-__global__ void buff_obstacles_kernel(uint32_t link_id, uint32_t RZ_length, double* RZ, bool* c_idx, uint8_t* k_idx, uint8_t* C_idx, double* OZ, uint32_t OZ_unit_length, double* buff_obstacles, double* frs_k_dep_G, bool* k_con, uint8_t* k_con_num) {
+__global__ void generate_polytope_normals(uint32_t buff_obstacle_length, double* RZ, double* OZ, uint32_t OZ_unit_length, bool* intersection_possible){
+	uint32_t obstacle_id = blockIdx.x;
+	uint32_t time_id = blockIdx.y;
+	uint32_t n_time_steps = gridDim.y;
+	uint32_t RZ_length = buff_obstacle_length - (OZ_unit_length - 1);
+	uint32_t RZ_base = time_id * RZ_length;
+	double   buff_obstacle_size = (double)buff_obstacle_length - 1.0;
+	uint32_t obstacle_base = obstacle_id * OZ_unit_length;
+	uint32_t c_id = threadIdx.x;
+	uint32_t constraint_length = blockDim.x;
+	uint32_t first = (uint32_t)floor(-0.5*sqrt(4 * buff_obstacle_size * buff_obstacle_size - 4 * buff_obstacle_size - 8.0 * ((double)c_id) + 1.0) + buff_obstacle_size - 0.5);
+	uint32_t first_base = (first + 1) * 3;
+	uint32_t second = c_id + 1 - ((2 * (buff_obstacle_length - 1) - 3 - first) * first) / 2;
+	uint32_t second_base = (second + 1) * 3;
+	uint32_t ip_base = obstacle_id * n_time_steps + time_id;
+	
+	__shared__ double buff_obstacles[MAX_BUFF_OBSTACLE_SIZE];
+	__shared__ bool   test[1024];
+	__shared__ double obs_center[3];
+
+	if(c_id < RZ_length) { // copy the original FRS
+		buff_obstacles[c_id * 3    ] = RZ[(RZ_base + c_id) * 3    ];
+		buff_obstacles[c_id * 3 + 1] = RZ[(RZ_base + c_id) * 3 + 1];
+		buff_obstacles[c_id * 3 + 2] = RZ[(RZ_base + c_id) * 3 + 2];
+	}
+	else if(c_id < buff_obstacle_length){ // copy the obstacle generators
+		for(uint32_t i = 0; i < 3; i++){
+			if(i == c_id - RZ_length){
+				buff_obstacles[c_id * 3 + i] = OZ[(obstacle_base + c_id - RZ_length + 1) * 3 + i] + BUFFER_DIST / 2;
+			}
+			else{
+				buff_obstacles[c_id * 3 + i] = 0;
+			}
+		}
+	}
+	else if(c_id < buff_obstacle_length + 1){ // copy the obstacle center
+		obs_center[0] = OZ[obstacle_base * 3    ];
+		obs_center[1] = OZ[obstacle_base * 3 + 1];
+		obs_center[2] = OZ[obstacle_base * 3 + 2];
+	}
+
+	__syncthreads();
+	
+	// generate A matrix
+	double A_1 = buff_obstacles[first_base + 1] * buff_obstacles[second_base + 2] - buff_obstacles[first_base + 2] * buff_obstacles[second_base + 1];
+	double A_2 = buff_obstacles[first_base + 2] * buff_obstacles[second_base    ] - buff_obstacles[first_base    ] * buff_obstacles[second_base + 2];
+	double A_3 = buff_obstacles[first_base    ] * buff_obstacles[second_base + 1] - buff_obstacles[first_base + 1] * buff_obstacles[second_base    ];
+	
+	double A_s_q = sqrt(A_1 * A_1 + A_2 * A_2 + A_3 * A_3);
+	if(A_s_q > 0){
+		A_1 /= A_s_q;
+		A_2 /= A_s_q;
+		A_3 /= A_s_q;
+	}
+	else{
+		A_1 = 0;
+		A_2 = 0;
+		A_3 = 0;
+	}
+
+	// generate d and deltaD
+	double d = A_1 * buff_obstacles[0] + A_2 * buff_obstacles[1] + A_3 * buff_obstacles[2];
+
+	double deltaD = 0;
+	for (uint32_t i = 1; i < buff_obstacle_length; i++) {
+		deltaD += abs(A_1 * buff_obstacles[i * 3] + A_2 * buff_obstacles[i * 3 + 1] + A_3 * buff_obstacles[i * 3 + 2]);
+	}
+
+	// add a test here that throws out unnecessary constraints, test = true for max(h) > 0, false for max(h) <= 0
+	double Ax = A_1 * obs_center[0] + A_2 * obs_center[1] + A_3 * obs_center[2];
+	double pos_res =  Ax - d - deltaD;
+	double neg_res = -Ax + d - deltaD;
+	//double pos_res =  Ax - d - 8*deltaD;
+	//double neg_res = -Ax + d - 8*deltaD;
+
+	if(A_s_q > 0){
+		test[c_id] = (pos_res > 0) || (neg_res > 0);
+	}
+	else{
+		test[c_id] = false;
+	}
+
+	__syncthreads();
+
+	__shared__ bool intersection_possible_value;
+
+	if(c_id == 0){
+		intersection_possible_value = true;
+		for(uint32_t i = 0; i < constraint_length; i++){
+			if(test[i]){
+				intersection_possible_value = false;
+				break;
+			}
+		}
+
+		intersection_possible[ip_base] = intersection_possible_value;
+	}
+}
+
+__global__ void buff_obstacles_kernel(uint32_t link_id, bool* intersection_possible, uint32_t RZ_length, double* RZ, bool* c_idx, uint8_t* k_idx, uint8_t* C_idx, double* OZ, uint32_t OZ_unit_length, double* buff_obstacles, double* frs_k_dep_G, bool* k_con, uint8_t* k_con_num) {
 	uint32_t obstacle_id = blockIdx.x;
 	uint32_t obstacle_base = obstacle_id * OZ_unit_length;
 	uint32_t time_id = blockIdx.y;
@@ -622,6 +740,21 @@ __global__ void buff_obstacles_kernel(uint32_t link_id, uint32_t RZ_length, doub
 	uint32_t k_step = n_time_steps * RZ_length;
 	uint32_t k_con_num_base = time_id;
 	uint32_t buff_base = (obstacle_id * n_time_steps + time_id) * buff_obstacle_length;
+
+	// judge if intersection is possible
+	__shared__ bool intersection_possible_value;
+	if(z_id == 0){
+		intersection_possible_value = intersection_possible[obstacle_id * n_time_steps + time_id];
+	}
+
+	__syncthreads();
+
+	if(!intersection_possible_value){
+		if(z_id == 0){
+			k_con_num[k_con_num_base] = 0;
+		}
+		return;
+	}
 
 	// first, find kc_col
 	__shared__ bool kc_info[MAX_RZ_LENGTH];
@@ -712,7 +845,7 @@ __global__ void buff_obstacles_kernel(uint32_t link_id, uint32_t RZ_length, doub
 	}
 }
 
-__global__ void polytope(uint32_t buff_obstacle_length, uint32_t k_dep_G_length, double* buff_obstacles, double* frs_k_dep_G, uint8_t* k_con_num, uint32_t A_con_width, double* A_con, double* d_con, double* delta_con) {
+__global__ void polytope(uint32_t buff_obstacle_length, bool* intersection_possible, uint32_t k_dep_G_length, double* buff_obstacles, double* frs_k_dep_G, uint8_t* k_con_num, uint32_t A_con_width, double* A_con, double* d_con, double* delta_con) {
 	uint32_t obstacle_id = blockIdx.x;
 	uint32_t time_id = blockIdx.y;
 	uint32_t n_time_steps = gridDim.y;
@@ -728,9 +861,21 @@ __global__ void polytope(uint32_t buff_obstacle_length, uint32_t k_dep_G_length,
 	uint32_t second_base = (obs_base + second + 1) * 3;
 	uint32_t con_base = (obstacle_id * n_time_steps + time_id) * constraint_length + c_id;
 
+	// judge if intersection is possible
+	__shared__ bool intersection_possible_value;
+	if(c_id == 0){
+		intersection_possible_value = intersection_possible[obstacle_id * n_time_steps + time_id];
+	}
+
+	__syncthreads();
+
+	if(!intersection_possible_value){
+		return;
+	}
+
 	double A_1 = buff_obstacles[first_base + 1] * buff_obstacles[second_base + 2] - buff_obstacles[first_base + 2] * buff_obstacles[second_base + 1];
-	double A_2 = buff_obstacles[first_base + 2] * buff_obstacles[second_base] - buff_obstacles[first_base] * buff_obstacles[second_base + 2];
-	double A_3 = buff_obstacles[first_base] * buff_obstacles[second_base + 1] - buff_obstacles[first_base + 1] * buff_obstacles[second_base];
+	double A_2 = buff_obstacles[first_base + 2] * buff_obstacles[second_base    ] - buff_obstacles[first_base    ] * buff_obstacles[second_base + 2];
+	double A_3 = buff_obstacles[first_base    ] * buff_obstacles[second_base + 1] - buff_obstacles[first_base + 1] * buff_obstacles[second_base    ];
 	
 	double A_s_q = sqrt(A_1 * A_1 + A_2 * A_2 + A_3 * A_3);
 	if(A_s_q > 0){
@@ -831,7 +976,7 @@ void rotatotopeArray::generate_self_constraints(uint32_t n_pairs_input, uint32_t
 		cudaMalloc((void**)&(dev_delta_con_self[pair_id]), n_time_steps * constraint_length * sizeof(double));
 		
 		dim3 grid2(1, n_time_steps, 1);
-		polytope << < grid2, constraint_length >> > (gen_zono_length, k_dep_length, dev_gen_zono, dev_k_dep_pt, dev_k_con_num_self[pair_id], max_k_con_num_self[pair_id], dev_A_con_self[pair_id], dev_d_con_self[pair_id], dev_delta_con_self[pair_id]);
+		polytope << < grid2, constraint_length >> > (gen_zono_length, dev_intersection_possible[pair_id], k_dep_length, dev_gen_zono, dev_k_dep_pt, dev_k_con_num_self[pair_id], max_k_con_num_self[pair_id], dev_A_con_self[pair_id], dev_d_con_self[pair_id], dev_delta_con_self[pair_id]);
 
 		if(debugMode){
 			A_con_self[pair_id] = new double[n_time_steps * constraint_length * max_k_con_num_self[pair_id]];
@@ -907,6 +1052,9 @@ __global__ void gen_zono_kernel(uint32_t link_id_1, uint32_t link_id_2, uint32_t
 					k_dep_pt[(RZ_base_2 + k_dep_num) * 3 + i] = -RZ_1[(RZ_base_1 + z) * 3 + i];
 				}
 
+				if(k_dep_num >= RZ_length_2){
+					break;
+				}
 				k_dep_num++;
 			}
 		}
@@ -922,6 +1070,9 @@ __global__ void gen_zono_kernel(uint32_t link_id_1, uint32_t link_id_2, uint32_t
 					k_dep_pt[(RZ_base_2 + k_dep_num) * 3 + i] = RZ_2[(RZ_base_2 + z) * 3 + i];
 				}
 
+				if(k_dep_num >= RZ_length_2){
+					break;
+				}
 				k_dep_num++;
 			}
 		}
@@ -1012,6 +1163,11 @@ void rotatotopeArray::evaluate_constraints(double* k_opt) {
 	
 	current_k_opt = k_opt;
 
+	for(uint32_t i = 0; i < n_links * 2; i++){
+		mexPrintf("%f ",current_k_opt[i]);
+	}
+	mexPrintf("\n");
+
 	double* dev_con = nullptr;
 	double* dev_jaco_con = nullptr;
 	double* dev_hess_con = nullptr;
@@ -1069,11 +1225,11 @@ void rotatotopeArray::evaluate_constraints(double* k_opt) {
 
 			dim3 grid1(n_obstacles, n_time_steps, 1);
 			dim3 block1(constraint_length, 1, 1);
-			evaluate_constraints_kernel << < grid1, block1 >> > (dev_lambda, link_id, RZ_length[link_id], dev_A_con[link_id], max_k_con_num[link_id], dev_d_con[link_id], dev_delta_con[link_id], dev_k_con[link_id], dev_k_con_num[link_id], dev_con_result, dev_index_factor);
+			evaluate_constraints_kernel << < grid1, block1 >> > (dev_lambda, dev_intersection_possible[link_id], link_id, RZ_length[link_id], dev_A_con[link_id], max_k_con_num[link_id], dev_d_con[link_id], dev_delta_con[link_id], dev_k_con[link_id], dev_k_con_num[link_id], dev_con_result, dev_index_factor);
 			
 			dim3 grid2(n_obstacles, n_time_steps, 1);
 			dim3 block2((link_id + 1) * 2, (link_id + 1) * 2, 1);
-			evaluate_gradient_kernel << < grid2, block2 >> > (dev_con_result, dev_index_factor, link_id, link_id, RZ_length[link_id], constraint_length, dev_lambda, dev_g_k, dev_A_con[link_id], max_k_con_num[link_id], dev_k_con[link_id], dev_k_con_num[link_id], n_links, dev_con, dev_jaco_con, dev_hess_con);
+			evaluate_gradient_kernel << < grid2, block2 >> > (dev_con_result, dev_intersection_possible[link_id], dev_index_factor, link_id, link_id, RZ_length[link_id], constraint_length, dev_lambda, dev_g_k, dev_A_con[link_id], max_k_con_num[link_id], dev_k_con[link_id], dev_k_con_num[link_id], n_links, dev_con, dev_jaco_con, dev_hess_con);
 
 			cudaFree(dev_con_result);
 			cudaFree(dev_index_factor);
@@ -1097,11 +1253,11 @@ void rotatotopeArray::evaluate_constraints(double* k_opt) {
 
 		dim3 grid1(1, n_time_steps, 1);
 		dim3 block1(constraint_length, 1, 1);
-		evaluate_constraints_kernel << < grid1, block1 >> > (dev_lambda, R2, R1_length, dev_A_con_self[pair_id], max_k_con_num_self[pair_id], dev_d_con_self[pair_id], dev_delta_con_self[pair_id], dev_k_con_self[pair_id], dev_k_con_num_self[pair_id], dev_con_result, dev_index_factor);
+		evaluate_constraints_kernel << < grid1, block1 >> > (dev_lambda, dev_intersection_possible[pair_id], R2, R1_length, dev_A_con_self[pair_id], max_k_con_num_self[pair_id], dev_d_con_self[pair_id], dev_delta_con_self[pair_id], dev_k_con_self[pair_id], dev_k_con_num_self[pair_id], dev_con_result, dev_index_factor);
 		
 		dim3 grid2(1, n_time_steps, 1);
 		dim3 block2((R2 + 1) * 2, (R2 + 1) * 2, 1);
-		evaluate_gradient_kernel << < grid2, block2 >> > (dev_con_result, dev_index_factor, R2, pair_id, R1_length, constraint_length, dev_lambda, dev_g_k, dev_A_con_self[pair_id], max_k_con_num_self[pair_id], dev_k_con_self[pair_id], dev_k_con_num_self[pair_id], n_links, dev_con_self, dev_jaco_con_self, dev_hess_con_self);
+		evaluate_gradient_kernel << < grid2, block2 >> > (dev_con_result, dev_intersection_possible[pair_id], dev_index_factor, R2, pair_id, R1_length, constraint_length, dev_lambda, dev_g_k, dev_A_con_self[pair_id], max_k_con_num_self[pair_id], dev_k_con_self[pair_id], dev_k_con_num_self[pair_id], n_links, dev_con_self, dev_jaco_con_self, dev_hess_con_self);
 
 		cudaFree(dev_con_result);
 		cudaFree(dev_index_factor);
@@ -1132,13 +1288,11 @@ void rotatotopeArray::evaluate_constraints(double* k_opt) {
 
 	cudaFree(dev_g_k);
 
-	end_t = clock();mexPrintf("CUDA: constraint evaluation time: %.6f ms\n", 1000.0 * (end_t - start_t) / (double)(CLOCKS_PER_SEC));
-	if(debugMode){
-		mexPrintf("CUDA: constraint evaluation time: %.6f ms\n", 1000.0 * (end_t - start_t) / (double)(CLOCKS_PER_SEC));
-	}
+	end_t = clock();
+	mexPrintf("CUDA: constraint evaluation time: %.6f ms\n", 1000.0 * (end_t - start_t) / (double)(CLOCKS_PER_SEC));
 }
 
-__global__ void evaluate_constraints_kernel(double* lambda, uint32_t link_id, uint32_t RZ_length, double* A_con, uint32_t A_con_width, double* d_con, double* delta_con, bool* k_con, uint8_t* k_con_num, double* con_result, bool* index_factor) {
+__global__ void evaluate_constraints_kernel(double* lambda, bool* intersection_possible, uint32_t link_id, uint32_t RZ_length, double* A_con, uint32_t A_con_width, double* d_con, double* delta_con, bool* k_con, uint8_t* k_con_num, double* con_result, bool* index_factor) {
 	uint32_t obstacle_id = blockIdx.x;
 	uint32_t time_id = blockIdx.y;
 	uint32_t n_time_steps = gridDim.y;
@@ -1147,6 +1301,18 @@ __global__ void evaluate_constraints_kernel(double* lambda, uint32_t link_id, ui
 	uint32_t k_con_num_base = time_id;
 	uint32_t con_base = (obstacle_id * n_time_steps + time_id) * constraint_length + c_id;
 	uint32_t con_result_base = (obstacle_id * n_time_steps + time_id) * constraint_length + c_id;
+
+	// judge if intersection is possible
+	__shared__ bool intersection_possible_value;
+	if(c_id == 0){
+		intersection_possible_value = intersection_possible[obstacle_id * n_time_steps + time_id];
+	}
+
+	__syncthreads();
+
+	if(!intersection_possible_value){
+		return;
+	}
 
 	__shared__ double shared_lambda[6];
 	__shared__ double lambdas_prod[MAX_K_DEP_SIZE];
@@ -1193,7 +1359,7 @@ __global__ void evaluate_constraints_kernel(double* lambda, uint32_t link_id, ui
 	}
 }
 
-__global__ void evaluate_gradient_kernel(double* con_result, bool* index_factor, uint32_t link_id, uint32_t pos_id, uint32_t RZ_length, uint32_t constraint_length, double* lambda, double* g_k, double* A_con, uint32_t A_con_width, bool* k_con, uint8_t* k_con_num, uint32_t n_links, double* con, double* jaco_con, double* hess_con) {
+__global__ void evaluate_gradient_kernel(double* con_result, bool* intersection_possible, bool* index_factor, uint32_t link_id, uint32_t pos_id, uint32_t RZ_length, uint32_t constraint_length, double* lambda, double* g_k, double* A_con, uint32_t A_con_width, bool* k_con, uint8_t* k_con_num, uint32_t n_links, double* con, double* jaco_con, double* hess_con) {
 	uint32_t obstacle_id = blockIdx.x;
 	uint32_t n_obstacles = gridDim.x;
 	uint32_t time_id = blockIdx.y;
@@ -1207,6 +1373,19 @@ __global__ void evaluate_gradient_kernel(double* con_result, bool* index_factor,
 	uint32_t valu_con_base = (pos_id * n_obstacles + obstacle_id) * n_time_steps + time_id;
 	uint32_t jaco_con_base = ((pos_id * n_obstacles + obstacle_id) * n_time_steps + time_id) * n_links * 2;
 	uint32_t hess_con_base = ((pos_id * n_obstacles + obstacle_id) * n_time_steps + time_id) * n_links * (n_links * 2 - 1);
+
+	// judge if intersection is possible
+	__shared__ bool intersection_possible_value;
+	if(joint_id == 0 && joint_id_sec == 0){
+		intersection_possible_value = intersection_possible[obstacle_id * n_time_steps + time_id];
+	}
+
+	__syncthreads();
+
+	if(!intersection_possible_value){
+		con[valu_con_base] = -A_BIG_NUMBER;
+		return;
+	}
 
 	__shared__ double shared_lambda[6];
 	__shared__ double max_index_factor;
@@ -1338,6 +1517,16 @@ rotatotopeArray::~rotatotopeArray() {
 	}
 
 	if (n_obstacles > 0 && A_con != nullptr) {
+		for (uint32_t i = 0; i < n_links; i++) {
+			delete[] intersection_possible[i];
+		}
+		delete[] intersection_possible;
+
+		for (uint32_t i = 0; i < n_links; i++) {
+			cudaFree(dev_intersection_possible[i]);
+		}
+		delete[] dev_intersection_possible;
+
 		for (uint32_t i = 0; i < n_links; i++) {
 			delete[] A_con[i];
 		}

@@ -20,7 +20,7 @@ classdef robot_arm_FRS_rotatotope_fetch
         n_base = 1;
         n_time_steps = 0;
         dim = 3;
-        FRS_path = 'FRS_trig_constantK/';
+        FRS_path = 'FRS_trig/';
         FRS_key = [];
         
         q = zeros(6, 1);
