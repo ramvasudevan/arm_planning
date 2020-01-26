@@ -12,7 +12,7 @@
 clear ; clc ; figure(1); clf; view(3); grid on;
 
 %% user parameters
-N_random_obstacles = 10;
+N_random_obstacles = 30;
 dimension = 3 ;
 nLinks = 3 ;
 verbosity = 10 ;
@@ -20,7 +20,7 @@ allow_replan_errors = true ;
 t_plan = 0.5 ;
 time_discretization = 0.01 ;
 T = 1 ;
-use_cuda_flag = false;
+use_cuda_flag = true;
 agent_move_mode = 'direct' ; % pick 'direct' or 'integrator'
 
 A = robot_arm_3D_fetch('verbose', verbosity, 'animation_set_axes_flag', 0, 'animation_set_view_flag', 0, 'move_mode', agent_move_mode);

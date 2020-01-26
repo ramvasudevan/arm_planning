@@ -22,14 +22,14 @@ sub_scenario = 1; % sub_scenario only changes for scenario 4
 %%% EXPORTING TO CSV %%%
 write_to_csv = false;
 run_simulation_flag = true ;
-world_save_dir = 'arm_planning/simulator_files/testing/saved_worlds/20200116_scenarios';
+world_save_dir = '~/Documents/MATLAB/arm_planning/simulator_files/testing/saved_worlds/20200116_scenarios';
 if ~exist(world_save_dir, 'dir')
     mkdir(world_save_dir);
 end
 csv_filename = sprintf('%s/scene_%03d_%03d.csv', world_save_dir, scenario, sub_scenario);
 
 %%% PLANNING PARAMETERS %%%
-use_cuda_flag = false ;
+use_cuda_flag = true ;
 agent_move_mode = 'direct' ; % pick 'direct' or 'integrator'
 
 % add more obstacles
@@ -105,7 +105,9 @@ switch scenario
 
         % manually create goal
         goal_radius = 0.05 ;
-        goal_type = 'end_effector_location' ; % 'configuration' or 'end_effector_location'
+%         goal_type = 'end_effector_location' ; % 'configuration' or 'end_effector_location'
+        goal_type = 'configuration' ; % 'configuration' or 'end_effector_location'
+
 
         % configuration goals (set goal_type to 'configuration')
         % goal = [0;+1;0;-1;0;0] ; % bottom of front shelf
@@ -144,7 +146,8 @@ switch scenario
         start = [0; 0; 0; pi/2; 0; 0];
 %         start = [0.2; 0.2; 0.2; 0.2; 0.2; 0.2];
         goal_radius = 0.05 ;
-        goal_type = 'end_effector_location' ; % 'configuration' or 'end_effector_location'
+%         goal_type = 'end_effector_location' ; % 'configuration' or 'end_effector_location'
+        goal_type = 'configuration';
         goal = [0.15;-0.75;0.2; 0.4;0.3;0.2];
 %         goal = [0.5; 0.2; -0.3; 0.4; -0.2; 0.7];
         
@@ -258,6 +261,8 @@ switch scenario
         
     case 7 % reach through window
         start = [-pi/2; 0; pi/2; pi/4; 0; 0];
+%         start = [-pi/2; 0; pi/2; 0; 0; 0];
+
         goal_radius = 0.05 ;
         goal_type = 'end_effector_location' ; % 'configuration' or 'end_effector_location'
         goal = [0;0;0; 0;pi/3;pi/3];

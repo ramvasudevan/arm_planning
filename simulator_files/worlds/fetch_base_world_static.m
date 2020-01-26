@@ -53,7 +53,7 @@ classdef fetch_base_world_static < world
 %                 W.create_base_obstacle() ;
 %             end
 
-            W.setup() ;
+%             W.setup() ;
         end
         
         %% setup
