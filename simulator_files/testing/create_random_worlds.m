@@ -8,13 +8,14 @@
 clear ; clc ; figure(1); clf; view(3); grid on;
 
 %% user parameters
-world_save_dir = 'arm_planning/simulator_files/testing/saved_worlds/20200116';
+world_save_dir = 'arm_planning/simulator_files/testing/saved_worlds/20200127';
 if ~exist(world_save_dir, 'dir')
     mkdir(world_save_dir);
 end
 
-N_obstacle_min = 1 ;
-N_obstacle_max = 10 ;
+N_obstacle_min = 4 ;
+N_obstacle_max = 40 ;
+N_obstacle_delta = 4 ;
 N_worlds_per_obstacle = 10;
 dimension = 3 ;
 nLinks = 3 ;
@@ -31,7 +32,7 @@ A = robot_arm_3D_fetch('verbose', verbosity, 'animation_set_axes_flag', 0, 'anim
 
 %% automated from here
 
-for i = N_obstacle_min:N_obstacle_max
+for i = N_obstacle_min:N_obstacle_delta:N_obstacle_max
     for j = 1:N_worlds_per_obstacle
     
         % use this to start from random start config:

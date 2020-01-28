@@ -34,7 +34,7 @@ classdef robot_arm_3D_fetch < robot_arm_agent
 %                           0.05, 0.025, 0.05, 0.025 ;  % size in y
 %                           0.05, 0.025, 0.05, 0.025] ; % size in z
 
-            buffer_dist = 0.1460;
+            buffer_dist = 0.150;
 %             buffer_dist = 0.1460*sqrt(2);
 
 

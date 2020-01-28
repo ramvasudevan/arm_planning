@@ -16,7 +16,7 @@
 clear; clc;
 %% user parameters
 %%% CHOOSE SCENARIO %%%
-scenario = 7; % 1 2 3 4 5 6 or 7
+scenario = 5; % 1 2 3 4 5 6 or 7
 sub_scenario = 1; % sub_scenario only changes for scenario 4
 
 %%% EXPORTING TO CSV %%%
@@ -32,6 +32,20 @@ csv_filename = sprintf('%s/scene_%03d_%03d.csv', world_save_dir, scenario, sub_s
 use_cuda_flag = true ;
 agent_move_mode = 'direct' ; % pick 'direct' or 'integrator'
 
+%%% HIGH LEVEL PLANNER PARAMS %%%
+HLP_timeout = 2 ; 
+HLP_grow_tree_mode = 'new' ;
+plot_while_sampling_flag = false ;
+make_new_graph_every_iteration = false ;
+plot_HLP_flag = true ; % for planner
+plot_waypoint_flag = true ; % for HLP
+plot_waypoint_arm_flag  = true ; % for HLP
+lookahead_distance = 0.1 ;
+
+%%% MANUAL WAYPOINTS PARAMETERS %%%
+use_manual_waypoints_flag = true ;
+
+%%% OTHER PARAMETERS %%%
 % add more obstacles
 N_random_obstacles = 6 ; % NOTE we should no longer set W.N_obstacles
 create_random_obstacles_flag = false ; % in addition to the shelf
@@ -42,14 +56,6 @@ simulated_t_plan = 0.5 ;
 time_discretization = 0.01 ;
 T = 1 ;
 first_iter_pause_flag = true ; 
-HLP_timeout = 2 ; 
-HLP_grow_tree_mode = 'new' ;
-plot_while_sampling_flag = false ;
-make_new_graph_every_iteration = false ;
-plot_HLP_flag = true ; % for planner
-plot_waypoint_flag = true ; % for HLP
-plot_waypoint_arm_flag  = true ; % for HLP
-lookahead_distance = 0.3 ;
 use_end_effector_for_cost_flag = true ;
 plot_CAD_flag = false ; % plot the faaaaancy arm :)
 
@@ -369,6 +375,9 @@ P.HLP = arm_end_effector_RRT_star_HLP('plot_waypoint_flag',plot_waypoint_flag,..
     'plot_waypoint_arm_flag',plot_waypoint_arm_flag,...
     'grow_tree_mode',HLP_grow_tree_mode,...
     'buffer',0.1) ;
+if use_manual_waypoints_flag
+    P.HLP = manual_waypoint_HLP('manual_waypoints',manual_waypoints) ;
+end
 
 %% set up simulator
 % set up world using arm

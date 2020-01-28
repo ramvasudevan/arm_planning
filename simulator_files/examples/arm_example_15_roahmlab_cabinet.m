@@ -9,17 +9,20 @@
 %% user parameters
 %%% WORLD PARAMETERS %%%
 % manually create start
-start = [pi/2 ; 0 ; 0 ; 0 ; 0 ; 0] ; % top of left shelf
+% start = [0; 0 ; 0 ; pi/2 ; 0 ; -pi/2.2 ] ; % on shelf 5
+start = [0; -pi/4; pi ; pi/7 ; 0 ; -pi/2.7 ] ; % on shelf 2
+
+% start = [pi/3; 0;0;0;0;0] ; % heckin outside the shelves
 
 % manually create goal
-goal_radius = 0.03 ;
+goal_radius = pi/30 ;
 % goal_type = 'configuration' ; % 'configuration' or 'end_effector_location'
 goal_type = 'configuration' ;
 
 % configuration goals (set goal_type to 'configuration')
-goal = [0; -pi/4; 0 ; -pi/7 ; 0 ; pi/2.7 ] ; % on shelf 2
+% goal = [0; -pi/4; pi ; pi/7 ; 0 ; -pi/2.7 ] ; % on shelf 2
 % goal = [-pi/5; -pi/3.7; pi/5 ; pi/3.7 ; 0 ; 0.1 ] ; % on shelf 3
-% goal = [0; -pi/4.2; 0 ; pi/1.7 ; 0 ; -pi/3 ] ; % on shelf 4
+goal = [0; -pi/4.2; 0 ; pi/1.7 ; 0 ; -pi/3 ] ; % on shelf 4
 % goal = [0; 0 ; 0 ; pi/2 ; 0 ; -pi/2.2 ] ; % on shelf 5
 
 % shelf parameters
@@ -30,8 +33,20 @@ N_random_obstacles = 6 ; % NOTE we should no longer set W.N_obstacles
 create_random_obstacles_flag = false ; % in addition to the shelf
 %%% END WORLD PARAMETERS %%%
 
+%%% MANUAL WAYPOINTS IF YA WANT 'EM %%%
+% manual_waypoints = [start(:), [0; 0 ; 0 ; pi/2 ; -pi/3 ; -pi/2.2],...
+%     [0; 0 ; 3*pi/4 ; pi/2 ; -pi/2 ; -pi/2.2], [0; -pi/4 ; pi ; pi/4 ; -pi/2 ; -pi/2], ...
+%     [0; -pi/4 ; pi ; pi/4 ; -pi/3 ; -pi/2], goal(:)] ; % this for shelf 5 to shelf 2
+manual_waypoints = [start(:), [0; -pi/4 ; pi ; pi/4 ; -pi/3 ; -pi/2],...
+    [0; -pi/4 ; pi/2 ; pi/2 ; -pi/2 ; -pi/2], ...
+    [0; -pi/4 ;0 ; pi/1.5 ; -pi/2 ; -pi/2],...
+    [0; -pi/4 ;0 ; pi/1.5 ; -pi/3 ; -pi/2.2], ...
+    goal(:)] ;  % this for shelf 2 to shelf 4
+%     [0; -pi/4 ; pi ; pi/4 ; -pi/2 ; -pi/2], ...
+
+
 %%% OTHER PARAMETERS %%%
-use_cuda_flag = false ;
+use_cuda_flag = true ;
 agent_move_mode = 'direct' ; % pick 'direct' or 'integrator'
 verbosity = 6 ;
 allow_replan_errors = true ;
@@ -40,7 +55,7 @@ simulated_t_plan = 0.5 ;
 time_discretization = 0.01 ;
 T = 1 ;
 first_iter_pause_flag = false ; 
-run_simulation_flag = false ;
+run_simulation_flag = true ;
 HLP_timeout = 2 ; 
 HLP_grow_tree_mode = 'new' ;
 plot_while_sampling_flag = false ;
@@ -113,6 +128,8 @@ P.HLP = arm_end_effector_RRT_star_HLP('plot_waypoint_flag',plot_waypoint_flag,..
     'grow_tree_mode',HLP_grow_tree_mode,...
     'buffer',0.1) ;
 
+% P.HLP = arm_manual_waypoint_HLP('manual_waypoints',manual_waypoints, 'interp_type', 'linear') ;
+
 %% set up simulator
 % set up world using arm
 I = A.get_agent_info ;
@@ -127,9 +144,9 @@ S = simulator(A,W,P,'allow_replan_errors',allow_replan_errors,...
 
 %% initial plot
 figure(1); clf; axis equal ; hold on ; grid on ;
-% view(3) ;
+view(3) ;
 % campos([-10.9451    2.8278   16.5867]) ;
-campos([-0.0361  -25.5052    0.7394])
+% campos([-0.0361  -25.5052    0.7394])
 
 plot(A)
 plot(W)

@@ -1,7 +1,7 @@
 %% user parameters
 % filename = 'trial_20190410_0262.mat' ;
 clear;
-filename = '/Users/pdholmes/Documents/MATLAB/arm_planning/simulator_files/testing/trial_data/20191205/trial_scene_010_009.mat';
+filename = 'arm_planning/simulator_files/testing/trial_data/20200127/trial_scene_028_008.mat';
 
 % obs_color = [1 0.7 0.7] ;
 % obs_opacity = 0.5 ;
@@ -12,7 +12,8 @@ filename = '/Users/pdholmes/Documents/MATLAB/arm_planning/simulator_files/testin
 
 verbosity = 0 ;
 dimension = 3;
-
+goal_type = 'configuration';
+goal_radius = pi/30;
 
 %% automated from here
 load(filename)
@@ -40,8 +41,8 @@ A = robot_arm_3D_fetch('verbose', verbosity, 'animation_set_axes_flag', 0, 'anim
 %     'obstacles',obstacles,...
 %     'goal',goal) ;
 
-W = fetch_base_world_static('create_random_obstacles', 0, 'include_base_obstacle', 0, 'N_obstacles',length(obstacles),'dimension',dimension,'workspace_goal_check', 0,...
-    'verbose',verbosity, 'start', start, 'goal', goal, 'obstacles', obstacles) ;
+    W = fetch_base_world_static('create_random_obstacles_flag', false, 'include_base_obstacle', true, 'goal_radius', goal_radius, 'N_obstacles',length(obstacles),'dimension',dimension,'workspace_goal_check', 0,...
+    'verbose',verbosity, 'start', start, 'goal', goal, 'obstacles', obstacles, 'goal_type', goal_type) ;
 
 % fill in agent state
 A.time = agent_info.time ;

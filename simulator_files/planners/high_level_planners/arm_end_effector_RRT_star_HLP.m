@@ -6,6 +6,7 @@ classdef arm_end_effector_RRT_star_HLP < RRT_star_HLP
         O_cell ; % cell array for obstacles
         current_waypoint_patch_data
         plot_waypoint_arm_flag = false ;
+        goal_configuration ;
     end
     
     methods
@@ -34,6 +35,8 @@ classdef arm_end_effector_RRT_star_HLP < RRT_star_HLP
                 error('The world goal is a weird, invalid size')
             end
             
+            HLP.goal_configuration = WI.goal ;
+            
             % initialize tree
             HLP.initialize_tree(AI)
             
@@ -60,6 +63,7 @@ classdef arm_end_effector_RRT_star_HLP < RRT_star_HLP
             
             % get the agent's current state
             q_0 = agent_info.state(agent_info.joint_state_indices,end) ;
+%             q_0 = HLP.goal_configuration ;
             
             % inverse kinematics to get q close to z
             HLP.vdisp('Running inverse kinematics to get waypoint')

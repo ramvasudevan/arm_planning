@@ -26,6 +26,11 @@ classdef robot_arm_rotatotope_RTD_planner_3D_fetch < robot_arm_generic_planner
         
         % for cuda
         use_cuda_flag = false;
+        
+        % mocap
+        use_mocap_flag = false;
+        mocap_fetch;
+        mocap_obs;
        
     end
     
@@ -44,6 +49,14 @@ classdef robot_arm_rotatotope_RTD_planner_3D_fetch < robot_arm_generic_planner
             P.FRS_options = varargin{1};
 %             P.FRS_options.combs = generate_combinations_upto(200);
 %             P.FRS_options.maxcombs = 200;
+
+            % init info object
+            P.init_info()
+        end
+        
+        function init_info(P)
+            P.info = struct('T',[],'U',[],'Z',[],'waypoint',[],...
+                'obstacles',[],'q_0',[],'q_dot_0',[],'k_opt',[]) ;
         end
         
         %% replan
@@ -82,7 +95,7 @@ classdef robot_arm_rotatotope_RTD_planner_3D_fetch < robot_arm_generic_planner
                         
             P.vdisp('Generating constraints',6)
             % get current obstacles
-            P.O = world_info.obstacles ;
+            P.O = world_info.obstacles;
             
             % get current state of robot
             q_0 = agent_info.state(P.arm_joint_state_indices, end) ;
@@ -168,9 +181,16 @@ classdef robot_arm_rotatotope_RTD_planner_3D_fetch < robot_arm_generic_planner
                 end
                 toc(planning_time);
             end
-           
-
-                        
+            
+            % save info
+            P.info.T = [P.info.T, {T}] ;
+            P.info.U = [P.info.U, {U}] ;
+            P.info.Z = [P.info.Z, {Z}] ;
+            P.info.waypoint = [P.info.waypoint, {q_des}] ;
+            P.info.obstacles = [P.info.obstacles, {world_info.obstacles}] ;
+            P.info.q_0 = [P.info.q_0, {q_0}] ;
+            P.info.q_dot_0 = [P.info.q_dot_0, {q_dot_0}] ;
+            P.info.k_opt = [P.info.k_opt, {k_opt}] ;
             %             toc;
         end
         
