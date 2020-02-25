@@ -12,13 +12,25 @@ classdef box_obstacle_zonotope < box_obstacle
     methods
         function O = box_obstacle_zonotope(varargin)
             O@box_obstacle(varargin{:}) ;
+            O.make_zono()
+            
+            O.create_buffered_plot_patch_data ;
+            O.create_buffered_collision_check_patch_data ;
+        end
+        
+        function make_zono(O)
             C = O.center ;
             S = O.side_lengths ;
             O.zono = zonotope([C,diag(S./2)]) ;
             O.Z = get(O.zono, 'Z');
+        end
+        
+        %% shift center
+        function change_center(O,new_center)
+            change_center@box_obstacle(O,new_center) ;
             
-            O.create_buffered_plot_patch_data ;
-            O.create_buffered_collision_check_patch_data ;
+            % update zonotope
+            O.make_zono() ;
         end
         
         %% buffered plot and collision check setup for obstacle generation

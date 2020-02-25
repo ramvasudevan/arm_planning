@@ -18,7 +18,7 @@ classdef rotatotope
         rot_axes = []; % axes about which we are rotating
         Z; % zonotope representing the set to rotate
         dim double;
-        red_order = 10; % desired order of reduced zonotope
+        red_order = 50; % desired order of reduced zonotope
         
         % hold on to dimensions of first zonotope
         pos_dim = [1, 2];
@@ -196,14 +196,17 @@ classdef rotatotope
             obj.C_idx = C_idx(:, 2:end);
         end
         
-        function [] = plot(obj, color)
+        function [p] = plot(obj, color, dim)
             if ~exist('color', 'var')
                 color = 'b';
             end
+            if ~exist('dim', 'var')
+                dim = obj.dim;
+            end
             Z = zonotope([obj.RZ]);
-            switch obj.dim
+            switch dim
                 case 2
-                    p = plotFilled(Z, [1, 2], 'b');
+                    p = plotFilled(Z, [1, 2], color);
                     p.FaceAlpha = 0.1;
                 case 3
                     Z = reduce(Z, 'girard', 4);
@@ -216,13 +219,16 @@ classdef rotatotope
             end
         end
         
-        function [] = plot_slice(obj, k, color)
+        function [p] = plot_slice(obj, k, color, dim)
             if ~exist('color', 'var')
                 color = 'b';
             end
+            if ~exist('dim', 'var')
+                dim = obj.dim;
+            end
             Z = slice(obj, k);
             Z = zonotope(Z);
-            switch obj.dim
+            switch dim
                 case 2
                     p = plotFilled(Z, [1, 2], color);
                     p.FaceAlpha = 0.1;
@@ -280,6 +286,33 @@ classdef rotatotope
             % take the k dep gens that slice to points... add to center
             c_out = c + sum(g_sliced(:, slice_to_pt_idx), 2);
             g_out = g_sliced(:, ~slice_to_pt_idx);
+            
+            Z = [c_out, g_out];
+        end
+        
+        function [Z] = slice_to_pt(obj, k)
+            % this slicing function only slices generators that slice to a
+            % point.
+            % take in a value for k, slice along dimension
+            if length(k) ~= length(obj.c_k)
+                error('Slice point not correct dimension');
+            end
+            g_sliced = obj.Rg;
+            c = obj.Rc;
+            lambda = zeros(length(k), 1);
+            for i = 1:length(k)
+                if abs(k(i) - obj.c_k(i)) > obj.g_k(i)
+                    error('Slice point is out of bounds');
+                end
+                lambda(i) = (k(i) - obj.c_k(i))/obj.g_k(i);
+                
+                g_sliced(:, obj.k_idx(i, :) == 1) = g_sliced(:, obj.k_idx(i, :) == 1)*lambda(i); % slice gens
+            end
+            
+            slice_to_pt_idx = all(obj.k_idx ~= 0 | obj.C_idx ~= 0, 1) & (obj.c_idx == 1);
+            % take the k dep gens that slice to points... add to center
+            c_out = c + sum(g_sliced(:, slice_to_pt_idx), 2);
+            g_out = obj.Rg(:, ~slice_to_pt_idx);
             
             Z = [c_out, g_out];
         end

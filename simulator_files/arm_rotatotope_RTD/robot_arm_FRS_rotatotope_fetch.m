@@ -42,6 +42,10 @@ classdef robot_arm_FRS_rotatotope_fetch
         
         c_k = [];
         g_k = [];
+        
+        % patch data for plotting buffered FRS
+        patch_data = {};
+        patch_data_exists = false;
     end
     
     methods
@@ -184,6 +188,96 @@ classdef robot_arm_FRS_rotatotope_fetch
             end
             
         end
+        
+        function [patch_data] = plot_buffered(obj, plot_times, colors, patch_data)
+            if ~exist('colors', 'var')
+                colors = {'b', 'r', 'm'};
+            end
+            if ~exist('plot_times', 'var')
+                plot_times = 1:1:100;
+            end
+            if ~exist('patch_data', 'var')
+                patch_data = {};
+            end
+            
+            
+            if isempty(patch_data)
+                for i = 1:length(obj.link_FRS)
+                    for j = plot_times
+                        Z = zonotope([obj.link_FRS{i}{j}.RZ, obj.FRS_options.buffer_dist/2*eye(3)]);
+                        Z = reduce(Z, 'girard', 4);
+                        V = vertices(project(Z, [1, 2, 3]));
+                        shp = alphaShape(V(1, :)', V(2, :)', V(3, :)', inf);
+                        patch_data{i}{j} = plot(shp);
+                        patch_data{i}{j}.FaceColor = colors{i};
+                        patch_data{i}{j}.FaceAlpha = 0.05;
+                        patch_data{i}{j}.EdgeAlpha = 0.05;
+%                         patch_data{i}{j}.EdgeColor = [0.4 0.4 0.4];
+                        patch_data{i}{j}.EdgeColor = 'k';
+                    end
+                end
+            else
+                for i = 1:length(obj.link_FRS)
+                    for j = plot_times
+                        Z = zonotope([obj.link_FRS{i}{j}.RZ, obj.FRS_options.buffer_dist/2*eye(3)]);
+                        Z = reduce(Z, 'girard', 4);
+                        V = vertices(project(Z, [1, 2, 3]));
+                        shp = alphaShape(V(1, :)', V(2, :)', V(3, :)', inf);
+                        [tri, P] = shp.alphaTriangulation();
+                        patch_data{i}{j}.Faces = tri;
+                        patch_data{i}{j}.Vertices = P;
+                    end
+                end
+                
+            end
+                            
+        end 
+        
+        function [patch_data] = plot_slice_buffered(obj, k_opt, plot_times, colors, patch_data)
+            if ~exist('colors', 'var')
+                colors = {'b', 'r', 'm'};
+            end
+            if ~exist('plot_times', 'var')
+                plot_times = 1:1:100;
+            end
+            if ~exist('patch_data', 'var')
+                patch_data = {};
+            end
+            
+            
+            if isempty(patch_data)
+                for i = 1:length(obj.link_FRS)
+                    for j = plot_times
+                        Z = zonotope([obj.link_FRS{i}{j}.slice_to_pt(k_opt(obj.link_joints{i})), obj.FRS_options.buffer_dist/2*eye(3)]);
+                        Z = reduce(Z, 'girard', 4);
+                        V = vertices(project(Z, [1, 2, 3]));
+                        shp = alphaShape(V(1, :)', V(2, :)', V(3, :)', inf);
+%                         patch_data{i}{j} = plot(shp);
+                        [tri, P] = shp.alphaTriangulation();
+                        patch_data{i}{j} = patch('Faces', tri, 'Vertices', P);
+                        patch_data{i}{j}.FaceColor = colors{i};
+                        patch_data{i}{j}.FaceAlpha = 0.15;
+                        patch_data{i}{j}.EdgeAlpha = 0;
+%                         patch_data{i}{j}.EdgeColor = [0.4 0.4 0.4];
+                        patch_data{i}{j}.EdgeColor = 'k';
+                    end
+                end
+            else
+                for i = 1:length(obj.link_FRS)
+                    for j = plot_times
+                        Z = zonotope([obj.link_FRS{i}{j}.slice_to_pt(k_opt(obj.link_joints{i})), obj.FRS_options.buffer_dist/2*eye(3)]);
+                        Z = reduce(Z, 'girard', 4);
+                        V = vertices(project(Z, [1, 2, 3]));
+                        shp = alphaShape(V(1, :)', V(2, :)', V(3, :)', inf);
+                        [tri, P] = shp.alphaTriangulation();
+                        patch_data{i}{j}.Faces = tri;
+                        patch_data{i}{j}.Vertices = P;
+                    end
+                end
+                
+            end
+                            
+        end 
         
 %         function [] = plot_slice_gensIncluded(obj, k, rate, colors)
 %             if ~exist('colors', 'var')

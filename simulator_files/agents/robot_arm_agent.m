@@ -555,6 +555,10 @@ classdef robot_arm_agent < multi_link_agent
         function agent_info = get_agent_info(A)
             % call superclass
             agent_info = get_agent_info@agent(A) ;
+
+            % add position info
+            agent_info.position = A.state(A.joint_state_indices,:) ;
+            agent_info.position_indices = A.joint_state_indices ;
             
             % properties
             agent_info.n_links_and_joints = A.n_links_and_joints ;

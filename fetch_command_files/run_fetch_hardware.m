@@ -17,12 +17,23 @@ clear; clc;
 
 %% user parameters
 %%% CHOOSE SCENARIO %%%
-start = [0;0;0;pi/4;0;0];
-goal = [0;0;0;0;0;0];
-goal_radius = 0.1;
-goal_type = 'configuration';
+% start = [0;0;0;pi/4;0;0];
+% goal = [0;0;0;0;0;0];
+% goal_radius = 0.1;
+% goal_type = 'configuration';
 max_iterations = 1000;
-max_time = 20 ;
+max_time = 60 ;
+
+% manually create start
+start = [pi/2 ; 0 ; 0 ; 0 ; 0 ; 0] ; % top of left shelf
+
+% manually create goal
+goal_radius = pi/30 ;
+% goal_type = 'configuration' ; % 'configuration' or 'end_effector_location'
+goal_type = 'configuration' ;
+
+% configuration goals (set goal_type to 'configuration')
+goal = [0; -pi/4; 0 ; -pi/7 ; 0 ; pi/2.7 ] ; % on shelf 2
 
 % scenario = 6; % 1 2 3 4 5 6 or 7
 % sub_scenario = 1; % sub_scenario only changes for scenario 4
@@ -38,10 +49,11 @@ t_plan = 0.5 ;
 %%% REAL LIFE PARAMETERS %%%
 t_overrun = 0.005 ; % typical amount of time that the loop overruns t_plan
 plot_while_running_flag = true ;
+save_filename = 'fetch_hardware_random_6.mat' ; %%% CHANGE THIS BEFORE SAVING STUFF MAN
 
 %%% OTHER PARAMS %%%
 % add more obstacles
-N_random_obstacles = 20 ;
+N_random_obstacles = 15 ;
 create_random_obstacles_flag = true ; % in addition to the shelf
 verbosity = 6 ;
 allow_replan_errors = true ;
@@ -55,7 +67,7 @@ make_new_graph_every_iteration = false ;
 plot_HLP_flag = true ; % for planner
 plot_waypoint_flag = true ; % for HLP
 plot_waypoint_arm_flag  = true ; % for HLP
-lookahead_distance = 0.3 ;
+lookahead_distance = 0.5 ;
 use_end_effector_for_cost_flag = true ;
 plot_CAD_flag = false ;
 collision_check_time_discretization = 0.01 ;
@@ -74,8 +86,11 @@ W = fetch_base_world_static('include_base_obstacle', 1, 'goal_radius',goal_radiu
     'verbose',verbosity, 'creation_buffer', 0.1, 'base_creation_buffer', 0.025,...
     'create_random_obstacles_flag',create_random_obstacles_flag,...
     'goal_type',goal_type,...
-    'collision_check_time_discretization',collision_check_time_discretization) ;
+    'collision_check_time_discretization',collision_check_time_discretization);
 %     'start',start,'goal',goal) ;
+
+% C = make_roahmlab_cabinet_obstacle() ;
+% W.add_obstacle(C)
 
 %% make scenario obstacle
 % W.add_obstacle(scenario_obstacles) ;
@@ -129,10 +144,10 @@ WI = W.get_world_info(AI) ;
 P.setup(AI, WI);
 
 %% ROS setup
-global ROS_t ROS_q ROS_q_dot ROS_saving_data_flag
-ROS_t = []; ROS_q = []; ROS_q_dot = []; ROS_saving_data_flag = false;
+% global ROS_t ROS_q ROS_q_dot ROS_saving_data_flag
+% ROS_t = []; ROS_q = []; ROS_q_dot = []; ROS_saving_data_flag = false;
 
-rosinit('192.168.1.100', 11311);
+fetch_ros_init
 ROS_sub = rossubscriber('/joint_states',@ROS_sub_callback) ;
 [ROS_pub, ROS_msg] = rospublisher('/fetch/des_states','trajectory_msgs/JointTrajectory') ;
 ROS_msg.JointNames = ["shoulder_pan_joint" "shoulder_lift_joint" "upperarm_roll_joint" "elbow_flex_joint"...
@@ -148,6 +163,9 @@ set(gca,'Projection','Perspective')
 campos([16 -13 14])
 plot(W)
 plot(A)
+
+disp('Continue to start??');
+pause();
 
 %% send robit to start position
 p = rosmessage('trajectory_msgs/JointTrajectoryPoint') ;
@@ -259,75 +277,78 @@ end
 rosshutdown;
 
 %% update agent's state with the ROS
-% extract planned trajectory to a variable
-T_planned = A.time ;
-Z_planned = A.state ;
-
-% convert ROS time to seconds
-ROS_t = ROS_t - ROS_t(1) ;
-
-% only keep the ros time up to the last planned time, plus t_plan
-ROS_t_log = ROS_t <= (T_planned(end) + t_plan) ;
-ROS_t = ROS_t(ROS_t_log) ;
-ROS_q = ROS_q(:,ROS_t_log) ;
-ROS_q_dot = ROS_q_dot(:,ROS_t_log) ;
-
-N_ROS_data = size(ROS_t,2) ;
-
-% plug in state
-A.time = ROS_t ;
-A.state = nan(A.n_states,N_ROS_data) ;
-A.state(A.joint_state_indices,:) = ROS_q ;
-A.state(A.joint_speed_indices,:) = ROS_q_dot ;
+% % extract planned trajectory to a variable
+% T_planned = A.time ;
+% Z_planned = A.state ;
+% 
+% % convert ROS time to seconds
+% ROS_t = ROS_t - ROS_t(1) ;
+% 
+% % only keep the ros time up to the last planned time, plus t_plan
+% ROS_t_log = ROS_t <= (T_planned(end) + t_plan) ;
+% ROS_t = ROS_t(ROS_t_log) ;
+% ROS_q = ROS_q(:,ROS_t_log) ;
+% ROS_q_dot = ROS_q_dot(:,ROS_t_log) ;
+% 
+% N_ROS_data = size(ROS_t,2) ;
+% 
+% % plug in state
+% A.time = ROS_t ;
+% A.state = nan(A.n_states,N_ROS_data) ;
+% A.state(A.joint_state_indices,:) = ROS_q ;
+% A.state(A.joint_speed_indices,:) = ROS_q_dot ;
 
 %% plot stuff
 figure(1) ; clf ; hold on ; axis equal ; grid on ; view(3) ;
 plot(W) ;
 plot(A) ;
 
-figure(2) ; clf ;
-subplot(2,1,1) ; hold on ;
-h_plan = plot(T_planned, Z_planned(A.joint_state_indices,:)', 'b') ;
-h_exec = plot(A.time, A.state(A.joint_state_indices,:)', 'r') ;
-title('joint angles')
-xlabel('time [s]')
-legend([h_plan(1), h_exec(1)],'planned','executed')
-
-subplot(2,1,2) ; hold on ;
-plot(T_planned, Z_planned(A.joint_speed_indices,:)', 'b')
-plot(A.time, A.state(A.joint_speed_indices,:)', 'r')
-title('joint speeds')
-xlabel('time [s]')
-
-drawnow() ;
+% figure(2) ; clf ;
+% subplot(2,1,1) ; hold on ;
+% h_plan = plot(T_planned, Z_planned(A.joint_state_indices,:)', 'b') ;
+% h_exec = plot(A.time, A.state(A.joint_state_indices,:)', 'r') ;
+% title('joint angles')
+% xlabel('time [s]')
+% legend([h_plan(1), h_exec(1)],'planned','executed')
+% 
+% subplot(2,1,2) ; hold on ;
+% plot(T_planned, Z_planned(A.joint_speed_indices,:)', 'b')
+% plot(A.time, A.state(A.joint_speed_indices,:)', 'r')
+% title('joint speeds')
+% xlabel('time [s]')
+% 
+% drawnow() ;
 
 %% animate agent :)
 figure(1) ;
 animate(A)
 
 %% check for collisions with virtual obstacles
-tic
-W.collision_check(A.get_agent_info, true);
-toc
+% tic
+% W.collision_check(A.get_agent_info, true);
+% toc
+
+%% save everything but figures
+save_fetch_hardware_data
 
 %% hlepper function
-function [] = ROS_sub_callback(src, msg)
-    global ROS_t ROS_q ROS_q_dot ROS_saving_data_flag
-
-    % get the joint states out of the message
-    if size(msg.Position,1) == 13 && ROS_saving_data_flag
-        q = msg.Position(7:12) ;
-        q_dot = msg.Velocity(7:12);
-
-        % get the time stamp
-        t_stamp = msg.Header.Stamp ;
-        t = t_stamp.Sec + (t_stamp.Nsec*(1e-9)) ;
-
-        ROS_t = [ROS_t, t];
-        ROS_q = [ROS_q, q];
-        ROS_q_dot = [ROS_q_dot, q_dot];
-
-    end
+% function [] = ROS_sub_callback(src, msg)
+%     global ROS_t ROS_q ROS_q_dot ROS_saving_data_flag
+% 
+%     % get the joint states out of the message
+%     if size(msg.Position,1) == 13 && ROS_saving_data_flag
+%         q = msg.Position(7:12) ;
+%         q_dot = msg.Velocity(7:12);
+% 
+%         % get the time stamp
+%         t_stamp = msg.Header.Stamp ;
+%         t = t_stamp.Sec + (t_stamp.Nsec*(1e-9)) ;
+% 
+%         ROS_t = [ROS_t, t];
+%         ROS_q = [ROS_q, q];
+%         ROS_q_dot = [ROS_q_dot, q_dot];
+% 
+%     end
 
 % save
 % get the reference trajectory up to time t_move
@@ -341,4 +362,4 @@ function [] = ROS_sub_callback(src, msg)
 %     u = zeros(6, 1);
 %     A.commit_move_data(t,z,t,u) ;
 %                 A.joint_pos_data = [A.joint_pos_data, [t;q]] ;
-end
+% end

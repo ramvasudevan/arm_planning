@@ -10,7 +10,8 @@
 clear; clc;
 
 %% user parameters
-goal_type = 'end_effector_location';
+% goal_type = 'end_effector_location';
+goal_type = 'configuration';
 goal_radius = pi/30;
 dimension = 3 ;
 nLinks = 3 ;
@@ -21,7 +22,7 @@ T = 1 ;
 use_cuda_flag = true;
 agent_move_mode = 'direct';
 
-create_random_obstacles_flag = false ; % in addition to the shelf
+create_random_obstacles_flag = false ;
 verbosity = 6 ;
 actual_t_plan = 10 ;
 simulated_t_plan = 0.5 ;
@@ -32,7 +33,7 @@ make_new_graph_every_iteration = false ;
 plot_HLP_flag = true ; % for planner
 plot_waypoint_flag = true ; % for HLP
 plot_waypoint_arm_flag  = true ; % for HLP
-lookahead_distance = 0.15 ;
+lookahead_distance = 0.2 ;
 use_end_effector_for_cost_flag = true ;
 plot_CAD_flag = false ; % plot the faaaaancy arm :)
 
@@ -47,20 +48,20 @@ plot_while_running = false ;
 % start_idx = 5 ;
 % end_idx = 500 ;
 verbosity = 10 ;
-max_sim_time = 300 ;
+max_sim_time = 600 ;
 max_sim_iter = 1000 ;
 first_iter_pause_flag = false;
 
 % file handling
 save_file_header = 'trial_' ;
-file_location = 'arm_planning/simulator_files/testing/trial_data/20200116' ;
+file_location = 'arm_planning/simulator_files/testing/trial_data/20200127' ;
 if ~exist(file_location, 'dir')
     mkdir(file_location);
 end
 
 % world file
 world_file_header = 'scene';
-world_file_folder = 'arm_planning/simulator_files/testing/saved_worlds/20200116/';
+world_file_folder = 'arm_planning/simulator_files/testing/saved_worlds/20200127/';
 world_file_location = sprintf('%s*%s*', world_file_folder, world_file_header);
 world_file_list = dir(world_file_location);
 
@@ -68,6 +69,7 @@ world_file_list = dir(world_file_location);
 %% automated from here
 % run loop
 tic
+% for idx = 68
 for idx = 1:length(world_file_list)
     % read world CSV to get start and goal, populate obstacles:
     world_filename = world_file_list(idx).name;
@@ -107,10 +109,10 @@ for idx = 1:length(world_file_list)
         'use_end_effector_for_cost_flag',use_end_effector_for_cost_flag,...
         'use_cuda_flag', use_cuda_flag) ;
     
-    P.HLP = arm_end_effector_RRT_star_HLP('plot_waypoint_flag',plot_waypoint_flag,...
-        'plot_waypoint_arm_flag',plot_waypoint_arm_flag,...
-        'grow_tree_mode',HLP_grow_tree_mode,...
-        'buffer',0.1) ;
+%     P.HLP = arm_end_effector_RRT_star_HLP('plot_waypoint_flag',plot_waypoint_flag,...
+%         'plot_waypoint_arm_flag',plot_waypoint_arm_flag,...
+%         'grow_tree_mode',HLP_grow_tree_mode,...
+%         'buffer',0.1) ;
     
     % set up world using arm
     I = A.get_agent_info ;
