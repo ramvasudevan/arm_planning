@@ -2,16 +2,16 @@ classdef robot_arm_3D_fetch < robot_arm_agent
     %% properties
     properties
         % whether or not to plot the CAD version of the arm
-        plot_CAD_flag = false ;
-        link_plot_CAD_data = [] ;
+        use_CAD_flag = false ;
+        link_CAD_data = [] ;
         
         % joint axes
-        plot_CAD_joint_axes = [0 0 1 0 1 0 1 1 ;
+        joint_axes_CAD = [0 0 1 0 1 0 1 1 ;
             0 1 0 1 0 1 0 0 ;
             1 0 0 0 0 0 0 0 ] ;
         
         % joint locatinos
-        plot_CAD_joint_locations = [-0.03 0.12 0.21 0.13 0.20 0.12 0.14 0.16 ;
+        joint_locations_CAD = [-0.03 0.12 0.21 0.13 0.20 0.12 0.14 0.16 ;
             0.00 0.00 0.00 0.00 0.00 0.00 0.00 0.00 ;
             0.75 0.06 0.00 0.00 0.00 0.00 0.00 0.00 ;
             0 0 0 0 0 0 0 0 ;
@@ -100,7 +100,7 @@ classdef robot_arm_3D_fetch < robot_arm_agent
                 'animation_time_discretization', 0.01,...
                 varargin{:}) ;
             
-            if A.plot_CAD_flag
+            if A.use_CAD_flag
                 A.load_CAD_arm_patch_data()
                 A.link_plot_edge_color = [0 0 1] ;
                 A.link_plot_edge_opacity = 0 ;
@@ -127,19 +127,19 @@ classdef robot_arm_3D_fetch < robot_arm_agent
             wrist_roll = stlread('wrist_roll_link_collision.STL') ;
             gripper = stlread('gripper_link.STL') ;
             
-            temp_link_plot_CAD_data = {shoulder_pan, shoulder_lift,...
+            temp_link_CAD_data = {shoulder_pan, shoulder_lift,...
                 upper_arm, elbow, forearm, wrist_flex, wrist_roll, gripper} ;
             
             % check to make sure the CAD data are patches, not
             % triangulations
             triangulated_flag = false ;
             for idx = 1:8
-                current_data = temp_link_plot_CAD_data{idx} ;
+                current_data = temp_link_CAD_data{idx} ;
                 if isa(current_data,'triangulation')
                     triangulated_flag = true ;
                     new_data.faces = current_data.ConnectivityList ;
                     new_data.vertices = current_data.Points ;
-                    temp_link_plot_CAD_data{idx} = new_data ;
+                    temp_link_CAD_data{idx} = new_data ;
                 end
             end
             
@@ -147,12 +147,12 @@ classdef robot_arm_3D_fetch < robot_arm_agent
                 A.vdisp('STL read returned a triangulated data format, but we fixed it :)',7)
             end
             
-            A.link_plot_CAD_data = temp_link_plot_CAD_data ;
+            A.link_CAD_data = temp_link_CAD_data ;
         end
         
         %% plotting
         function plot_links(A,time_or_config)
-            if A.plot_CAD_flag
+            if A.use_CAD_flag
                 % get the rotations and translations at the current time
                 if length(time_or_config) == 1
                     q = match_trajectories(time_or_config,A.time,A.state(A.joint_state_indices,:)) ;
@@ -164,7 +164,7 @@ classdef robot_arm_3D_fetch < robot_arm_agent
                 
                 % get transformations for the plot links
                 [R,T] = get_link_rotations_and_translations_from_arm_data(q,...
-                    A.plot_CAD_joint_axes,A.plot_CAD_joint_locations) ;
+                    A.joint_axes_CAD,A.joint_locations_CAD) ;
                 
                 % set the number of plot links
                 n = 8 ;
@@ -172,19 +172,19 @@ classdef robot_arm_3D_fetch < robot_arm_agent
                 % generate plot data for each link
                 link_verts = cell(1,n) ;
                 for idx = 1:n
-                    link_verts{idx} = (R{idx}*A.link_plot_CAD_data{idx}.vertices' + ...
+                    link_verts{idx} = (R{idx}*A.link_CAD_data{idx}.vertices' + ...
                         T{idx})' ;
                 end
                 
                 if check_if_plot_is_available(A,'links')
                     for idx = 1:n
-                        A.plot_data.links(idx).Faces = A.link_plot_CAD_data{idx}.faces ;
+                        A.plot_data.links(idx).Faces = A.link_CAD_data{idx}.faces ;
                         A.plot_data.links(idx).Vertices = link_verts{idx} ;
                     end
                 else
                     link_array = [] ;
                     for idx = 1:n
-                        link_data = patch('Faces',A.link_plot_CAD_data{idx}.faces,...
+                        link_data = patch('Faces',A.link_CAD_data{idx}.faces,...
                             'Vertices',link_verts{idx},...
                             'FaceColor',A.link_plot_face_color,...
                             'FaceAlpha',A.link_plot_face_opacity,...
