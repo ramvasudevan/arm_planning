@@ -10,7 +10,7 @@ classdef robot_arm_3D_fetch < robot_arm_agent
             0 1 0 1 0 1 0 0 ;
             1 0 0 0 0 0 0 0 ] ;
         
-        % joint locatinos
+        % joint locations
         joint_locations_CAD = [-0.03 0.12 0.21 0.13 0.20 0.12 0.14 0.16 ;
             0.00 0.00 0.00 0.00 0.00 0.00 0.00 0.00 ;
             0.75 0.06 0.00 0.00 0.00 0.00 0.00 0.00 ;

@@ -832,6 +832,10 @@ classdef robot_arm_agent < multi_link_agent
             % allocate array for the joint locations
             J = nan(d,n) ;
             
+            if isa(q,'sym')
+                J = sym(J) ;
+            end
+            
             % move through the kinematic chain and get the rotations and
             % translation of each link
             for idx = 1:n

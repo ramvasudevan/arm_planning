@@ -1,4 +1,20 @@
 function [R,T,J] = get_link_rotations_and_translations_from_arm_data(j_vals,j_axes,j_locs)
+% [R,T,J] = get_link_rotations_and_translations_from_arm_data(j_vals,j_axes,j_locs)
+%
+% Given joint values, joint axes, and joint locations on each link, return
+% the rotation matrices, translation vectors, and joint locations for the
+% given configuration (i.e., joint values)
+%
+% Note, this only works in 3-D right now. The joint axes can be gotten from
+% a robot_arm_agent's joint_axes property, and similarly joint locations
+% can be gotten from the joint_locations property. The input j_vals should
+% a 1-by-n_links_and_joints vector where n_links_and_joints is a property
+% of the robot_arm_agent.
+%
+% Author: Shreyas Kousik
+% Created: who knows
+% Updated: 29 Feb 2020
+
     % setup some info
     n = length(j_vals) ;
     d = 3 ;
@@ -10,6 +26,10 @@ function [R,T,J] = get_link_rotations_and_translations_from_arm_data(j_vals,j_ax
 
     % allocate array for the joint locations
     J = nan(d,n) ;
+    
+    if isa(j_vals,'sym')
+        J = sym(J) ;
+    end
 
     % move through the kinematic chain and get the rotations and
     % translation of each link
@@ -35,7 +55,9 @@ function [R,T,J] = get_link_rotations_and_translations_from_arm_data(j_vals,j_ax
 
         % compute link rotation matrix of current link
         axis_pred = R_pred*j_axes(:,idx) ;
-        R_succ = axis_angle_to_rotation_matrix_3D([axis_pred', j_idx])*R_pred ;
+        K = skew(axis_pred) ;
+        R_succ = eye(3) + sin(j_idx)*K + (1 - cos(j_idx))*(K^2) ;
+        R_succ = R_succ*R_pred ;
 
         % create translation
         T_succ = T_pred + R_pred*j_loc(1:d) - R_succ*j_loc(d+1:end) ;
