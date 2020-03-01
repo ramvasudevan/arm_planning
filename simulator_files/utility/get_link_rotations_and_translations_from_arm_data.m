@@ -15,7 +15,7 @@ function [R,T,J] = get_link_rotations_and_translations_from_arm_data(j_vals,j_ax
 % Created: who knows
 % Updated: 29 Feb 2020
 
-    % setup some info
+    %% setup
     n = length(j_vals) ;
     d = 3 ;
     kinematic_chain = [0:(n-1) ; 1:n] ;
@@ -30,7 +30,23 @@ function [R,T,J] = get_link_rotations_and_translations_from_arm_data(j_vals,j_ax
     if isa(j_vals,'sym')
         J = sym(J) ;
     end
+    
+    %% precompute rotation matrices between joint axes
+    R_axes = cell(1,n) ;    
+    R_axes{1} = eye(3) ; % rotation matrix of first joint axis relative to baselink
+    
+    for idx = 2:n
+        a_1 = j_axes(:,idx-1) ;
+        a_2 = j_axes(:,idx) ;
+        
+        v = cross(a_1,a_2) ;
+        s = vecnorm(v) ;
+        c = a_1'*a_2 ;
+        
+        R_axes{idx} = eye(3) + skew(v) + (skew(v)^2).*(1-c)./(s^2) ;
+    end
 
+    %% get outputs
     % move through the kinematic chain and get the rotations and
     % translation of each link
     for idx = 1:n
@@ -53,11 +69,14 @@ function [R,T,J] = get_link_rotations_and_translations_from_arm_data(j_vals,j_ax
         j_idx = j_vals(idx) ;
         j_loc = j_locs(:,idx) ;
 
-        % compute link rotation matrix of current link
-        axis_pred = R_pred*j_axes(:,idx) ;
-        K = skew(axis_pred) ;
-        R_succ = eye(3) + sin(j_idx)*K + (1 - cos(j_idx))*(K^2) ;
-        R_succ = R_succ*R_pred ;
+        % rotate about the current axis
+        
+        error('shreyas left off here 10:10pm sat feb 29')
+%         % compute link rotation matrix of current link
+%         axis_pred = R_pred*j_axes(:,idx) ;
+%         K = skew(axis_pred) ;
+%         R_succ = eye(3) + sin(j_idx)*K + (1 - cos(j_idx))*(K^2) ;
+%         R_succ = R_succ*R_pred ;
 
         % create translation
         T_succ = T_pred + R_pred*j_loc(1:d) - R_succ*j_loc(d+1:end) ;
