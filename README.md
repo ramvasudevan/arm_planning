@@ -2,7 +2,7 @@
 This repo contains the code for our recent paper: https://arxiv.org/abs/2002.01591
 
 ## Setup Requirements
-To run this code, you'll need the [simulator repo](https://github.com/skousik/simulator), and MATLAB R2018b or newer. If you want to run the GPU versions of the code, you'll need IPOPT.
+To run this code, you'll need MATLAB R2018b or newer. If you want to run the GPU versions of the code, you'll need IPOPT.
 
 Also, if you want to run anything in the `armtd_benchmark` folder, you'll have to do that in Ubuntu with MoveIt! and ROS installed. Similarly, everything in the `fetch_command_files` folder is what we used to communicate with the Fetch hardware (via ROS in MATLAB, from an Ubuntu machine).
 
