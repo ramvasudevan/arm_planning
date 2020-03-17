@@ -6,7 +6,6 @@
 
 To use the files in this repository, you will need the following MATLAB repositories on your path:
 
-- [simulator](https://github.com/skousik/simulator)
 - [RTD](https://github.com/ramvasudevan/RTD)
 
 It might also be worth going through the [RTD Tutorial](https://github.com/skousik/RTD_tutorial) to get a feel for how the objects herein interact
