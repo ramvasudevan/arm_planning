@@ -4,7 +4,7 @@ clear all; clc;
 figure(1); clf; hold on; view(3); axis equal;
 
 teston = 0;
-testgradon = 1;
+testgradon = 0;
 
 % where's your obstacle?
 % obs_center = [cos(pi/4)*0.33; sin(pi/4)*0.33; 0.08];
@@ -25,14 +25,14 @@ q_dot_0 = [pi/2; pi/2];
 
 % slice_pt1 = pi/6-0.001;
 % slice_pt2 = -pi/6+0.001;
-slice_pt = [ pi/6 - 0.001; -pi/6 + 0.001];
+slice_pt = [ 0 ; 0];
 
 tic
 FRS = robot_arm_FRS_rotatotope_1link(q_0, q_dot_0);
 toc
-% FRS.plot(10)
+FRS.plot(10)
 % FRS.plot_slice(ones(2,1)*slice_pt1, 2)
-% FRS.plot_slice(slice_pt, 10, {'r'});
+FRS.plot_slice(slice_pt, 10, {'r'});
 
 tic
 FRS = FRS.generate_polytope_normals(obstacles);
