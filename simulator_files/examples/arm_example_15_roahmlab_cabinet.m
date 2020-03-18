@@ -11,7 +11,6 @@
 % manually create start
 % start = [0; 0 ; 0 ; pi/2 ; 0 ; -pi/2.2 ] ; % on shelf 5
 start = [0; -pi/4; pi ; pi/7 ; 0 ; -pi/2.7 ] ; % on shelf 2
-
 % start = [pi/3; 0;0;0;0;0] ; % heckin outside the shelves
 
 % manually create goal
@@ -46,7 +45,8 @@ manual_waypoints = [start(:), [0; -pi/4 ; pi ; pi/4 ; -pi/3 ; -pi/2],...
 
 
 %%% OTHER PARAMETERS %%%
-use_cuda_flag = true ;
+use_manual_waypoints = true;
+use_cuda_flag = false ;
 agent_move_mode = 'direct' ; % pick 'direct' or 'integrator'
 verbosity = 6 ;
 allow_replan_errors = true ;
@@ -66,13 +66,13 @@ plot_waypoint_arm_flag  = true ; % for HLP
 lookahead_distance = 0.3 ;
 use_end_effector_for_cost_flag = false ;
 csv_filename = 'fetch_shelf_scene_example.csv' ;
-plot_CAD_flag = false ; % plot the faaaaancy arm :)
+use_CAD_flag = false ; % plot the faaaaancy arm :)
 %%% END OTHER PARAMETERS %%%
 
 %% automated from here
 % make agent
 A = robot_arm_3D_fetch('verbose',verbosity, 'animation_set_axes_flag',0,...
-    'animation_set_view_flag',0,'plot_CAD_flag',plot_CAD_flag,...
+    'animation_set_view_flag',0,'use_CAD_flag',use_CAD_flag,...
     'move_mode',agent_move_mode);
 
 % can adjust tracking controller gains here
@@ -123,12 +123,15 @@ P = robot_arm_rotatotope_RTD_planner_3D_fetch(FRS_options,...
 
 % P.HLP = robot_arm_optimization_HLP() ;
 
-P.HLP = arm_end_effector_RRT_star_HLP('plot_waypoint_flag',plot_waypoint_flag,...
-    'plot_waypoint_arm_flag',plot_waypoint_arm_flag,...
-    'grow_tree_mode',HLP_grow_tree_mode,...
-    'buffer',0.1) ;
 
-% P.HLP = arm_manual_waypoint_HLP('manual_waypoints',manual_waypoints, 'interp_type', 'linear') ;
+if use_manual_waypoints
+    P.HLP = arm_manual_waypoint_HLP('manual_waypoints',manual_waypoints) ;
+else
+    P.HLP = arm_end_effector_RRT_star_HLP('plot_waypoint_flag',plot_waypoint_flag,...
+        'plot_waypoint_arm_flag',plot_waypoint_arm_flag,...
+        'grow_tree_mode',HLP_grow_tree_mode,...
+        'buffer',0.1) ;
+end
 
 %% set up simulator
 % set up world using arm

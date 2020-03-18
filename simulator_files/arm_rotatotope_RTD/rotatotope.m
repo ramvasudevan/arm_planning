@@ -11,16 +11,17 @@ classdef rotatotope
     %   argument 3) the set to be rotated (should be a zonotope)
     %
     %   rotatotope will perform the rotations as if multiplying rotation
-    %   matrices together, and will infer whether the set is in 2D or 3D 
+    %   matrices together 
     
     properties
         R = {}; % cell of zonotopes representing rotation matrices
         rot_axes = []; % axes about which we are rotating
         Z; % zonotope representing the set to rotate
         dim double;
-        red_order = 50; % desired order of reduced zonotope
+        red_order = 5; % desired order of reduced zonotope
         
-        % hold on to dimensions of first zonotope
+        % 1 and 2 dimensions correspond to cos and sin, 3 dimension
+        % corresponds to traj parameter
         pos_dim = [1, 2];
         k_dim = [3];
         
@@ -41,11 +42,8 @@ classdef rotatotope
         Rg = []; % resulting zonotope generator matrix
         RZ = []; % resulting zonotope [c, g]
         
-%         c_idx = false(0); % keep track of which generators are multiplied by zonotope C
-%         C_idx = false(0); % keep track of which generators are multiplied by mat zonotopes C's
-%         k_idx = false(0); % keep track of which generators depend on which k
-        c_idx = []; % keep track of which generators are multiplied by zonotope C
-        C_idx = []; % keep track of which generators are multiplied by mat zonotopes C's
+        c_idx = []; % keep track of which generators are multiplied by zonotope center
+        C_idx = []; % keep track of which generators are multiplied by mat zonotopes' Centers
         k_idx = []; % keep track of which generators depend on which k
         
         % key: 1 means generator was multiplied by (c, corresponding C or
@@ -142,9 +140,7 @@ classdef rotatotope
             % if we have R1*R2*R3*Z, first compute R3*Z, then R2*(R3*Z),
             % etc.
             
-            % keep track of the indices that the generators depend on.
-            % also keep track of whether slicing will evaluate to a point
-            % or to a generator.
+            % keep track of the (k, C) indices that the generators depend on.
 
             RZ = [obj.c, obj.g];
                                     
@@ -264,8 +260,7 @@ classdef rotatotope
 %         end
         
         function [Z, lambda, c, g_sliced, slice_to_pt_idx] = slice(obj, k)
-            % this slicing function slices generators that don't slice
-            % to a point
+            % this slicing function slices all k-dep generators
             % take in a value for k, slice along dimension
             if length(k) ~= length(obj.c_k)
                 error('Slice point not correct dimension');
@@ -291,8 +286,7 @@ classdef rotatotope
         end
         
         function [Z] = slice_to_pt(obj, k)
-            % this slicing function only slices generators that slice to a
-            % point.
+            % this slicing function only slices "fully-k-sliceable" gens
             % take in a value for k, slice along dimension
             if length(k) ~= length(obj.c_k)
                 error('Slice point not correct dimension');
@@ -316,33 +310,6 @@ classdef rotatotope
             
             Z = [c_out, g_out];
         end
-        
-%         function [Z] = slice(obj, k)
-%             % PATRICK EDIT 20200121 this function is incorrect
-%             % this slicing function only slices generators that slice to a
-%             % point
-%             % take in a value for k, slice along dimension
-%             if length(k) ~= length(obj.c_k)
-%                 error('Slice point not correct dimension');
-%             end
-%             g = obj.Rg;
-%             c = obj.Rc;
-%             for i = 1:length(k)
-%                 if abs(k(i) - obj.c_k(i)) > obj.g_k(i)
-%                     error('Slice point is out of bounds');
-%                 end
-%                 lambda = (k(i) - obj.c_k(i))/obj.g_k(i);
-%                 
-%                 slice_idx =  obj.k_idx(i, :) & obj.c_idx; % only gens that slice to c
-%                 g(:, slice_idx)  = g(:, slice_idx)*lambda; % slice gens
-%             end
-%             
-%             % take the k dep gens that slice to points... add to center
-%             c = c + sum(g(:, all(obj.k_idx, 1) & obj.c_idx), 2);
-%             g(:, all(obj.k_idx, 1) & obj.c_idx) = [];
-%             
-%             Z = zonotope([c, g]);
-%         end
         
         function [Z_new, c_idx_new, k_idx_new, C_idx_new] = reduce(obj, Z, c_idx, k_idx, C_idx)
             % based off of the "reduceGirard.m" function included in CORA            
@@ -419,160 +386,167 @@ classdef rotatotope
            obj.C_idx = [obj.C_idx, [base.C_idx; nan(C_rows_1 - C_rows_2, C_cols_2)]];
         end
         
-%         function [A_con, b_con, k_con] = generate_constraints(obj, obstacle, options, link_number)
-%            % takes in an obstacle (Z matrix of zonotope) and generates linear constraint matrices
-%            % Acon and bcon, as well as the combinations of k_idxs (kcon) these
-%            % constraints depend on.
-%            
-%            nGen = size(obj.Rg, 2);
-%            [~, kc_col] = find(any(obj.k_idx) & obj.c_idx);
-%            
-%            frs_k_ind_G = obj.Rg;
-%            frs_k_ind_G(:, kc_col) = [];
-%            
-%            frs_k_dep_G = obj.Rg(:, kc_col);
-%            
-%            % buffer the obstacle by k-independent generators, as well as
-%            % buffer_dist specified by planner:
-%            buff_obstacle_c = [obstacle(:, 1) - obj.Rc];
-%            buff_obstacle_G = [obstacle(:, 2:end), frs_k_ind_G, options.buffer_dist/2*eye(3)];
-%            buff_obstacle_G(:, ~any(buff_obstacle_G)) = []; % delete zero columns of G
-%            buff_obstacle = [buff_obstacle_c, buff_obstacle_G];
-%            
-%            [A_poly, b_poly] = polytope_PH(buff_obstacle, options);
-%            
-%            A_con = A_poly*frs_k_dep_G;
-%            b_con = b_poly;
-%            k_con = obj.k_idx(:, kc_col);
-%            
-%            % add a test here that throws out unnecessary constraints.
-%            % ( not entirely sure this is still valid!! )
-% %            intersection_possible = 0;
-% %            for i = 1:size(options.kV_lambda{link_number}, 2)
-% %                lambdas = double(k_con).*options.kV_lambda{link_number}(:, i);
-% %                lambdas(~k_con) = 1;
-% %                lambdas = prod(lambdas, 1)';
-% %                
-% %                kVc = A_con*lambdas - b_con;
-% %                test_kV = max(kVc);
-% %                if test_kV <= 0
-% %                    intersection_possible = 1;                  
-% %                end
-% %            end
-% %            if ~intersection_possible
-% %               A_con = []; b_con = []; k_con = []; 
-% %            end
-%         end
-
-        function [A] = generate_polytope_normals(obj, obstacle, options)
-            % takes in an obstacle (Z matrix of zonotope) and generates
-            % normal vectors to the FRS zono buffered by the obstacle
-            
-            buff_zono_G = [obj.RZ(:, 2:end), obstacle(:, 2:end)];
-%             buff_zono_G(:, ~any(buff_zono_G)) = []; % delete zero columns
-            buff_zono_c = obj.RZ(:, 1);
-            buff_zono = [buff_zono_c, buff_zono_G];
-            
-            [~, b, A] = polytope_PH(buff_zono, options); % A are polytope normals
-            x = obstacle(:, 1); % test if obs center is in zonotope.~=
-            
-            % add a test here that throws out unnecessary constraints.
-            h = [A; -A]*x - b;
-            if max(h) > 0
-                % intersection not possible
-                A = [];
-            end
+        function [A_con, b_con, k_con] = generate_constraints(obj, obstacle, options, link_number)
+           % takes in an obstacle (Z matrix of zonotope) and generates linear constraint matrices
+           % Acon and bcon, as well as the combinations of k_idxs (kcon) these
+           % constraints depend on.
+           
+           nGen = size(obj.Rg, 2);
+           
+           % only consider "fully-k-sliceable" generators
+           [~, kc_col] = find(all(obj.k_idx ~= 0 | obj.C_idx ~= 0) & obj.c_idx);
+           
+           frs_k_ind_G = obj.Rg;
+           frs_k_ind_G(:, kc_col) = [];
+           
+           frs_k_dep_G = obj.Rg(:, kc_col);
+           
+           % buffer the obstacle by non-fully-k-sliceable generators, as well as
+           % buffer_dist specified by planner:
+           buff_obstacle_c = [obstacle(:, 1) - obj.Rc];
+           buff_obstacle_G = [obstacle(:, 2:end), frs_k_ind_G, options.buffer_dist/2*eye(3)];
+           buff_obstacle_G(:, ~any(buff_obstacle_G)) = []; % delete zero columns of G
+           buff_obstacle = [buff_obstacle_c, buff_obstacle_G];
+           
+           [A_poly, b_poly] = polytope_PH(buff_obstacle, options);
+           
+           A_con = A_poly*frs_k_dep_G;
+           b_con = b_poly;
+           k_con = obj.k_idx(:, kc_col);
+           
+           % add a test here that throws out unnecessary constraints.
+           % (there's certainly a more elegant way to do this, but we're
+           % testing all possible vertices of the parameter set K, which is a 6D cube)
+           intersection_possible = 0;
+           for i = 1:size(options.kV_lambda{link_number}, 2)
+               lambdas = double(k_con).*options.kV_lambda{link_number}(:, i);
+               lambdas(k_con == 0 | isnan(k_con)) = 1;
+               lambdas = prod(lambdas, 1)';
+               
+               kVc = A_con*lambdas - b_con;
+               test_kV = max(kVc);
+               if test_kV <= 0
+                   intersection_possible = 1;                  
+               end
+           end
+           if ~intersection_possible
+              A_con = []; b_con = []; k_con = []; 
+           end
         end
-        
-        function [h, grad_h] = evaluate_sliced_constraints(obj, k, obs_Z, A)
-            epsilon = 1e-6;
-            myk = k(1:length(obj.c_k));
-            
-            % first, slice by k. g_sliced has been multiplied through by
-            % lambda. c should be the same as obj.Rc
-            [~, lambda, c, g_sliced, slice_to_pt_idx] = obj.slice(myk);
-            c_poly = c + sum(g_sliced(:, slice_to_pt_idx), 2) - obs_Z(:, 1); % shift so that obstacle is zero centered!
-            g_poly = [g_sliced(:, ~slice_to_pt_idx), obs_Z(:, 2:end)];
-            
-            % take dot product with normal vectors to construct Pb
-            deltaD = sum(abs((A*g_poly)'))';
-            d = A*c_poly;
-            Pb = [d+deltaD; -d+deltaD];
-            PA = [A; -A];
-%             Pb_sign = [ones(size(A, 1)); -1*ones(size(A, 1))];
-            
-            % evaluate constraints
-            h_obs = -Pb; % equivalent to A*[0;0;0] - b
-            h_obs_max = max(h_obs);
-            h = -(h_obs_max - epsilon);
-            
-            % evaluate constraint gradients
-            max_idx = find(h_obs == h_obs_max);
-            if length(max_idx) > 1
-%                 disp('AHHHH');
-                a = PA(max_idx, :);
-%                 a = unique(a, 'rows');
-            else
-                a = PA(max_idx, :);
-            end
-
-            
-            grad_h = zeros(length(myk), 1);
-            for i = 1:length(myk)
-                for j = 1:size(g_sliced, 2)
-                    if obj.k_idx(i, j) == 1% if gen was multiplied by this lambda_i(k_i)
-                        if lambda(i) == 0 % shit... essentially have to reslice in this case because of a 0/0 when trying to divide by lambda.
-%                             error('ahhh!')
-                            g_crap = obj.Rg;
-                            for poop = 1:length(lambda)
-                                if ~(poop == i)
-                                    g_crap(:, obj.k_idx(poop, :) == 1) = g_crap(:, obj.k_idx(poop, :) == 1)*lambda(poop); % reslice gens
-                                end
-                            end
-                            if slice_to_pt_idx(j) % this component is in d
-                                grad_h(i) = grad_h(i) + min(a*g_crap(:, j)*(1/obj.g_k(i)));
-                            else % this component is in deltaD
-                                grad_h(i) = grad_h(i) + min(abs(a*g_crap(:, j)*(1/obj.g_k(i)))); % same as above, but with absolute value
-                            end
-                        else
-                            if slice_to_pt_idx(j) % this component is in d
-                                grad_h(i) = grad_h(i) + min(a*g_sliced(:, j)*(1/obj.g_k(i))*(1/lambda(i)));
-                            else % this component is in deltaD
-                                grad_h(i) = grad_h(i) + sign(lambda(i))*min(abs(a*g_sliced(:, j)*(1/obj.g_k(i))*(1/lambda(i)))); % same as above, but with absolute value
-                            end
-                        end
-%                         disp(grad_h);
-%                         pause
-                    end
-                end
-            end
-            grad_h = [grad_h; zeros(length(k) - length(myk), 1)];
-%             disp(k);
-            
-%             grad_h = -grad_h; % important!!!
-            
-            
-            
-%                         
-            %%%% OLD BELOW THIS LINE
-%             Z = obj.link_FRS{j}{k}.slice(k_opt(obj.link_joints{j}));
-%             c = Z(:, 1) - obs_Z(:, 1); % shift so that obstacle is zero centered!
-%             G = [Z(:, 2:end), obs_Z(:, 2:end)];
+% 
+%  ----Below here are somewhat unsuccessful attempts to write constraints
+%  using the partially-k-sliceable as well as fully-k-sliceable generators ---
+%
+%
+%         function [A] = generate_polytope_normals(obj, obstacle, options)
+%             % takes in an obstacle (Z matrix of zonotope) and generates
+%             % normal vectors to the FRS zono buffered by the obstacle
 %             
-%             deltaD = sum(abs((obj.A{i}{j}{k}*G)'))';
+%             buff_zono_G = [obj.RZ(:, 2:end), obstacle(:, 2:end)];
+% %             buff_zono_G(:, ~any(buff_zono_G)) = []; % delete zero columns
+%             buff_zono_c = obj.RZ(:, 1);
+%             buff_zono = [buff_zono_c, buff_zono_G];
 %             
-%             d = obj.A{i}{j}{k}*c;
+%             [~, b, A] = polytope_PH(buff_zono, options); % A are polytope normals
+%             x = obstacle(:, 1); % test if obs center is in zonotope.~=
 %             
+%             % add a test here that throws out unnecessary constraints.
+%             h = [A; -A]*x - b;
+%             if max(h) > 0
+%                 % intersection not possible
+%                 A = [];
+%             end
+%         end
+%         
+%         function [h, grad_h] = evaluate_sliced_constraints(obj, k, obs_Z, A)
+%             epsilon = 1e-6;
+%             myk = k(1:length(obj.c_k));
+%             
+%             % first, slice by k. g_sliced has been multiplied through by
+%             % lambda. c should be the same as obj.Rc
+%             [~, lambda, c, g_sliced, slice_to_pt_idx] = obj.slice(myk);
+%             c_poly = c + sum(g_sliced(:, slice_to_pt_idx), 2) - obs_Z(:, 1); % shift so that obstacle is zero centered!
+%             g_poly = [g_sliced(:, ~slice_to_pt_idx), obs_Z(:, 2:end)];
+%             
+%             % take dot product with normal vectors to construct Pb
+%             deltaD = sum(abs((A*g_poly)'))';
+%             d = A*c_poly;
 %             Pb = [d+deltaD; -d+deltaD];
+%             PA = [A; -A];
+% %             Pb_sign = [ones(size(A, 1)); -1*ones(size(A, 1))];
 %             
+%             % evaluate constraints
 %             h_obs = -Pb; % equivalent to A*[0;0;0] - b
 %             h_obs_max = max(h_obs);
-%             h_tmp = -(h_obs_max - epsilon);
+%             h = -(h_obs_max - epsilon);
 %             
-%             h = [h; h_tmp];
-%             grad_h = [grad_h, []];
+%             % evaluate constraint gradients
+%             max_idx = find(h_obs == h_obs_max);
+%             if length(max_idx) > 1
+% %                 disp('AHHHH');
+%                 a = PA(max_idx, :);
+% %                 a = unique(a, 'rows');
+%             else
+%                 a = PA(max_idx, :);
+%             end
+% 
 %             
-        end
+%             grad_h = zeros(length(myk), 1);
+%             for i = 1:length(myk)
+%                 for j = 1:size(g_sliced, 2)
+%                     if obj.k_idx(i, j) == 1% if gen was multiplied by this lambda_i(k_i)
+%                         if lambda(i) == 0 % shit... essentially have to reslice in this case because of a 0/0 when trying to divide by lambda.
+% %                             error('ahhh!')
+%                             g_crap = obj.Rg;
+%                             for poop = 1:length(lambda)
+%                                 if ~(poop == i)
+%                                     g_crap(:, obj.k_idx(poop, :) == 1) = g_crap(:, obj.k_idx(poop, :) == 1)*lambda(poop); % reslice gens
+%                                 end
+%                             end
+%                             if slice_to_pt_idx(j) % this component is in d
+%                                 grad_h(i) = grad_h(i) + min(a*g_crap(:, j)*(1/obj.g_k(i)));
+%                             else % this component is in deltaD
+%                                 grad_h(i) = grad_h(i) + min(abs(a*g_crap(:, j)*(1/obj.g_k(i)))); % same as above, but with absolute value
+%                             end
+%                         else
+%                             if slice_to_pt_idx(j) % this component is in d
+%                                 grad_h(i) = grad_h(i) + min(a*g_sliced(:, j)*(1/obj.g_k(i))*(1/lambda(i)));
+%                             else % this component is in deltaD
+%                                 grad_h(i) = grad_h(i) + sign(lambda(i))*min(abs(a*g_sliced(:, j)*(1/obj.g_k(i))*(1/lambda(i)))); % same as above, but with absolute value
+%                             end
+%                         end
+% %                         disp(grad_h);
+% %                         pause
+%                     end
+%                 end
+%             end
+%             grad_h = [grad_h; zeros(length(k) - length(myk), 1)];
+% %             disp(k);
+%             
+% %             grad_h = -grad_h; % important!!!
+%             
+%             
+%             
+% %                         
+%             %%%% OLD BELOW THIS LINE
+% %             Z = obj.link_FRS{j}{k}.slice(k_opt(obj.link_joints{j}));
+% %             c = Z(:, 1) - obs_Z(:, 1); % shift so that obstacle is zero centered!
+% %             G = [Z(:, 2:end), obs_Z(:, 2:end)];
+% %             
+% %             deltaD = sum(abs((obj.A{i}{j}{k}*G)'))';
+% %             
+% %             d = obj.A{i}{j}{k}*c;
+% %             
+% %             Pb = [d+deltaD; -d+deltaD];
+% %             
+% %             h_obs = -Pb; % equivalent to A*[0;0;0] - b
+% %             h_obs_max = max(h_obs);
+% %             h_tmp = -(h_obs_max - epsilon);
+% %             
+% %             h = [h; h_tmp];
+% %             grad_h = [grad_h, []];
+% %             
+%         end
         
     end
 end

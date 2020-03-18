@@ -1,7 +1,7 @@
 classdef robot_arm_straight_line_HLP < high_level_planner
     %% properties
     properties
-        make_new_tree_every_iteration_flag = false ;
+        make_new_graph_every_iteration_flag = false ;
         % arm
         arm_n_states
         arm_n_inputs

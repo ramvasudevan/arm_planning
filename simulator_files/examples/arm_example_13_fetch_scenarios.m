@@ -6,7 +6,7 @@
 % 3. Posts
 % 4. Shelves
 % 5. Reach inside box
-% 6. Sink to Cupboard?
+% 6. Sink to Cupboard
 % 7. Reach through window
 %
 % Authors: Shreyas Kousik and Patrick Holmes
@@ -16,8 +16,7 @@
 clear; clc;
 %% user parameters
 %%% CHOOSE SCENARIO %%%
-scenario = 5; % 1 2 3 4 5 6 or 7
-sub_scenario = 1; % sub_scenario only changes for scenario 4
+scenario = 7; % 1 2 3 4 5 6 or 7
 
 %%% EXPORTING TO CSV %%%
 write_to_csv = false;
@@ -26,10 +25,10 @@ world_save_dir = '~/Documents/MATLAB/arm_planning/simulator_files/testing/saved_
 if ~exist(world_save_dir, 'dir')
     mkdir(world_save_dir);
 end
-csv_filename = sprintf('%s/scene_%03d_%03d.csv', world_save_dir, scenario, sub_scenario);
+csv_filename = sprintf('%s/scene_%03d.csv', world_save_dir, scenario);
 
 %%% PLANNING PARAMETERS %%%
-use_cuda_flag = true ;
+use_cuda_flag = false ;
 agent_move_mode = 'direct' ; % pick 'direct' or 'integrator'
 
 %%% HIGH LEVEL PLANNER PARAMS %%%
@@ -43,7 +42,7 @@ plot_waypoint_arm_flag  = true ; % for HLP
 lookahead_distance = 0.1 ;
 
 %%% MANUAL WAYPOINTS PARAMETERS %%%
-use_manual_waypoints_flag = true ;
+use_manual_waypoints_flag = false ;
 
 %%% OTHER PARAMETERS %%%
 % add more obstacles
@@ -57,7 +56,7 @@ time_discretization = 0.01 ;
 T = 1 ;
 first_iter_pause_flag = true ; 
 use_end_effector_for_cost_flag = true ;
-plot_CAD_flag = false ; % plot the faaaaancy arm :)
+use_CAD_flag = false ; % plot the faaaaancy arm :)
 
 %%% WORLD PARAMETERS %%%
 scenario_obstacles = {};
@@ -312,7 +311,7 @@ end
 %% automated from here
 % make agent
 A = robot_arm_3D_fetch('verbose',verbosity, 'animation_set_axes_flag',0,...
-    'animation_set_view_flag',0,'plot_CAD_flag',plot_CAD_flag,...
+    'animation_set_view_flag',0,'use_CAD_flag',use_CAD_flag,...
     'move_mode',agent_move_mode);
 
 % can adjust tracking controller gains here

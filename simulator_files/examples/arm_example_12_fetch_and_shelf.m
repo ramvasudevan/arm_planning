@@ -65,13 +65,13 @@ plot_waypoint_arm_flag  = true ; % for HLP
 lookahead_distance = 0.3 ;
 use_end_effector_for_cost_flag = false ;
 csv_filename = 'fetch_shelf_scene_example.csv' ;
-plot_CAD_flag = false ; % plot the faaaaancy arm :)
+use_CAD_flag = false ; % plot the faaaaancy arm :)
 %%% END OTHER PARAMETERS %%%
 
 %% automated from here
 % make agent
 A = robot_arm_3D_fetch('verbose',verbosity, 'animation_set_axes_flag',0,...
-    'animation_set_view_flag',0,'plot_CAD_flag',plot_CAD_flag,...
+    'animation_set_view_flag',0,'use_CAD_flag',use_CAD_flag,...
     'move_mode',agent_move_mode);
 
 % can adjust tracking controller gains here

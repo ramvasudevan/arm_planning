@@ -61,21 +61,21 @@ G = Z(:, 2:end);
 
 % patrick edit 12/03/2019
 % reduce small generators for numerical reasons:
-%compute metric of generators
-% h = vnorm(G, 1, 2);
-% % sort generators according to metric
-% [h_sort, indices] = sort(h, 'descend');
-% threshold = 0.001;
-% first_reduce_idx = find(h_sort < threshold, 1, 'first');
-% if ~isempty(first_reduce_idx)
-%     Gunred = G(:, indices(1:first_reduce_idx-1));
-%     Gred = G(:, indices(first_reduce_idx:end));
-%     % box remaining generators
-%     d=sum(abs(Gred),2);
-%     %build box Gbox from interval hull vector d
-%     Gbox=diag(d);
-%     G = [Gunred, Gbox];
-% end
+% compute metric of generators
+h = vnorm(G, 1, 2);
+% sort generators according to metric
+[h_sort, indices] = sort(h, 'descend');
+threshold = 0.001;
+first_reduce_idx = find(h_sort < threshold, 1, 'first');
+if ~isempty(first_reduce_idx)
+    Gunred = G(:, indices(1:first_reduce_idx-1));
+    Gred = G(:, indices(first_reduce_idx:end));
+    % box remaining generators
+    d=sum(abs(Gred),2);
+    %build box Gbox from interval hull vector d
+    Gbox=diag(d);
+    G = [Gunred, Gbox];
+end
     
 [dim,nrOfGenerators]=size(G);
 
