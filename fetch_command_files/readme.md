@@ -1,7 +1,7 @@
 // copied and pasted from Corina's tutorial:
 
 # How to run Fetch controllers
-### You will need an Ubuntu Computer for this step
+## You will need an Ubuntu Computer for this step
 
 1. Power on Fetch: press the round button on the side of the robot.
 
@@ -64,3 +64,6 @@ d) !!!!! DO NOT LET THE BATTERY DIE !!!!
 - if the light is blinking red or solid red – either the batteries are almost dead or the small button in the back of the robot is off (0)
 
 e) if the robot just dies – you pressed accidentally the button in the back of the robot
+
+## Once all the above steps have been done...
+You should be able to run the ARMTD demo from MATLAB using `run_fetch_hardware.m`

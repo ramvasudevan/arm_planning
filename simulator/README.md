@@ -1,5 +1,7 @@
 # simulator
 
+This repo has been copied and pasted from [this repo](https://github.com/skousik/simulator) to freeze it in time on March 17th, 2020.
+
 This is a set of tools for simulating a rigid body robot in MATLAB. The three key components for this simulator are:
 
 1) Agent: the robot to be simulated. See agent.m for an overview.
