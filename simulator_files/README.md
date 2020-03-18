@@ -14,11 +14,11 @@ It might also be worth going through the [RTD Tutorial](https://github.com/skous
 ### 1.1 ARMTD
 
 For a quick rundown of how we are implementing ARTMD, the following files are most important:
-1. *Start here!* `examples > arm_example_11_rotatotope_RTD_planning_3D_fetch.m` generates a random scene, and uses ARMTD to plan trajectories
-2. `create_trig_FRS_loop.m` creates the joint reachable sets using CORA and saves them.
-3. `arm_rotatotope_RTD > rotatotope.m` is used to assemble the joint reachable sets into reachable sets of a full arm.
-4. `arm_rotatotope_RTD > robot_arm_FRS_rotatotope_fetch.m` is a class that stores many rotatotope objects, thereby holding onto the full reachable set of the arm.
-5. `planners > robot_arm_rotatotope_RTD_planner_3D_fetch.m` is used to generate trajectories. At the beginning of each planning iteration, it uses `robot_arm_FRS_rotatotope_fetch.m` to create an FRS of the arm and generate constraints from obstacles. Then, it optimizes over the set of safe trajectory parameters to generate a new trajectory. If no trajectory is found, it commands a fail-safe braking maneuver.
+1. **Start here!** [`examples/arm_example_11_rotatotope_RTD_planning_3D_fetch.m`](https://github.com/ramvasudevan/arm_planning/blob/master/simulator_files/examples/arm_example_11_rotatotope_RTD_planning_3D_fetch.m) generates a random scene, and uses ARMTD to plan trajectories
+2. [`arm_rotatotope_RTD/create_trig_FRS_loop.m`](https://github.com/ramvasudevan/arm_planning/blob/master/simulator_files/arm_rotatotope_RTD/create_trig_FRS_loop.m) creates the joint reachable sets using CORA and saves them.
+3. [`arm_rotatotope_RTD/rotatotope.m`](https://github.com/ramvasudevan/arm_planning/blob/master/simulator_files/arm_rotatotope_RTD/rotatotope.m) is used to assemble the joint reachable sets into reachable sets of a full arm.
+4. [`arm_rotatotope_RTD/robot_arm_FRS_rotatotope_fetch.m`](https://github.com/ramvasudevan/arm_planning/blob/master/simulator_files/arm_rotatotope_RTD/robot_arm_FRS_rotatotope_fetch.m) is a class that stores many rotatotope objects, thereby holding onto the full reachable set of the arm.
+5. [`planners/robot_arm_rotatotope_RTD_planner_3D_fetch.m`](https://github.com/ramvasudevan/arm_planning/blob/master/simulator_files/planners/robot_arm_rotatotope_RTD_planner_3D_fetch.m) is used to generate trajectories. At the beginning of each planning iteration, it uses `robot_arm_FRS_rotatotope_fetch.m` to create an FRS of the arm and generate constraints from obstacles. Then, it optimizes over the set of safe trajectory parameters to generate a new trajectory. If no trajectory is found, it commands a fail-safe braking maneuver.
 
 Elements of `rotatotope.m` and `robot_arm_rotatotope_RTD_planner_3D_fetch.m` that are implemented using CUDA can be found in `arm_rotatotope_RTD > mexfiles`. More detailed descriptions of these functions still to come.
 
