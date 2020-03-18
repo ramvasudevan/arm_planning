@@ -11,7 +11,7 @@ classdef robot_arm_RTD_planner_2link2d < robot_arm_generic_planner
         function P = robot_arm_RTD_planner_2link2d(varargin)
             t_move = 0.5 ;
             lookahead_distance = 0.3 ;
-            HLP = robot_arm_RRT_HLP('make_new_tree_every_iteration_flag',true) ;
+            HLP = robot_arm_RRT_HLP('make_new_graph_every_iteration_flag',true) ;
             P@robot_arm_generic_planner('lookahead_distance',lookahead_distance,...
                 't_move', t_move, 'HLP', HLP,...
                 varargin{:}) ;
