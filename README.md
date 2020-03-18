@@ -13,12 +13,12 @@ All of the ARMTD MATLAB/MEX code has a non-GPU version, but it isn't usually rea
 
 ## Navigating this Repo
 Here's a brief explanation of the different folders here:
-1. armtd_benchmark: code for comparing armtd to CHOMP through MoveIt!
-2. fetch_command_files: code for interfacing with the Fetch through MATLAB and ROS
-3. figures: a couple scripts for generating 
-4. maps: some code for forward kinematics
-5. simulator: a copy of [this repo](https://github.com/skousik/simulator) that we are freezing in time
-6. simulator_files: **Start here!** all the code for actually running armtd is contained in this folder.
+1. [armtd_benchmark](https://github.com/ramvasudevan/arm_planning/tree/master/armtd_benchmark): code for comparing armtd to CHOMP through MoveIt!
+2. [fetch_command_files](https://github.com/ramvasudevan/arm_planning/tree/master/fetch_command_files): code for interfacing with the Fetch through MATLAB and ROS
+3. [figures](https://github.com/ramvasudevan/arm_planning/tree/master/figures): a couple scripts for generating 
+4. [maps](https://github.com/ramvasudevan/arm_planning/tree/master/maps): some code for forward kinematics
+5. [simulator](https://github.com/ramvasudevan/arm_planning/tree/master/simulator): a copy of [this repo](https://github.com/skousik/simulator) that we are freezing in time
+6. [simulator_files](https://github.com/ramvasudevan/arm_planning/tree/master/simulator_files): **Start here!** all the code for actually running armtd is contained in this folder.
 
 ## How to Use
 Make sure that you have added the full arm_planning repo to your MATLAB path, as well as the CORA_2018 toolbox.

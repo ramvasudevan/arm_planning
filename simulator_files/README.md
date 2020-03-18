@@ -24,14 +24,14 @@ Elements of `rotatotope.m` and `robot_arm_rotatotope_RTD_planner_3D_fetch.m` tha
 
 ### 1.2 Navigation
 Here's a brief explanation of the different folders here:
-1. agents: contains subclasses of robot_arm_agent with different numbers of links and parameters
-2. arm_rotatotope_RTD: contains code for computing joint FRSs (forward reachable sets), and for combining these into reachable sets of an arm in workspace.
-3. examples: a number of scripts demonstrating the simulation framework and ARMTD
-4. fetch_cad_files: some files for making a fancy plot of the Fetch arm
-5. planners: contains the ARMTD planner and high-level planners that give waypoints to the ARMTD planner.
-6. testing: code used to generate many example worlds at once and test ARMTD on them.
-7. utility: contains some helper functions
-8. worlds: example worlds and obstacles for testing
+1. [agents](https://github.com/ramvasudevan/arm_planning/tree/master/simulator_files/agents): contains subclasses of robot_arm_agent with different numbers of links and parameters
+2. [arm_rotatotope_RTD](https://github.com/ramvasudevan/arm_planning/tree/master/simulator_files/arm_rotatotope_RTD): contains code for computing joint FRSs (forward reachable sets), and for combining these into reachable sets of an arm in workspace.
+3. [examples](https://github.com/ramvasudevan/arm_planning/tree/master/simulator_files/examples): a number of scripts demonstrating the simulation framework and ARMTD
+4. [fetch_cad_files](https://github.com/ramvasudevan/arm_planning/tree/master/simulator_files/fetch_cad_files): some files for making a fancy plot of the Fetch arm
+5. [planners](https://github.com/ramvasudevan/arm_planning/tree/master/simulator_files/planners): contains the ARMTD planner and high-level planners that give waypoints to the ARMTD planner.
+6. [testing](https://github.com/ramvasudevan/arm_planning/tree/master/simulator_files/testing): code used to generate many example worlds at once and test ARMTD on them.
+7. [utility](https://github.com/ramvasudevan/arm_planning/tree/master/simulator_files/utility): contains some helper functions
+8. [worlds](https://github.com/ramvasudevan/arm_planning/tree/master/simulator_files/worlds): example worlds and obstacles for testing
 
 ## 2. Simulator Overview
 
