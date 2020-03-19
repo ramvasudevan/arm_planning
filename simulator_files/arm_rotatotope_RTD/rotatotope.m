@@ -404,7 +404,7 @@ classdef rotatotope
            % buffer the obstacle by non-fully-k-sliceable generators, as well as
            % buffer_dist specified by planner:
            buff_obstacle_c = [obstacle(:, 1) - obj.Rc];
-           buff_obstacle_G = [obstacle(:, 2:end), frs_k_ind_G, options.buffer_dist/2*eye(3)];
+           buff_obstacle_G = [obstacle(:, 2:end), frs_k_ind_G, options.buffer_dist/2*eye(obj.dim)];
            buff_obstacle_G(:, ~any(buff_obstacle_G)) = []; % delete zero columns of G
            buff_obstacle = [buff_obstacle_c, buff_obstacle_G];
            

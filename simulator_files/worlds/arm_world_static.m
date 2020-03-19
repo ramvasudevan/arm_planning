@@ -7,7 +7,7 @@ classdef arm_world_static < world
         create_obstacle_timeout =  1 ;
         min_dist_in_config_space_between_start_and_goal
         floor_normal_axis = 3;
-        workspace_goal_check = 0;
+        goal_type = 'configuration';
         
         % arm info
         arm_joint_state_limits
@@ -191,8 +191,8 @@ classdef arm_world_static < world
         function O = create_random_obstacle(W)
             % create center
             B = W.bounds ;
-%             center = [rand_range(B(1),B(2)) ; rand_range(B(3),B(4))] ;
-            center = [rand_range(0,B(2)) ; rand_range(B(3),B(4))] ;
+            center = [rand_range(B(1),B(2)) ; rand_range(B(3),B(4))] ;
+%             center = [rand_range(0,B(2)) ; rand_range(B(3),B(4))] ;
             
             if W.dimension == 3
                 center = [center ; rand_range(B(5),B(6))] ;
@@ -206,6 +206,7 @@ classdef arm_world_static < world
             O = box_obstacle_zonotope('center',center(:),...
                 'side_lengths',side_lengths) ;
         end
+        
         
         function O = create_base_obstacle(W)
             W.vdisp('Making base obstacle',3) ;
@@ -284,38 +285,35 @@ classdef arm_world_static < world
         %% goal check
         function out = goal_check(W,agent_info)
             
-            if ~W.workspace_goal_check
-                z = agent_info.state(W.arm_joint_state_indices,:) ;
-                dz = min(abs(z - repmat(W.goal,1,size(z,2))),[],2) ;
-                dz_log = all(dz <= W.goal_radius) ;
-                out = all(dz_log) ;
-            else
-                %%%PATRICK HACK FOR 1 LINK
-                %                 z_agent = agent_info.state(W.arm_joint_state_indices,end) ;
-                %                 z_goal = W.goal;
-                %                 x_agent = make_orientation(z_agent(1), 3)*make_orientation(z_agent(2), 2)*[0.33; 0; 0];
-                %                 x_goal = make_orientation(z_goal(1), 3)*make_orientation(z_goal(2), 2)*[0.33; 0; 0];
-                %                 dz = min(sqrt(sum((x_agent - x_goal).^2)));
-                %                 out = dz <= W.goal_radius;
-                
-                %%%PATRICK HACK FOR FETCH
-                z_agent = agent_info.state(W.arm_joint_state_indices,end) ;
-                z_goal = W.goal;
-%                 x_agent = make_orientation(z_agent(1), 3)*make_orientation(z_agent(2), 2)*[0.33; 0; 0];
-                
-                x_agent_1 = make_orientation(z_agent(1), 3)*make_orientation(z_agent(2), 2)*[0.33; 0; 0];
-                x_agent_2 = x_agent_1 + make_orientation(z_agent(1), 3)*make_orientation(z_agent(2), 2)*make_orientation(z_agent(3), 1)*make_orientation(z_agent(4), 2)*[0.33; 0; 0];
-                x_agent_3 = x_agent_2 + make_orientation(z_agent(1), 3)*make_orientation(z_agent(2), 2)*make_orientation(z_agent(3), 1)*make_orientation(z_agent(4), 2)*make_orientation(z_agent(5), 1)*make_orientation(z_agent(6), 2)*[0.33; 0; 0];
-                x_agent = [x_agent_1; x_agent_2; x_agent_3];
-                
-%                 x_goal = make_orientation(z_goal(1), 3)*make_orientation(z_goal(2), 2)*[0.33; 0; 0];
-                x_goal_1 = make_orientation(z_goal(1), 3)*make_orientation(z_goal(2), 2)*[0.33; 0; 0];
-                x_goal_2 = x_goal_1 + make_orientation(z_goal(1), 3)*make_orientation(z_goal(2), 2)*make_orientation(z_goal(3), 1)*make_orientation(z_goal(4), 2)*[0.33; 0; 0];
-                x_goal_3 = x_goal_2 + make_orientation(z_goal(1), 3)*make_orientation(z_goal(2), 2)*make_orientation(z_goal(3), 1)*make_orientation(z_goal(4), 2)*make_orientation(z_goal(5), 1)*make_orientation(z_goal(6), 2)*[0.33; 0; 0];
-                x_goal = [x_goal_1; x_goal_2; x_goal_3];
-                
-                dz = min(sqrt(sum((x_agent - x_goal).^2)));
-                out = dz <= W.goal_radius;
+            z = agent_info.state(W.arm_joint_state_indices,:) ;
+            
+            switch W.goal_type
+                case 'configuration'
+                    dz = abs(z - repmat(W.goal,1,size(z,2))) ;
+                    dz_log = dz <= W.goal_radius ;
+                    out = any(all(dz_log,1)) ;
+                case 'end_effector_location'
+                    % get the joint locations
+                    J = agent_info.get_joint_locations(z) ;
+                    
+                    if ~iscell(J)
+                        J = {J};
+                    end
+                    
+                    % concatenate all the end effector locations into one
+                    % array
+                    N_J = length(J) ;
+                    J_ee = nan(3,N_J) ;
+                    for idx = 1:N_J
+                        J_ee(:,idx) = J{idx}(:,end) ;
+                    end
+                    
+                    % check how far the end effector is from the goal
+                    % location
+                    dz = vecnorm(J_ee - repmat(W.goal_in_workspace,1,N_J)) ;
+                    out = any(dz <= W.goal_radius) ;
+                otherwise
+                    error(['The goal type ',W.goal_type,' is not supported!'])
             end
             
         end

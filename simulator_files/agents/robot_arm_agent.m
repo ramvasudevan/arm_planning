@@ -449,10 +449,14 @@ classdef robot_arm_agent < multi_link_agent
         function [faces,vertices] = create_baselink_plot_patch_data(A)
             switch A.dimension
                 case 2
-                    % create baselink triangle for plotting
-                    vertices = 0.05.*[-1, 1, 0 ;
-                        0, 0, 1 ]' ;
-                    faces = [1 2 3 1] ;
+%                     % create baselink triangle for plotting
+%                     vertices = 0.05.*[-1, 1, 0 ;
+%                         0, 0, 1 ]' ;
+%                     faces = [1 2 3 1] ;
+                    % create tiny square for plotting
+                    vertices = 0.025.*[-1, 1, 1, -1 ;
+                        -1, -1, 1, 1]' ;
+                    faces = [1 2 3 4 1] ;
                     
                 case 3
                     % create baselink cone for plotting
@@ -1161,7 +1165,7 @@ classdef robot_arm_agent < multi_link_agent
             % create axis limits
             switch A.dimension
                 case 2
-                    lims = [-L,L,0,L] ;
+                    lims = [-L,L,-L,L] ;
                 case 3
 %                     switch A.floor_normal_axis
 %                         case 1

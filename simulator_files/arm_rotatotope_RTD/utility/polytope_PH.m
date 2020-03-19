@@ -79,7 +79,7 @@ end
     
 [dim,nrOfGenerators]=size(G);
 
-if dim > 1
+if dim > 2
     %get number of possible facets
 %     comb=combinator(nrOfGenerators,dim-1,'c');
 
@@ -100,7 +100,11 @@ if dim > 1
 %     end
     
     Q = [G(:, comb(:, 1)); G(:, comb(:, 2))];
-    C = [Q(2, :).*Q(6, :) - Q(3, :).*Q(5, :); -(Q(1, :).*Q(6, :) - Q(3, :).*Q(4, :)); Q(1, :).*Q(5, :) - Q(2, :).*Q(4, :)];
+    if dim == 3
+        C = [Q(2, :).*Q(6, :) - Q(3, :).*Q(5, :); -(Q(1, :).*Q(6, :) - Q(3, :).*Q(4, :)); Q(1, :).*Q(5, :) - Q(2, :).*Q(4, :)];
+    else
+        error('Dimension not supported.');
+    end
     C = (C./sqrt(sum(C.^2)))';
 
     %remove NaN rows due to rank deficiency
@@ -110,6 +114,7 @@ if dim > 1
     end
 else
     C = G;
+    C = (C./sqrt(sum(C.^2)))';
 end
 
 %build d vector
