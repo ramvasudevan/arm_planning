@@ -114,6 +114,8 @@ if dim > 2
     end
 else
     C = G;
+    %... get perpendicular vector
+    C = [-C(2, :); C(1, :)];
     C = (C./sqrt(sum(C.^2)))';
 end
 
