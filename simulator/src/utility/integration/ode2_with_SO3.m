@@ -65,6 +65,10 @@ function [tout,yout,Rout] = ode2_with_SO3(dyn,tspan,y0,R0,dt,O_idxs)
         yout(:,idx) = y1_idx + k2 ;
         Rout(:,:,idx) = F2_idx*R1_idx ;
     end
+    
+    %% fix output
+    tout = tout(:) ;
+    yout = yout' ;
 end
 
 %% helper functions

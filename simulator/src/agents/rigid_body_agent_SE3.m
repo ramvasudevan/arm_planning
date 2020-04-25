@@ -102,6 +102,8 @@ classdef rigid_body_agent_SE3 < agent_3D
             % call integrator to simulate agent's dynamics
             [tout,zout,Rout] = A.integrator(@(t,y,R) A.dynamics(t,y,R,T_used,U_used,Z_used),...
                 [0, t_move], z_cur, R_cur) ;
+            tout = tout(:)' ;
+            zout = zout' ;
             
             A.commit_move_data(tout,zout,Rout,T_used,U_used,Z_used) ;
         end

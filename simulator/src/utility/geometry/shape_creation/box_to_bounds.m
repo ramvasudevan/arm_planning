@@ -1,6 +1,8 @@
 function B = box_to_bounds(l,w,h,c)
-    % given a box length/width/height/center, make bounds [xmin xmax ymin
-    % ymax zmin zmax]
+% B = box_to_bounds(l,w,h,c)
+%
+% Given a box defined by length, width, height, and center, make a vector
+% containing the box's bounds in the format [xmin xmax ymin ymax zmin zmax]
     xmin = c(1) - l/2 ;
     xmax = c(1) + l/2 ;
     ymin = c(2) - w/2 ;
