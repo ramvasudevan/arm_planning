@@ -8,7 +8,7 @@
 clear; clc;
 
 trial_file_header = 'trial_scene_' ;
-trial_file_folder = 'arm_planning/simulator_files/testing/trial_data/20200127/' ;
+trial_file_folder = 'arm_planning/simulator_files/testing/trial_data/20200116_scenarios/' ;
 trial_file_location = sprintf('%s*%s*', trial_file_folder, trial_file_header);
 trial_file_list = dir(trial_file_location);
 

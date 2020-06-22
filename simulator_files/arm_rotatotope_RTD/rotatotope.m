@@ -394,7 +394,7 @@ classdef rotatotope
            nGen = size(obj.Rg, 2);
            
            % only consider "fully-k-sliceable" generators
-           [~, kc_col] = find(all(obj.k_idx ~= 0 | obj.C_idx ~= 0) & obj.c_idx);
+           [~, kc_col] = find(all(obj.k_idx ~= 0 | obj.C_idx ~= 0, 1) & obj.c_idx);
            
            frs_k_ind_G = obj.Rg;
            frs_k_ind_G(:, kc_col) = [];

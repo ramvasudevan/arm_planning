@@ -98,7 +98,8 @@ classdef robot_arm_rotatotope_RTD_planner_2D_2link < robot_arm_generic_planner
             P.R = P.R.generate_constraints(P.O);
             
             % protect against self-intersections:
-            P.R = P.R.generate_self_intersection_constraints;
+            % doesn't do anything for this example:
+%             P.R = P.R.generate_self_intersection_constraints;
             
             P.vdisp('Replan is calling trajopt!',8)
             [k_opt, trajopt_failed] = P.trajopt(q_0, q_dot_0, q_des);
