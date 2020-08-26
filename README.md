@@ -11,7 +11,7 @@ Also, if you want to run anything in the `armtd_benchmark` folder, you'll have t
 
 All of the ARMTD MATLAB/MEX code has a non-GPU version, but it isn't usually real-time fast. You may have to recompile the CUDA MEX files for your own system, if you're using a GPU.
 
-## Navigating this Repo
+## Navigating this Repo (or [start here](https://github.com/ramvasudevan/arm_planning/tree/master/simulator_files))
 Here's a brief explanation of the different folders here:
 1. [armtd_benchmark](https://github.com/ramvasudevan/arm_planning/tree/master/armtd_benchmark): code for comparing armtd to CHOMP through MoveIt!
 2. [fetch_command_files](https://github.com/ramvasudevan/arm_planning/tree/master/fetch_command_files): code for interfacing with the Fetch through MATLAB and ROS
