@@ -69,14 +69,14 @@ function [R,T,J] = get_link_rotations_and_translations_from_arm_data(j_vals,j_ax
         j_idx = j_vals(idx) ;
         j_loc = j_locs(:,idx) ;
 
-        % rotate about the current axis
-        
-        error('shreyas left off here 10:10pm sat feb 29')
-%         % compute link rotation matrix of current link
-%         axis_pred = R_pred*j_axes(:,idx) ;
-%         K = skew(axis_pred) ;
-%         R_succ = eye(3) + sin(j_idx)*K + (1 - cos(j_idx))*(K^2) ;
-%         R_succ = R_succ*R_pred ;
+        % compute link rotation matrix of current link -- this works fine
+        % for a numerical representation of the rotation matrix, but things
+        % blow up really badly if you plug symbolic variables in here :/
+        % -- note left by shreyas 1 oct 2020 --
+        axis_pred = R_pred*j_axes(:,idx) ;
+        K = skew(axis_pred) ;
+        R_succ = eye(3) + sin(j_idx)*K + (1 - cos(j_idx))*(K^2) ;
+        R_succ = R_succ*R_pred ;
 
         % create translation
         T_succ = T_pred + R_pred*j_loc(1:d) - R_succ*j_loc(d+1:end) ;
