@@ -13,9 +13,9 @@ syms tdummy udummy real; % CORA will require these arguments, but we won't use t
 
 %~~~~~~~~~~~acceleration dynamics over [0, t_plan]
 % computed torque controller gains (MLS 4.5)
-eigval = -32;
-Kd = eigval^2;
-Kp = -2*eigval;
+% eigval = -32;
+Kd = 200;
+Kp = 32^2;
 
 % solution to the error ODE
 x_err = expm([0 1; -Kd -Kp] * t);
