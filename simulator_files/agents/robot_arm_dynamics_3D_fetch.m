@@ -122,120 +122,120 @@ classdef robot_arm_dynamics_3D_fetch < robot_arm_agent
             end
         end
         
-        %% dynamics
-        function zd = dynamics(A,t,z,T,U,Z) 
-            % SUPER HACKY WAY TO COMPUTE THE DYNAMICS
-            A.Z = Z;
-            % get joint speeds
-            z = z(:);
-            q = z(1:2:end);
-            dq = z(2:2:end); 
-            
-            dq = bound_array_elementwise(dq,...
-                A.joint_speed_limits(1,:)',A.joint_speed_limits(2,:)') ;
-            
-            % get reference joint speeds
-            [qdes,dqdes,ddqdes] = A.desired_dynamics(t);
-
-            % preallocate dynamics
-            zd = zeros(A.n_states,1);
-            
-            % controller gains
-            Kp = 32^2*eye(6);
-            Kd = 64*eye(6);
-            
-            Kp = 1000*eye(6);
-            Kd = 200*eye(6);
-            
-            % generate dynamics matrices
-            [H, C] = fetch_dynamics(q ,dq);
-            
-            % calculate control inputs
-            tau = H*(ddqdes - Kp*(q-qdes) - Kd*(dq-dqdes)) + C;
-            
-            % bound control inputs
-            tau = bound_array_elementwise(tau,...
-                                          A.joint_input_limits(1,:)',...
-                                          A.joint_input_limits(2,:)') ;
-            
-            % calculate joint accelrations
-            ddq = H\(tau-C);
-            
-            % return dynamics
-            zd(A.joint_state_indices) = dq(:) ;
-            zd(A.joint_speed_indices) = ddq(:) ;
-        end
-        
-        function[q, dq, ddq ]= desired_dynamics(A, t)
-            t_to_plan = 0.5;
-            t_to_stop = 0.5;
-            
-            if t<= t_to_plan
-                q = A.q_des_0 + A.q_dot_des_0 * t + (1/2)*A.k_opt * t^2;
-                dq = A.q_dot_des_0 + A.k_opt * t;
-                ddq = A.k_opt;
-            else
-                t = t - t_to_plan;
-                q_peak = A.q_des_0 + A.q_dot_des_0 * t_to_plan + (1/2)*A.k_opt * t_to_plan^2;
-                q_dot_peak = A.q_dot_des_0 + A.k_opt * t_to_plan;
-                
-                q = q_peak + q_dot_peak*t + (1/2)*((0 - q_dot_peak)/t_to_stop)*t^2;
-                dq = q_dot_peak + ((0 - q_dot_peak)/t_to_stop)*t;
-                ddq = (0 - q_dot_peak)/t_to_stop;
-            end
-        end
-  
-        %% integrator
-        function [t_out,z_out] = integrator(A,arm_dyn,t_span,z0)
-            % [tout,zout] = A.integrator(arm_dynamics,tspan,z0)
-            %
-            % RK4 integration with joint limits and speed limits enforced.
-            
-            % create time vector
-            dt = A.integrator_time_discretization ;
-            t_out = t_span(1):dt:t_span(end) ;
-            if t_out(end) < t_span(end)
-                t_out = [t_out, t_span(end)] ;
-            end
-            
-            % preallocate trajectory output
-            N_t = size(t_out,2) ;
-            z_out = [z0(:), nan(A.n_states,N_t-1)] ;
-            
-            % run integration loop
-            for tidx = 2:N_t
-                % get previous state
-                z_cur = z_out(:,tidx-1) ;
-                t_cur = t_out(tidx-1) ;
-                
-                % compute RK4 terms
-                k1 = arm_dyn(t_cur, z_cur) ;
-                k2 = arm_dyn(t_cur + dt/2, z_cur + dt*k1/2) ;
-                k3 = arm_dyn(t_cur + dt/2, z_cur + dt*k2/2) ;
-                k4 = arm_dyn(t_cur + dt, z_cur + dt*k3) ;
-                
-                % compute summed term
-                dzdt = (1/6)*(k1 + 2*k2 + 2*k3 + k4) ;
-                
-                % compute next state
-                z_new = z_cur + dt*dzdt ;
-                
-                % apply state limits
-                joint_values = z_new(A.joint_state_indices)' ;
-                joint_values = max([joint_values ; A.joint_state_limits(1,:)],[],1) ;
-                joint_values = min([joint_values ; A.joint_state_limits(2,:)],[],1) ;
-                z_new(A.joint_state_indices) = joint_values ;
-                
-                % apply speed limits
-                joint_speeds = z_new(A.joint_speed_indices)' ;
-                joint_speeds = max([joint_speeds; A.joint_speed_limits(1,:)],[],1) ;
-                joint_speeds = min([joint_speeds; A.joint_speed_limits(2,:)],[],1) ;
-                z_new(A.joint_speed_indices) = joint_speeds ;
-                
-                % save new state
-                z_out(:,tidx) = z_new(:) ;
-            end
-        end
+%         %% dynamics
+%         function zd = dynamics(A,t,z,T,U,Z) 
+%             % SUPER HACKY WAY TO COMPUTE THE DYNAMICS
+%             A.Z = Z;
+%             % get joint speeds
+%             z = z(:);
+%             q = z(1:2:end);
+%             dq = z(2:2:end); 
+%             
+%             dq = bound_array_elementwise(dq,...
+%                 A.joint_speed_limits(1,:)',A.joint_speed_limits(2,:)') ;
+%             
+%             % get reference joint speeds
+%             [qdes,dqdes,ddqdes] = A.desired_dynamics(t);
+% 
+%             % preallocate dynamics
+%             zd = zeros(A.n_states,1);
+%             
+%             % controller gains
+%             Kp = 32^2*eye(6);
+%             Kd = 64*eye(6);
+%             
+%             Kp = 1000*eye(6);
+%             Kd = 200*eye(6);
+%             
+%             % generate dynamics matrices
+%             [H, C] = fetch_dynamics(q ,dq);
+%             
+%             % calculate control inputs
+%             tau = H*(ddqdes - Kp*(q-qdes) - Kd*(dq-dqdes)) + C;
+%             
+%             % bound control inputs
+%             tau = bound_array_elementwise(tau,...
+%                                           A.joint_input_limits(1,:)',...
+%                                           A.joint_input_limits(2,:)') ;
+%             
+%             % calculate joint accelrations
+%             ddq = H\(tau-C);
+%             
+%             % return dynamics
+%             zd(A.joint_state_indices) = dq(:) ;
+%             zd(A.joint_speed_indices) = ddq(:) ;
+%         end
+%         
+%         function[q, dq, ddq ]= desired_dynamics(A, t)
+%             t_to_plan = 0.5;
+%             t_to_stop = 0.5;
+%             
+%             if t<= t_to_plan
+%                 q = A.q_des_0 + A.q_dot_des_0 * t + (1/2)*A.k_opt * t^2;
+%                 dq = A.q_dot_des_0 + A.k_opt * t;
+%                 ddq = A.k_opt;
+%             else
+%                 t = t - t_to_plan;
+%                 q_peak = A.q_des_0 + A.q_dot_des_0 * t_to_plan + (1/2)*A.k_opt * t_to_plan^2;
+%                 q_dot_peak = A.q_dot_des_0 + A.k_opt * t_to_plan;
+%                 
+%                 q = q_peak + q_dot_peak*t + (1/2)*((0 - q_dot_peak)/t_to_stop)*t^2;
+%                 dq = q_dot_peak + ((0 - q_dot_peak)/t_to_stop)*t;
+%                 ddq = (0 - q_dot_peak)/t_to_stop;
+%             end
+%         end
+%   
+%         %% integrator
+%         function [t_out,z_out] = integrator(A,arm_dyn,t_span,z0)
+%             % [tout,zout] = A.integrator(arm_dynamics,tspan,z0)
+%             %
+%             % RK4 integration with joint limits and speed limits enforced.
+%             
+%             % create time vector
+%             dt = A.integrator_time_discretization ;
+%             t_out = t_span(1):dt:t_span(end) ;
+%             if t_out(end) < t_span(end)
+%                 t_out = [t_out, t_span(end)] ;
+%             end
+%             
+%             % preallocate trajectory output
+%             N_t = size(t_out,2) ;
+%             z_out = [z0(:), nan(A.n_states,N_t-1)] ;
+%             
+%             % run integration loop
+%             for tidx = 2:N_t
+%                 % get previous state
+%                 z_cur = z_out(:,tidx-1) ;
+%                 t_cur = t_out(tidx-1) ;
+%                 
+%                 % compute RK4 terms
+%                 k1 = arm_dyn(t_cur, z_cur) ;
+%                 k2 = arm_dyn(t_cur + dt/2, z_cur + dt*k1/2) ;
+%                 k3 = arm_dyn(t_cur + dt/2, z_cur + dt*k2/2) ;
+%                 k4 = arm_dyn(t_cur + dt, z_cur + dt*k3) ;
+%                 
+%                 % compute summed term
+%                 dzdt = (1/6)*(k1 + 2*k2 + 2*k3 + k4) ;
+%                 
+%                 % compute next state
+%                 z_new = z_cur + dt*dzdt ;
+%                 
+%                 % apply state limits
+%                 joint_values = z_new(A.joint_state_indices)' ;
+%                 joint_values = max([joint_values ; A.joint_state_limits(1,:)],[],1) ;
+%                 joint_values = min([joint_values ; A.joint_state_limits(2,:)],[],1) ;
+%                 z_new(A.joint_state_indices) = joint_values ;
+%                 
+%                 % apply speed limits
+%                 joint_speeds = z_new(A.joint_speed_indices)' ;
+%                 joint_speeds = max([joint_speeds; A.joint_speed_limits(1,:)],[],1) ;
+%                 joint_speeds = min([joint_speeds; A.joint_speed_limits(2,:)],[],1) ;
+%                 z_new(A.joint_speed_indices) = joint_speeds ;
+%                 
+%                 % save new state
+%                 z_out(:,tidx) = z_new(:) ;
+%             end
+%         end
        
 %% plotting setup
         function [faces,vertices] = create_baselink_plot_patch_data(A)
