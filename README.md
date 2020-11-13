@@ -1,4 +1,4 @@
-Update on 13 Nov 2020: This repository has moved! Please check out the latest version here: https://github.com/roahmlab/arm_planning
+# Update on 13 Nov 2020: This repository has moved! Please check out the latest version here: https://github.com/roahmlab/arm_planning
 
 # Autonomous Reachability-based Manipulator Trajectory Design (ARMTD)
 This repo contains the code for our recent paper: https://arxiv.org/abs/2002.01591
