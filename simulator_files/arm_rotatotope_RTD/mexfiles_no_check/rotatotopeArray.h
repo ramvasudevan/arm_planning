@@ -31,7 +31,7 @@ a cuda array for a cluster of rotatotopes
 #define ORIGIN_SHIFT_Z 0.72601
 #define MAX_BUFF_OBSTACLE_SIZE 150
 #define A_BIG_NUMBER 100000.0
-#define BUFFER_DIST 0.1460
+#define BUFFER_DIST 0.160
 #define TOO_SMALL_POLYTOPE_JUDGE 0.000001
 #define MAX_K_DEP_SIZE 50
 #define CONSERVATIVE_BUFFER 0.000001

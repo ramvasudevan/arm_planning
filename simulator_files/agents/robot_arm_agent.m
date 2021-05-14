@@ -491,7 +491,7 @@ classdef robot_arm_agent < multi_link_agent
                                 l = l./2 ;
                                 [~,link_vertices] = make_ellipsoid_for_patch(l(1),l(2),l(3),zeros(3,1),6) ;
                             case 'cylinder'
-                                % l = (length, radius, (not used))
+                                % l = (length, diameter, (not used))
                                 [~,link_vertices] = make_cylinder_for_patch(l(2)/2,l(1),10,true,true) ;
                                 R = axang2rotm([0 1 0 pi/2]) ;
                                 link_vertices = (R*link_vertices')' ;
@@ -1104,10 +1104,10 @@ classdef robot_arm_agent < multi_link_agent
             BF = A.link_plot_data.baselink_faces ;
             BV = A.link_plot_data.baselink_vertices ;
             
-            if check_if_plot_is_available(A,'baselink')
-                A.plot_data.baselink.Faces = BF ;
-                A.plot_data.baselink.Vertices = BV ;
-            else
+%             if check_if_plot_is_available(A,'baselink')
+%                 A.plot_data.baselink.Faces = BF ;
+%                 A.plot_data.baselink.Vertices = BV ;
+%             else
                 baselink_data = patch('Faces',BF,'Vertices',BV,...
                     'FaceColor',A.link_plot_face_color,...
                     'FaceAlpha',A.link_plot_face_opacity,...
@@ -1115,7 +1115,7 @@ classdef robot_arm_agent < multi_link_agent
                     'LineWidth',A.link_plot_edge_width,...
                     'EdgeAlpha',A.link_plot_edge_opacity) ;
                 A.plot_data.baselink = baselink_data ;
-            end
+%             end
         end
         
         function plot_links(A,time_or_config)
@@ -1145,8 +1145,9 @@ classdef robot_arm_agent < multi_link_agent
                         'LineWidth',A.link_plot_edge_width,...
                         'EdgeAlpha',A.link_plot_edge_opacity) ;
                     link_array = [link_array, link_data] ;
+                    %                 end
+                    A.plot_data.links = link_array ;
                 end
-                A.plot_data.links = link_array ;
             end
         end
         

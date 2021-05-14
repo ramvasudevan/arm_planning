@@ -197,11 +197,14 @@ bool rotatotope_NLP::eval_f(
    }
 
    // q_plan = q + q_dot*P.t_plan + 0.5*k*P.t_plan^2;
-   // obj_value = sum((q_plan - q_des).^2);
+   // q_plan_dot = q_dot + k*P.t_plan;
+   // obj_value = sum((q_plan + 0.5 * q_plan_dot * (t_final - t_plan)- q_des).^2);
    obj_value = 0; 
    for(Index i = 0; i < ra_info->n_links * 2; i++){
-       double entry = q[i] + q_dot[i] * t_plan + x[i] * t_plan * t_plan / 2 - q_des[i];
-       obj_value += entry * entry;
+      double q_plan = q[i] + q_dot[i] * t_plan + x[i] * t_plan * t_plan / 2;
+      double q_plan_dot = q_dot[i] + x[i] * t_plan;
+      double entry = q_plan + 0.5 * q_plan_dot * (t_total - t_plan) - q_des[i];
+      obj_value += entry * entry;
    }
 
    return true;
@@ -222,8 +225,10 @@ bool rotatotope_NLP::eval_grad_f(
    }
 
    for(Index i = 0; i < ra_info->n_links * 2; i++){
-        double entry = q[i] + q_dot[i] * t_plan + x[i] * t_plan * t_plan / 2 - q_des[i];
-        grad_f[i] = t_plan * t_plan * entry;
+      double q_plan = q[i] + q_dot[i] * t_plan + x[i] * t_plan * t_plan / 2;
+      double q_plan_dot = q_dot[i] + x[i] * t_plan;
+      double entry = q_plan + 0.5 * q_plan_dot * (t_total - t_plan) - q_des[i];
+      grad_f[i] = t_plan * t_total * entry;
    }
 
    return true;
@@ -459,7 +464,7 @@ bool rotatotope_NLP::eval_h(
       for (Index row = 0; row < n; row++) {
          for (Index col = 0; col <= row; col++) {
             if(row == col){
-               values[idx] = obj_factor * t_plan * t_plan * t_plan * t_plan / 2;
+               values[idx] = obj_factor * t_plan * t_total * t_plan * t_total / 2;
             }
             else{
                values[idx] = 0;

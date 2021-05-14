@@ -16,7 +16,7 @@ function [table_cell] = make_roahmlab_table_obstacle(xy_location)
     table_height = 0.67;
     
     table_top = box_obstacle_zonotope('center', [0; 0; table_height],...
-        'side_lengths', [0.7620 2.0320 0.0254]);
+        'side_lengths', [0.7620 2.0320 1.75*0.0254]);
     
     table_left_leg = box_obstacle_zonotope('center', [0; -0.7683; table_height/2],...
         'side_lengths', [0.0762 0.0508 table_height]);

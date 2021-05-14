@@ -176,12 +176,12 @@ classdef robot_arm_3D_fetch < robot_arm_agent
                         T{idx})' ;
                 end
                 
-                if check_if_plot_is_available(A,'links')
-                    for idx = 1:n
-                        A.plot_data.links(idx).Faces = A.link_plot_CAD_data{idx}.faces ;
-                        A.plot_data.links(idx).Vertices = link_verts{idx} ;
-                    end
-                else
+%                 if check_if_plot_is_available(A,'links')
+%                     for idx = 1:n
+%                         A.plot_data.links(idx).Faces = A.link_plot_CAD_data{idx}.faces ;
+%                         A.plot_data.links(idx).Vertices = link_verts{idx} ;
+%                     end
+%                 else
                     link_array = [] ;
                     for idx = 1:n
                         link_data = patch('Faces',A.link_plot_CAD_data{idx}.faces,...
@@ -196,8 +196,8 @@ classdef robot_arm_3D_fetch < robot_arm_agent
                     A.plot_data.links = link_array ;
                     
                     % turn camlight on
-                    camlight
-                end
+%                     camlight
+%                 end
             else
                 plot_links@robot_arm_agent(A,time_or_config) ;
             end

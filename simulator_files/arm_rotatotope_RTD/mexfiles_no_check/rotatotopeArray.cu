@@ -871,14 +871,14 @@ __global__ void gen_zono_kernel(uint32_t link_id_1, uint32_t link_id_2, uint32_t
 	__shared__ bool kc_info_2[MAX_RZ_LENGTH];
 
 	if(z_id < RZ_length_1){
-		kc_info_1[z_id] = false;
+		kc_info_1[z_id] = true;
 		for (uint32_t i = k_start_1; i < k_end_1; i += k_step_1) {
 			kc_info_1[z_id] &= (k_idx_1[i + z_id] != 1) || (C_idx_1[i + z_id] != 1);
 		}
 		kc_info_1[z_id] &= c_idx_1[RZ_base_1 + z_id];
 	}
 
-	kc_info_2[z_id] = false;
+	kc_info_2[z_id] = true;
 	for (uint32_t i = k_start_2; i < k_end_2; i += k_step_2) {
 		kc_info_2[z_id] &= (k_idx_2[i + z_id] != 1) || (C_idx_2[i + z_id] != 1);
 	}

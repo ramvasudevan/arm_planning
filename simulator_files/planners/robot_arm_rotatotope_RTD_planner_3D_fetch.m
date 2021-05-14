@@ -187,10 +187,17 @@ classdef robot_arm_rotatotope_RTD_planner_3D_fetch < robot_arm_generic_planner
             P.info.U = [P.info.U, {U}] ;
             P.info.Z = [P.info.Z, {Z}] ;
             P.info.waypoint = [P.info.waypoint, {q_des}] ;
-            P.info.obstacles = [P.info.obstacles, {world_info.obstacles}] ;
             P.info.q_0 = [P.info.q_0, {q_0}] ;
             P.info.q_dot_0 = [P.info.q_dot_0, {q_dot_0}] ;
             P.info.k_opt = [P.info.k_opt, {k_opt}] ;
+            
+            copied_obstacles = cell(1, length(world_info.obstacles));
+            for i = 1:length(world_info.obstacles)
+                copied_obstacles{i} = box_obstacle_zonotope('side_lengths',...
+                    world_info.obstacles{i}.side_lengths,...
+                    'center', world_info.obstacles{i}.center);
+            end
+            P.info.obstacles = [P.info.obstacles, {copied_obstacles}] ;
             %             toc;
         end
         

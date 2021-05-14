@@ -1,7 +1,7 @@
 %% user parameters
 % filename = 'trial_20190410_0262.mat' ;
 clear;
-filename = 'arm_planning/simulator_files/testing/trial_data/20200127/trial_scene_028_008.mat';
+filename = 'arm_planning/simulator_files/testing/trial_data/20200127/trial_scene_040_001.mat';
 
 % obs_color = [1 0.7 0.7] ;
 % obs_opacity = 0.5 ;

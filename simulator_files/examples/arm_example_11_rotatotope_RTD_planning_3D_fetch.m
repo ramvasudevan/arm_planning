@@ -12,16 +12,31 @@
 clear ; clc ; figure(1); clf; view(3); grid on;
 
 %% user parameters
-N_random_obstacles = 40;
+N_random_obstacles = 20;
 dimension = 3 ;
 nLinks = 3 ;
-verbosity = 10 ;
 allow_replan_errors = true ;
 t_plan = 0.5 ;
 time_discretization = 0.01 ;
 T = 1 ;
-use_cuda_flag = true;
+use_cuda_flag = false;
 agent_move_mode = 'direct' ; % pick 'direct' or 'integrator'
+
+first_iter_pause_flag = true;
+create_random_obstacles_flag = false ;
+verbosity = 6 ;
+actual_t_plan = 10 ;
+simulated_t_plan = 0.5 ;
+HLP_timeout = 0.2 ; 
+HLP_grow_tree_mode = 'new' ;
+plot_while_sampling_flag = false ;
+make_new_graph_every_iteration = false ;
+plot_HLP_flag = true ; % for planner
+plot_waypoint_flag = true ; % for HLP
+plot_waypoint_arm_flag  = true ; % for HLP
+lookahead_distance = 0.2 ;
+use_end_effector_for_cost_flag = true ;
+plot_CAD_flag = false ; % plot the faaaaancy arm :)
 
 A = robot_arm_3D_fetch('verbose', verbosity, 'animation_set_axes_flag', 0, 'animation_set_view_flag', 0, 'move_mode', agent_move_mode);
 
@@ -53,7 +68,20 @@ FRS_options.L = 0.33;
 FRS_options.buffer_dist = A.buffer_dist;
 FRS_options.combs = generate_combinations_upto(200);
 FRS_options.maxcombs = 200;
-P = robot_arm_rotatotope_RTD_planner_3D_fetch(FRS_options, 'verbose', verbosity, 't_plan', t_plan, 'time_discretization', time_discretization, 'use_cuda_flag', use_cuda_flag) ;
+P = robot_arm_rotatotope_RTD_planner_3D_fetch(FRS_options,...
+    'verbose', verbosity, 't_plan', actual_t_plan,...
+    't_move',simulated_t_plan,...
+    'time_discretization', time_discretization,...
+    'first_iter_pause_flag',first_iter_pause_flag,...
+    'plot_HLP_flag',plot_HLP_flag,...
+    'lookahead_distance',lookahead_distance,...
+    'use_end_effector_for_cost_flag',use_end_effector_for_cost_flag,...
+    'use_cuda_flag', use_cuda_flag) ;
+    
+% P.HLP = arm_end_effector_RRT_star_HLP('plot_waypoint_flag',plot_waypoint_flag,...
+%     'plot_waypoint_arm_flag',plot_waypoint_arm_flag,...
+%     'grow_tree_mode',HLP_grow_tree_mode,...
+%     'buffer',0.1) ;
 
 % set up world using arm
 I = A.get_agent_info ;

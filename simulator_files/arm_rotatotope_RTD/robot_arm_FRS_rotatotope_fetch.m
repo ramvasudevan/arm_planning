@@ -203,6 +203,7 @@ classdef robot_arm_FRS_rotatotope_fetch
             
             if isempty(patch_data)
                 for i = 1:length(obj.link_FRS)
+%                 for i = 1
                     for j = plot_times
                         Z = zonotope([obj.link_FRS{i}{j}.RZ, obj.FRS_options.buffer_dist/2*eye(3)]);
                         Z = reduce(Z, 'girard', 4);
@@ -211,7 +212,7 @@ classdef robot_arm_FRS_rotatotope_fetch
                         patch_data{i}{j} = plot(shp);
                         patch_data{i}{j}.FaceColor = colors{i};
                         patch_data{i}{j}.FaceAlpha = 0.05;
-                        patch_data{i}{j}.EdgeAlpha = 0.05;
+                        patch_data{i}{j}.EdgeAlpha = 0.5;
 %                         patch_data{i}{j}.EdgeColor = [0.4 0.4 0.4];
                         patch_data{i}{j}.EdgeColor = 'k';
                     end
@@ -247,32 +248,38 @@ classdef robot_arm_FRS_rotatotope_fetch
             
             if isempty(patch_data)
                 for i = 1:length(obj.link_FRS)
+                    X = [];
                     for j = plot_times
                         Z = zonotope([obj.link_FRS{i}{j}.slice_to_pt(k_opt(obj.link_joints{i})), obj.FRS_options.buffer_dist/2*eye(3)]);
                         Z = reduce(Z, 'girard', 4);
                         V = vertices(project(Z, [1, 2, 3]));
-                        shp = alphaShape(V(1, :)', V(2, :)', V(3, :)', inf);
-%                         patch_data{i}{j} = plot(shp);
-                        [tri, P] = shp.alphaTriangulation();
-                        patch_data{i}{j} = patch('Faces', tri, 'Vertices', P);
-                        patch_data{i}{j}.FaceColor = colors{i};
-                        patch_data{i}{j}.FaceAlpha = 0.15;
-                        patch_data{i}{j}.EdgeAlpha = 0;
-%                         patch_data{i}{j}.EdgeColor = [0.4 0.4 0.4];
-                        patch_data{i}{j}.EdgeColor = 'k';
+                        X= [X; [V(1, :)', V(2, :)', V(3, :)']];
                     end
+                    tri = convhull(X);
+                    %                         shp = alphaShape(V(1, :)', V(2, :)', V(3, :)', inf);
+                    %                         patch_data{i}{j} = plot(shp);
+                    %                         [tri, P] = shp.alphaTriangulation();
+                    patch_data{i} = patch('Faces', tri, 'Vertices', X);
+                    patch_data{i}.FaceColor = colors{i};
+                    patch_data{i}.FaceAlpha = 0.3;
+                    patch_data{i}.EdgeAlpha = 0.3;
+                    %                         patch_data{i}{j}.EdgeColor = [0.4 0.4 0.4];
+                    patch_data{i}.EdgeColor = 'k';
                 end
             else
                 for i = 1:length(obj.link_FRS)
+                    X = [];
                     for j = plot_times
                         Z = zonotope([obj.link_FRS{i}{j}.slice_to_pt(k_opt(obj.link_joints{i})), obj.FRS_options.buffer_dist/2*eye(3)]);
                         Z = reduce(Z, 'girard', 4);
                         V = vertices(project(Z, [1, 2, 3]));
-                        shp = alphaShape(V(1, :)', V(2, :)', V(3, :)', inf);
-                        [tri, P] = shp.alphaTriangulation();
-                        patch_data{i}{j}.Faces = tri;
-                        patch_data{i}{j}.Vertices = P;
+                        X= [X; [V(1, :)', V(2, :)', V(3, :)']];
                     end
+                    tri = convhull(X);
+                    %                         shp = alphaShape(V(1, :)', V(2, :)', V(3, :)', inf);
+                    %                         [tri, P] = shp.alphaTriangulation();
+                    patch_data{i}.Faces = tri;
+                    patch_data{i}.Vertices = X;
                 end
                 
             end

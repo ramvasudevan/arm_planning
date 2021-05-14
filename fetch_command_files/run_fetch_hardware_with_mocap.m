@@ -10,11 +10,23 @@ use_mocap_flag = true;
 %% user parameters
 
 %%% CHOOSE SCENARIO %%%
+start = [1.5793;
+    0.2709;
+    0.0869;
+    0.2470;
+   -0.6233;
+    0.3989];
+
+goal = [-0.8872;
+   -0.5027;
+   -2.0383;
+    1.7616;
+    0.4742;
+   -0.8090];
 % start = [pi/3;pi/6;0;pi/12;0;0];
 % goal = [-pi/3;-pi/6;0;-pi/12;0;0];
-% goal = [1.5705 ;-0.1806 ;2.2161;-1.0843;2.3771;0.2447];
-start = [-1.4300; -0.6806 ;1.7076 ;-1.0997 ;-0.7937 ;1.1532];
-goal = [1.5705 ;-0.7206 ;2.2161;-1.0843;2.3771;0.2447];
+% start = [-1.4300; -0.6806 ;1.7076 ;-1.0997 ;-0.7937 ;1.1532];
+% goal = [1.5705 ;-0.7206 ;2.2161;-1.0843;2.3771;0.2447];
 % start = [-pi/2; 0; 0; 0; 0; 0];
 % goal = [pi/2; 0; 0; 0; 0; 0];
 goal_radius = 0.1;
@@ -22,12 +34,15 @@ goal_type = 'configuration';
 max_iterations = 1000;
 max_time = 100 ;
 
-%TABLE
-start = [0; pi/3; 0; -pi/3; 0; 0]; % under table
+%%%%TABLE
+% start = [0; pi/3; 0; -pi/3; 0; 0]; % under table
+% start = [0;0.125;0;-0.125;0;0];
+start = [-pi/3;0;0;0;0;0];
 goal_radius = pi/30 ;
 goal_type = 'configuration' ;
 % goal = [pi/4;-0.5;0; 0.5;0;0];
-goal = [pi/4;0.0625;0;-0.0625;0;0];
+% goal = [0;0.0;0;-0.0;0;0];
+goal = [pi/3;0.0;0;-0.0;0;0];
 shelf_center_xy = [0.8;0] ; % this is the default
 % add more obstacles
 manual_waypoints = [start(:),...
@@ -35,13 +50,46 @@ manual_waypoints = [start(:),...
     [-pi/3; pi/3; 0; -pi/3; pi/2; pi/2], ...
     [-pi/2; 0; 0; 0; pi/2; pi/2],...
     [-pi/3; -pi/8; 0; pi/8; pi/2; pi/2], ...
-    goal(:)] ;  % this for shelf 2 to shelf 4
+    goal(:)] ;
+%%%
 
 % manual_waypoints = fliplr(manual_waypoints);
 % bleh = start;
 % start = goal;
 % goal = bleh;
 
+% %%%%% CABINET
+% % manually create start
+% % start = [0; 0 ; 0 ; pi/2 ; 0 ; -pi/2.2 ] ; % on shelf 5
+% start = [0; -pi/4; pi ; pi/7 ; 0 ; -pi/2.7 ] ; % on shelf 2
+% % start = [0.6382;
+% %     0.1977;
+% %     4.3612;
+% %     0.7286;
+% %    -2.6181;
+% %    -1.1285]; % random one on shelf 4
+% % manually create goal
+% goal_radius = pi/30 ;
+% goal_type = 'configuration' ;
+% % configuration goals (set goal_type to 'configuration')
+% goal = [0; -pi/4; pi ; pi/7 ; 0 ; -pi/2.7 ] ; % on shelf 2
+% % goal = [-pi/5; -pi/3.7; pi/5 ; pi/3.7 ; 0 ; 0.1 ] ; % on shelf 3
+% % goal = [0; -pi/4.2; 0 ; pi/1.7 ; 0 ; -pi/3 ] ; % on shelf 4
+% goal = [0; 0 ; 0 ; pi/2 ; 0 ; -pi/2.2 ] ; % on shelf 5
+% % shelf parameters
+% shelf_center_xy = [0.8;0] ; % this is the default
+% 
+% % add more obstacles
+% %%% MANUAL WAYPOINTS IF YA WANT 'EM %%%
+% manual_waypoints = [start(:), [0; 0 ; 0 ; pi/2 ; -pi/3 ; -pi/2.2],...
+%     [0; 0 ; 3*pi/4 ; pi/2 ; -pi/2 ; -pi/2.2], [0; -pi/4 ; pi ; pi/4 ; -pi/2 ; -pi/2], ...
+%     [0; -pi/4 ; pi ; pi/4 ; -pi/3 ; -pi/2], goal(:)] ; % this for shelf 5 to shelf 2
+% % manual_waypoints = [start(:), [0; -pi/4 ; pi ; pi/4 ; -pi/3 ; -pi/2],...
+% %     [0; -pi/4 ; pi/2 ; pi/2 ; -pi/2 ; -pi/2], ...
+% %     [0; -pi/4 ;0 ; pi/1.5 ; -pi/2 ; -pi/2],...
+% %     [0; -pi/4 ;0 ; pi/1.5 ; -pi/3 ; -pi/2.2], ...
+% %     goal(:)] ;  % this for shelf 2 to shelf 4 %edit doesn't work!
+% %%%%
 run_simulation_flag = true ;
 
 use_cuda_flag = true ;
@@ -51,7 +99,7 @@ t_plan = 0.5 ;
 %%% REAL LIFE PARAMETERS %%%
 t_overrun = 0.005 ; % typical amount of time that the loop overruns t_plan
 plot_while_running_flag = true ;
-save_filename = 'fetch_hardware_table_4.mat' ;
+save_filename = 'arm_planning/fetch_command_files/fetch_hardware_demo_20200128/fetch_hardware_tablebox_3.mat' ;
 
 %%% OTHER PARAMS %%%
 % add more obstacles
@@ -62,15 +110,15 @@ allow_replan_errors = true ;
 time_discretization = 0.01 ;
 T = 1 ;
 first_iter_pause_flag = false ;
-HLP_timeout = 2 ;
-HLP_grow_tree_mode = 'seed' ;
+HLP_timeout = 0.2 ;
+HLP_grow_tree_mode = 'new' ;
 plot_while_sampling_flag = false ;
 make_new_graph_every_iteration = false ;
 plot_HLP_flag = true ; % for planner
 plot_waypoint_flag = true ; % for HLP
 plot_waypoint_arm_flag  = true ; % for HLP
-lookahead_distance = 0.3 ;
-use_end_effector_for_cost_flag = true ;
+lookahead_distance = 0.5 ;
+use_end_effector_for_cost_flag = false ;
 plot_CAD_flag = false ;
 collision_check_time_discretization = 0.01 ;
 
@@ -88,7 +136,7 @@ W = fetch_base_world_static('include_base_obstacle', 1, 'goal_radius',goal_radiu
     'verbose',verbosity, 'creation_buffer', 0.1, 'base_creation_buffer', 0.025,...
     'create_random_obstacles_flag',create_random_obstacles_flag,...
     'goal_type',goal_type,...
-    'collision_check_time_discretization',collision_check_time_discretization, ...
+    'collision_check_time_discretization',collision_check_time_discretization,...
     'start',start,'goal',goal) ;
 
 %% make scenario obstacle
@@ -96,6 +144,13 @@ W = fetch_base_world_static('include_base_obstacle', 1, 'goal_radius',goal_radiu
 
 C = make_roahmlab_table_obstacle(shelf_center_xy) ;
 W.add_obstacle(C)
+
+% mybox = box_obstacle_zonotope('center', [0.7; 0; 0.8], 'side_lengths', [0.3 0.3 0.3]);
+% mybox2 = box_obstacle_zonotope('center', [0.7; 0; 1.1], 'side_lengths', [0.3 0.3 0.3]);
+% W.add_obstacle({mybox, mybox2});
+
+% C = make_roahmlab_cabinet_obstacle(shelf_center_xy) ;
+% W.add_obstacle(C)
 
 %% make planner
 FRS_options = struct() ;
@@ -125,13 +180,13 @@ P = robot_arm_rotatotope_RTD_planner_3D_fetch(FRS_options,...
 %     'choose_goal_as_new_node_frequency',0.5) ;
 
 % P.HLP = robot_arm_optimization_HLP() ;
+% 
+P.HLP = arm_end_effector_RRT_star_HLP('plot_waypoint_flag',plot_waypoint_flag,...
+    'plot_waypoint_arm_flag',plot_waypoint_arm_flag,...
+    'grow_tree_mode',HLP_grow_tree_mode,...
+    'buffer',0.1) ;
 
-% P.HLP = arm_end_effector_RRT_star_HLP('plot_waypoint_flag',plot_waypoint_flag,...
-%     'plot_waypoint_arm_flag',plot_waypoint_arm_flag,...
-%     'grow_tree_mode',HLP_grow_tree_mode,...
-%     'buffer',0.1) ;
-
-P.HLP = arm_manual_waypoint_HLP('manual_waypoints',manual_waypoints, 'interp_type', 'linear') ;
+% P.HLP = arm_manual_waypoint_HLP('manual_waypoints',manual_waypoints, 'interp_type', 'linear') ;
 
 %% set up for running hardware
 % set up world using arm
@@ -160,38 +215,40 @@ pause(0.1);
 
 %% MOCAP setup
 % set up subscribers
-MOCAP_fetch_sub = rossubscriber('/mocap_fetch') ;
-default_p_fetch = zeros(3, 1);
-try
-    MOCAP_fetch_msg = MOCAP_fetch_sub.receive(3) ;
-    p_fetch = get_mocap_position_from_message(MOCAP_fetch_msg) ;
-catch
-    disp('fetch data not received!')
-    p_fetch = default_p_fetch ;
+if use_mocap_flag
+    MOCAP_fetch_sub = rossubscriber('/mocap_fetch') ;
+    default_p_fetch = zeros(3, 1);
+    try
+        MOCAP_fetch_msg = MOCAP_fetch_sub.receive(3) ;
+        p_fetch = get_mocap_position_from_message(MOCAP_fetch_msg) ;
+    catch
+        disp('fetch data not received!')
+        p_fetch = default_p_fetch ;
+    end
+
+    fetch_origin_to_markers = [-0.25;0;0.95];
+    R_mocap = eul2rotm([pi/2 0 0],'xyz') ;
+    MOCAP_obs{1}.sub = rossubscriber('/mocap_obs') ;
+    % MOCAP_obs{1}.obs_box_size =  [0.32,0.32,0.32];
+
+    % box obstacle!
+    % MOCAP_obs{1}.obs_box_size =  [0.32,0.32,0.32];
+    % MOCAP_obs{1}.obstacle_object = box_obstacle_zonotope('side_lengths',MOCAP_obs{1}.obs_box_size,'center',zeros(3,1)) ;
+    % MOCAP_obs{1}.T_obs = [0;-0.05;-0.13] ; %%% SET THIS TRANSFORM MANUALLY FOR EACH OBSTACLE
+    % MOCAP_obs{1}.R_obs = eul2rotm([pi/2 0 0],'xyz') ;
+
+    % quadrotor obstacle!
+    % MOCAP_obs{1}.obs_box_size = [0.23;0.23;0.12] ; % for quadrotor
+    % MOCAP_obs{1}.obstacle_object = box_obstacle_zonotope('side_lengths',MOCAP_obs{1}.obs_box_size,'center',zeros(3,1)) ;
+    % MOCAP_obs{1}.T_obs = [0;+0.01;0];
+    % MOCAP_obs{1}.R_obs = eul2rotm([pi/2 0 0],'xyz') ;
+
+    % vase obstacle!
+    MOCAP_obs{1}.obs_box_size = [0.2; 0.2; 0.3]; % for vase
+    MOCAP_obs{1}.obstacle_object = box_obstacle_zonotope('side_lengths',MOCAP_obs{1}.obs_box_size,'center',zeros(3,1)) ;
+    MOCAP_obs{1}.T_obs = [0;0;0];
+    MOCAP_obs{1}.R_obs = eul2rotm([pi/2 0 0],'xyz') ;
 end
-
-fetch_origin_to_markers = [-0.25;0;0.95];
-R_mocap = eul2rotm([pi/2 0 0],'xyz') ;
-MOCAP_obs{1}.sub = rossubscriber('/mocap_obs') ;
-% MOCAP_obs{1}.obs_box_size =  [0.32,0.32,0.32];
-
-% box obstacle!
-% MOCAP_obs{1}.obs_box_size =  [0.4,0.4,0.4];
-% MOCAP_obs{1}.obstacle_object = box_obstacle_zonotope('side_lengths',MOCAP_obs{1}.obs_box_size,'center',zeros(3,1)) ;
-% MOCAP_obs{1}.T_obs = [0;-0.05;-0.13] ; %%% SET THIS TRANSFORM MANUALLY FOR EACH OBSTACLE
-% MOCAP_obs{1}.R_obs = eul2rotm([pi/2 0 0],'xyz') ;
-
-% quadrotor obstacle!
-% MOCAP_obs{1}.obs_box_size = [0.25;0.25;0.4] ; % for quadrotor
-% MOCAP_obs{1}.obstacle_object = box_obstacle_zonotope('side_lengths',MOCAP_obs{1}.obs_box_size,'center',zeros(3,1)) ;
-% MOCAP_obs{1}.T_obs = [0;+0.01;-0.1];
-% MOCAP_obs{1}.R_obs = eul2rotm([pi/2 0 0],'xyz') ;
-
-% vase obstacle!
-MOCAP_obs{1}.obs_box_size = [0.2; 0.2; 0.3]; % for vase
-MOCAP_obs{1}.obstacle_object = box_obstacle_zonotope('side_lengths',MOCAP_obs{1}.obs_box_size,'center',zeros(3,1)) ;
-MOCAP_obs{1}.T_obs = [0;0;0];
-MOCAP_obs{1}.R_obs = eul2rotm([pi/2 0 0],'xyz') ;
 
 
 %% initial plop
@@ -402,11 +459,11 @@ plot(A) ;
 
 %% animate agent :)
 figure(1) ;
-animate(A)
+% animate(A)
 
 %% check for collisions with virtual obstacles
 tic
-W.collision_check(A.get_agent_info, true);
+% W.collision_check(A.get_agent_info, true);
 toc
 
 %% save things

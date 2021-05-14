@@ -10,7 +10,7 @@
 % 7. Reach through window
 %
 % Authors: Shreyas Kousik and Patrick Holmes
-% Created: 14 Jan 2019
+% Created: 14 Jan 2020
 % Updated: ---
 %
 clear; clc;
@@ -42,18 +42,18 @@ goal = [0; -pi/4; 0 ; -pi/7 ; 0 ; pi/2.7 ] ; % on shelf 2
 run_simulation_flag = true ;
 
 %%% PLANNING PARAMETERS %%%
-use_cuda_flag = true ;
+use_cuda_flag = false ;
 agent_move_mode = 'direct' ; % pick 'direct' or 'integrator'
 t_plan = 0.5 ;
 
 %%% REAL LIFE PARAMETERS %%%
 t_overrun = 0.005 ; % typical amount of time that the loop overruns t_plan
 plot_while_running_flag = true ;
-save_filename = 'fetch_hardware_random_6.mat' ; %%% CHANGE THIS BEFORE SAVING STUFF MAN
+save_filename = 'fetch_hardware_test_20210514.mat' ; %%% CHANGE THIS BEFORE SAVING STUFF MAN
 
 %%% OTHER PARAMS %%%
 % add more obstacles
-N_random_obstacles = 15 ;
+N_random_obstacles = 2 ;
 create_random_obstacles_flag = true ; % in addition to the shelf
 verbosity = 6 ;
 allow_replan_errors = true ;
@@ -71,6 +71,9 @@ lookahead_distance = 0.5 ;
 use_end_effector_for_cost_flag = true ;
 plot_CAD_flag = false ;
 collision_check_time_discretization = 0.01 ;
+
+%%% WHETHER OR NOT TO SAVE HARDWARE DATA
+save_data_flag = false ;
 
 %% automated from here
 % make agent
@@ -148,7 +151,7 @@ P.setup(AI, WI);
 % ROS_t = []; ROS_q = []; ROS_q_dot = []; ROS_saving_data_flag = false;
 
 fetch_ros_init
-ROS_sub = rossubscriber('/joint_states',@ROS_sub_callback) ;
+% ROS_sub = rossubscriber('/joint_states',@ROS_sub_callback) ;
 [ROS_pub, ROS_msg] = rospublisher('/fetch/des_states','trajectory_msgs/JointTrajectory') ;
 ROS_msg.JointNames = ["shoulder_pan_joint" "shoulder_lift_joint" "upperarm_roll_joint" "elbow_flex_joint"...
     "forearm_roll_joint" "wrist_flex_joint" "wrist_roll_joint"];
@@ -179,6 +182,9 @@ disp('Moving robot to start position!');
 pause(10);
 
 %% run hardware
+disp('Begin planning?!');
+pause();
+
 start_tic = tic ;
 iter_cur = 1 ;
 t_agent = 0 ;
@@ -329,7 +335,9 @@ animate(A)
 % toc
 
 %% save everything but figures
-save_fetch_hardware_data
+if save_data_flag
+    save_fetch_hardware_data
+end
 
 %% hlepper function
 % function [] = ROS_sub_callback(src, msg)

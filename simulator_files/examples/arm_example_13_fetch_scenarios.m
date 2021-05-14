@@ -16,7 +16,7 @@
 clear; clc;
 %% user parameters
 %%% CHOOSE SCENARIO %%%
-scenario = 5; % 1 2 3 4 5 6 or 7
+scenario = 3; % 1 2 3 4 5 6 or 7
 sub_scenario = 1; % sub_scenario only changes for scenario 4
 
 %%% EXPORTING TO CSV %%%
@@ -33,17 +33,17 @@ use_cuda_flag = true ;
 agent_move_mode = 'direct' ; % pick 'direct' or 'integrator'
 
 %%% HIGH LEVEL PLANNER PARAMS %%%
-HLP_timeout = 2 ; 
-HLP_grow_tree_mode = 'new' ;
+HLP_timeout = 0.3 ; 
+HLP_grow_tree_mode = 'seed' ;
 plot_while_sampling_flag = false ;
 make_new_graph_every_iteration = false ;
 plot_HLP_flag = true ; % for planner
 plot_waypoint_flag = true ; % for HLP
 plot_waypoint_arm_flag  = true ; % for HLP
-lookahead_distance = 0.1 ;
+lookahead_distance = 0.4 ;
 
 %%% MANUAL WAYPOINTS PARAMETERS %%%
-use_manual_waypoints_flag = true ;
+use_manual_waypoints_flag = false ;
 
 %%% OTHER PARAMETERS %%%
 % add more obstacles
@@ -362,19 +362,19 @@ P = robot_arm_rotatotope_RTD_planner_3D_fetch(FRS_options,...
     'use_end_effector_for_cost_flag',use_end_effector_for_cost_flag,...
     'use_cuda_flag', use_cuda_flag) ;
 
-% P.HLP = robot_arm_RRT_HLP('sampling_timeout',HLP_timeout,...
-%     'plot_while_sampling_flag',plot_while_sampling_flag,...
-%     'plot_HLP_flag',plot_HLP_flag,...
-%     'make_new_graph_every_iteration_flag',make_new_graph_every_iteration,...
-%     'new_node_growth_distance',0.5,...
-%     'choose_goal_as_new_node_frequency',0.5) ;
+P.HLP = robot_arm_RRT_HLP('sampling_timeout',HLP_timeout,...
+    'plot_while_sampling_flag',plot_while_sampling_flag,...
+    'plot_HLP_flag',plot_HLP_flag,...
+    'make_new_graph_every_iteration_flag',make_new_graph_every_iteration,...
+    'new_node_growth_distance',0.1,...
+    'choose_goal_as_new_node_frequency',0.1) ;
 
 % P.HLP = robot_arm_optimization_HLP() ;
 
-P.HLP = arm_end_effector_RRT_star_HLP('plot_waypoint_flag',plot_waypoint_flag,...
-    'plot_waypoint_arm_flag',plot_waypoint_arm_flag,...
-    'grow_tree_mode',HLP_grow_tree_mode,...
-    'buffer',0.1) ;
+% P.HLP = arm_end_effector_RRT_star_HLP('plot_waypoint_flag',plot_waypoint_flag,...
+%     'plot_waypoint_arm_flag',plot_waypoint_arm_flag,...
+%     'grow_tree_mode',HLP_grow_tree_mode,...
+%     'buffer',0.1) ;
 if use_manual_waypoints_flag
     P.HLP = manual_waypoint_HLP('manual_waypoints',manual_waypoints) ;
 end

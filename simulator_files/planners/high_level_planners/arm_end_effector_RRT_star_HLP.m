@@ -7,6 +7,8 @@ classdef arm_end_effector_RRT_star_HLP < RRT_star_HLP
         current_waypoint_patch_data
         plot_waypoint_arm_flag = false ;
         goal_configuration ;
+        
+        goal_init_guess_threshold = 0.3 ;
     end
     
     methods
@@ -62,8 +64,17 @@ classdef arm_end_effector_RRT_star_HLP < RRT_star_HLP
             HLP.current_waypoint = z ;
             
             % get the agent's current state
-            q_0 = agent_info.state(agent_info.joint_state_indices,end) ;
-%             q_0 = HLP.goal_configuration ;
+            q_0_A = agent_info.state(agent_info.joint_state_indices,end) ;
+            
+            % get the goal configuration
+            q_0_goal = HLP.goal_configuration ;
+            
+            % create the initial guess
+            if vecnorm(q_0_A - q_0_goal) > HLP.goal_init_guess_threshold
+                q_0 = 0.5.*(q_0_A + q_0_goal) ;
+            else
+                q_0 = q_0_goal ;
+            end
             
             % inverse kinematics to get q close to z
             HLP.vdisp('Running inverse kinematics to get waypoint')

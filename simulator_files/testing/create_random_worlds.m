@@ -34,6 +34,8 @@ A = robot_arm_3D_fetch('verbose', verbosity, 'animation_set_axes_flag', 0, 'anim
 
 for i = N_obstacle_min:N_obstacle_delta:N_obstacle_max
     for j = 1:N_worlds_per_obstacle
+% for i = 24
+%     for j = 9
     
         % use this to start from random start config:
         W = fetch_base_world_static('include_base_obstacle', 1, 'goal_radius', pi/30, 'N_random_obstacles',i,'dimension',dimension,'workspace_goal_check', 0,...
