@@ -1,4 +1,4 @@
-function dx = trig_dyn_toStop(tdummy,in2,udummy)
+function dx = trig_dyn_toStop(in2,u)
 %TRIG_DYN_TOSTOP
 %    DX = TRIG_DYN_TOSTOP(TDUMMY,IN2,UDUMMY)
 

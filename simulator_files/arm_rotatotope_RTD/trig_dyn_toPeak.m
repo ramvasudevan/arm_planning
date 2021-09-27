@@ -1,4 +1,4 @@
-function dx = trig_dyn_toPeak(tdummy,in2,udummy)
+function dx = trig_dyn_toPeak(in2,u)
 %TRIG_DYN_TOPEAK
 %    DX = TRIG_DYN_TOPEAK(TDUMMY,IN2,UDUMMY)
 

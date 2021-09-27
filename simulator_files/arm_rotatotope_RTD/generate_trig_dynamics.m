@@ -20,8 +20,8 @@ dt = 1;
 
 dx = [dcq; dsq; d_q_ddot; d_q_dot_0; dt];
 
-syms tdummy udummy real;
-matlabFunction(dx, 'File', 'trig_dyn_toPeak', 'vars', {tdummy, x, udummy});
+syms udummy real;
+matlabFunction(dx, 'File', 'trig_dyn_toPeak', 'vars', {x, udummy});
 
 % now braking dynamics
 q_dot_pk = q_dot_0 + q_ddot*t_plan;
@@ -36,8 +36,7 @@ dt = 1;
 
 dx = [dcq; dsq; d_q_ddot; d_q_dot_0; dt];
 
-syms tdummy udummy real;
-matlabFunction(dx, 'File', 'trig_dyn_toStop', 'vars', {tdummy, x, udummy});
+matlabFunction(dx, 'File', 'trig_dyn_toStop', 'vars', {x, udummy});
 
 end
 
