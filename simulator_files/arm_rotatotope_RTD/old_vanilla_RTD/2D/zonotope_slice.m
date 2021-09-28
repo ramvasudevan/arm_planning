@@ -9,7 +9,7 @@ if size(slice_pt, 2) ~= 1
     error('Slice point should be a column vector');
 end
 
-Z = get(zono, 'Z');
+Z = zono.Z;
 c = Z(:, 1);
 G = Z(:, 2:end);
 
