@@ -333,7 +333,7 @@ classdef rotatotope
                     
                     %compute metric of generators
 %                     h = vnorm(G,1,1)-vnorm(G,1,inf);
-                    h = vnorm(G, 1, 2);
+                    h = vecnorm(G);
                     % sort generators according to metric
                     [~,indices] = sort(h);
                     

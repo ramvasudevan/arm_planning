@@ -6,6 +6,7 @@
 % Created: 23 Dec 2019
 % Updated: 10 Jan 2020
 %
+clear; clc;
 %% user parameters
 %%% WORLD PARAMETERS %%%
 % manually create start
@@ -151,7 +152,7 @@ plot(A)
 plot(W)
 
 %% create .csv file for MoveIt!
-write_fetch_scene_to_csv(W,csv_filename);
+% write_fetch_scene_to_csv(W,csv_filename);
 
 %% run simulation
 if run_simulation_flag

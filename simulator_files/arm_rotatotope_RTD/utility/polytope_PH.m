@@ -62,7 +62,7 @@ G = Z(:, 2:end);
 % patrick edit 12/03/2019
 % reduce small generators for numerical reasons:
 % compute metric of generators
-h = vnorm(G, 1, 2);
+h = vecnorm(G);
 % sort generators according to metric
 [h_sort, indices] = sort(h, 'descend');
 threshold = 0.001;

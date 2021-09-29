@@ -22,7 +22,8 @@ classdef box_obstacle_zonotope < box_obstacle
             C = O.center ;
             S = O.side_lengths ;
             O.zono = zonotope([C,diag(S./2)]) ;
-            O.Z = get(O.zono, 'Z');
+%             O.Z = get(O.zono, 'Z');
+            O.Z = O.zono.Z;
         end
         
         %% shift center

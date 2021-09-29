@@ -97,7 +97,7 @@ classdef robot_arm_FRS_rotatotope_fetch
                 A = [cos(obj.q(i)), -sin(obj.q(i)), 0, 0, 0; sin(obj.q(i)), cos(obj.q(i)), 0, 0, 0;...
                     0, 0, 1, 0, 0; 0, 0, 0, 1, 0; 0, 0, 0, 0, 1];
                 for j = 1:length(trig_FRS_load{i})
-                    trig_FRS{j}{i} = A*zonotope_slice(trig_FRS_load{i}{j}{1}, 4, obj.q_dot(i));
+                    trig_FRS{j}{i} = A*zonotope_slice(trig_FRS_load{i}{j}, 4, obj.q_dot(i));
                 end
                 
                 Z = trig_FRS{1}{i}.Z;
