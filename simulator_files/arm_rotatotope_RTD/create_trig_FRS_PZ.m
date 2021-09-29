@@ -35,7 +35,9 @@ if ~exist('FRS_trig_PZ', 'dir')
 end
 save('FRS_trig_PZ/0key.mat', 'c_IC');
 
-for i = 1:length(c_IC) % we're going to loop over all velocity intervals
+for i = 139:length(c_IC) % we're going to loop over all velocity intervals
+    disp([num2str(i), '/', num2str(length(c_IC))])
+    
     params.tStart = 0;
     params.tFinal = t_plan;
     
@@ -49,14 +51,14 @@ for i = 1:length(c_IC) % we're going to loop over all velocity intervals
     params.R0 = polyZonotope(params.x0, [0 0; 0 0; max(pi/24, abs(c_IC(i)/3)) 0; 0 g_IC; 0 0], [], sparse([1, 0; 0, 1]));
     
     polyZono.maxDepGenOrder = 50;
-    polyZono.maxPolyZonoRatio = 0.01;
+    polyZono.maxPolyZonoRatio = 0.1;
     polyZono.restructureTechnique = 'reducePca';
     
     options.timeStep = dt;
-    options.taylorTerms = 20; %number of taylor terms for reachable sets
-    options.zonotopeOrder = 20; %zonotope order... increase this for more complicated systems.
-    options.intermediateOrder = 20;
-    options.errorOrder = 20;
+    options.taylorTerms = 15; %number of taylor terms for reachable sets
+    options.zonotopeOrder = 40; %zonotope order... increase this for more complicated systems.
+    options.intermediateOrder = 40;
+    options.errorOrder = 40;
     options.maxError = 1000*ones(dim, 1);
     options.maxError_x = options.maxError;
     options.maxError_y = 5000;
@@ -93,7 +95,11 @@ for i = 1:length(c_IC) % we're going to loop over all velocity intervals
     tComp = toc;
     
     % concatenate full FRS
-    Rcont = [Rcont_toPeak; Rcont_toStop];
+    Rcont = [Rcont_toPeak.timeInterval.set; Rcont_toStop.timeInterval.set];
+    
+    for j = 1:length(Rcont)
+        Rcont{j} = reduceFactorsFull(Rcont{j});
+    end
     
     % save this FRS
     my_c_IC = c_IC(i);

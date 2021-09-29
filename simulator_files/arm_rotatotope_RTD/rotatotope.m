@@ -207,11 +207,13 @@ classdef rotatotope
                 case 3
                     Z = reduce(Z, 'girard', 4);
                     V = vertices(project(Z, [1, 2, 3]));
-                    shp = alphaShape(V(1, :)', V(2, :)', V(3, :)', inf);
-                    p = plot(shp);
-                    p.FaceAlpha = 0;
-                    p.EdgeAlpha = 0.15;
-                    p.EdgeColor = color;
+                    if ~isempty(V)
+                        shp = alphaShape(V(1, :)', V(2, :)', V(3, :)', inf);
+                        p = plot(shp);
+                        p.FaceAlpha = 0;
+                        p.EdgeAlpha = 0.15;
+                        p.EdgeColor = color;
+                    end
             end
         end
         
@@ -231,11 +233,13 @@ classdef rotatotope
                 case 3
 %                     Z = reduce(Z, 'girard', 4);
                     V = vertices(project(Z, [1, 2, 3]));
-                    shp = alphaShape(V(1, :)', V(2, :)', V(3, :)', inf);
-                    p = plot(shp);
-                    p.FaceAlpha = 0;
-                    p.EdgeAlpha = 0.15;
-                    p.EdgeColor = color;
+                    if ~isempty(V)
+                        shp = alphaShape(V(1, :)', V(2, :)', V(3, :)', inf);
+                        p = plot(shp);
+                        p.FaceAlpha = 0;
+                        p.EdgeAlpha = 0.15;
+                        p.EdgeColor = color;
+                    end
             end
         end
         

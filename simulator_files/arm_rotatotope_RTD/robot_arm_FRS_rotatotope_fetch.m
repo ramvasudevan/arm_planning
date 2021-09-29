@@ -130,7 +130,7 @@ classdef robot_arm_FRS_rotatotope_fetch
                end
             end
             
-            % linke EE rotatotopes
+            % link EE rotatotopes
             for i = 1:obj.n_links - 1
                 for j = 1:obj.n_time_steps
                     obj.link_EE_rotatotopes{i}{j} = rotatotope(obj.rot_axes(obj.link_joints{i}), trig_FRS{j}(obj.link_joints{i}), obj.link_EE_zonotopes{i});
