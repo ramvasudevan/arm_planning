@@ -35,7 +35,7 @@ if ~exist('FRS_trig_PZ', 'dir')
 end
 save('FRS_trig_PZ/0key.mat', 'c_IC');
 
-for i = 139:length(c_IC) % we're going to loop over all velocity intervals
+for i = 373:length(c_IC) % we're going to loop over all velocity intervals
     disp([num2str(i), '/', num2str(length(c_IC))])
     
     g_k = max(pi/24, abs(c_IC(i)/3));
