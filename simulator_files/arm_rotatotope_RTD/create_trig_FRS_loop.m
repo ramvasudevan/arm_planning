@@ -31,6 +31,10 @@ end
 save('FRS_trig_PZ/0key.mat', 'c_IC');
 
 for i = 1:length(c_IC) % we're going to loop over all velocity intervals
+    disp([num2str(i), '/', num2str(length(c_IC))])
+    
+    g_k = max(pi/24, abs(c_IC(i)/3));
+    
     params.tStart = 0;
     params.tFinal = t_plan;
     
@@ -38,7 +42,7 @@ for i = 1:length(c_IC) % we're going to loop over all velocity intervals
 %     const g:
 %     options.R0 = zonotope([options.x0, diag([0, 0, g, g_IC, 0])]); 
     % change g depdending on IC:
-    params.R0 = zonotope([params.x0, diag([0, 0, max(pi/24, abs(c_IC(i)/3)), g_IC, 0])]);
+    params.R0 = zonotope([params.x0, diag([0, 0, g_k, g_IC, 0])]);
     
     options.timeStep = dt;
     options.taylorTerms = 20; %number of taylor terms for reachable sets
@@ -84,5 +88,5 @@ for i = 1:length(c_IC) % we're going to loop over all velocity intervals
     % save this FRS
     my_c_IC = c_IC(i);
     filename = sprintf('FRS_trig/trig_FRS_%0.3f.mat', my_c_IC);
-    save(filename, 'Rcont', 'options', 'L', 't_plan', 't_total', 'my_c_IC');
+    save(filename, 'Rcont', 'options', 'L', 't_plan', 't_total', 'my_c_IC', 'g_k');
 end

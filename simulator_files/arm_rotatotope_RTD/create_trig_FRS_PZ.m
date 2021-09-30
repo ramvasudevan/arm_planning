@@ -38,6 +38,8 @@ save('FRS_trig_PZ/0key.mat', 'c_IC');
 for i = 139:length(c_IC) % we're going to loop over all velocity intervals
     disp([num2str(i), '/', num2str(length(c_IC))])
     
+    g_k = max(pi/24, abs(c_IC(i)/3));
+    
     params.tStart = 0;
     params.tFinal = t_plan;
     
@@ -48,7 +50,7 @@ for i = 139:length(c_IC) % we're going to loop over all velocity intervals
 %     options.R0 = zonotope([options.x0, diag([0, 0, max(pi/24, abs(c_IC(i)/3)), g_IC, 0])]);
     
     % q = q_dot_0 * t + 0.5 * q_ddot * t^2
-    params.R0 = polyZonotope(params.x0, [0 0; 0 0; max(pi/24, abs(c_IC(i)/3)) 0; 0 g_IC; 0 0], [], sparse([1, 0; 0, 1]));
+    params.R0 = polyZonotope(params.x0, [0 0; 0 0; g_k 0; 0 g_IC; 0 0], [], sparse([1, 0; 0, 1]));
     
     polyZono.maxDepGenOrder = 50;
     polyZono.maxPolyZonoRatio = 0.1;
@@ -104,5 +106,5 @@ for i = 139:length(c_IC) % we're going to loop over all velocity intervals
     % save this FRS
     my_c_IC = c_IC(i);
     filename = sprintf('FRS_trig_PZ/trig_FRS_%0.3f.mat', my_c_IC);
-    save(filename, 'Rcont', 'options', 'L', 't_plan', 't_total', 'my_c_IC');
+    save(filename, 'Rcont', 'options', 'L', 't_plan', 't_total', 'my_c_IC', 'g_k');
 end
