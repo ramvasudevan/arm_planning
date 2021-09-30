@@ -14,7 +14,8 @@ classdef robot_arm_FRS_rotatotope_fetch
         link_zonotopes = {zonotope([0.3556/2, 0.3556/2; 0, 0; 0, 0]); zonotope([0.3302/2, 0.3302/2; 0, 0; 0, 0]); zonotope([0.3302/2, 0.3302/2; 0, 0; 0, 0])};
         link_EE_zonotopes = {zonotope([0.3556; 0; 0]); zonotope([0.3302; 0; 0]); zonotope([0.3302; 0; 0])};
         base_joints = {[1]} % treat shoulder base link separately
-        base_EE_zonotopes = {zonotope([0.1206; 0; 0.0825])}; % incorporate shoulder base link in stacking
+%         base_EE_zonotopes = {zonotope([0.1206; 0; 0.0825])}; % incorporate shoulder base link in stacking
+        base_EE_zonotopes = {zonotope([0; 0; 0])}; % incorporate shoulder base link in stacking
         link_self_intersection = {[1;3]} % cell array of links that could intersect (joint limits cover the rest)
         n_links = 3;
         n_base = 1;

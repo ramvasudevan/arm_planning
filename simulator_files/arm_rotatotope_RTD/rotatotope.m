@@ -236,8 +236,9 @@ classdef rotatotope
                     if ~isempty(V)
                         shp = alphaShape(V(1, :)', V(2, :)', V(3, :)', inf);
                         p = plot(shp);
-                        p.FaceAlpha = 0;
-                        p.EdgeAlpha = 0.15;
+                        p.FaceColor = color;
+                        p.FaceAlpha = 0.1;
+%                         p.EdgeAlpha = 0.15;
                         p.EdgeColor = color;
                     end
             end
