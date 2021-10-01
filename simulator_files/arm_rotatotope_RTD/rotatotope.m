@@ -238,7 +238,7 @@ classdef rotatotope
                         p = plot(shp);
                         p.FaceColor = color;
                         p.FaceAlpha = 0.1;
-%                         p.EdgeAlpha = 0.15;
+                        p.EdgeAlpha = 0.8;
                         p.EdgeColor = color;
                     end
             end

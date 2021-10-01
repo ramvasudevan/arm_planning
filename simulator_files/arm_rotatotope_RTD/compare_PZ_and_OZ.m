@@ -12,9 +12,10 @@ g_IC = pi/400;
 g_k = max(pi/24, abs(c_IC/3));
 g_t = dt / 2;
 
-figure; hold on;
+figure; hold on; axis equal;
 
-factor = 0;
+% slice factor
+factor = 2*g_k*rand - g_k;
 
 plot_dt = 5;
 
@@ -30,24 +31,22 @@ for i = 1:plot_dt:length(PZ_reachset.Rcont)
 %     plot(OZ_reachset.Rcont{i}, [1,2], 'Color', [0,0,1], 'Filled', false);
 end
 
-%% to peak
+%% plot real trajectories
+% to peak
 c_t = (dt / 2) : plot_dt*dt : (t_plan - dt / 2);
 
-% plot real trajectories
 for i = c_t
     samplet = (i - g_t) : 1e-4 : (i + g_t);
     traj = c_IC * samplet + 0.5 * factor * samplet.^2;
     plot(cos(traj), sin(traj), 'k');
 end
 
-%% braking
+% braking
 c_t = (t_plan + dt / 2) : plot_dt*dt : (t_total - dt / 2);
 
-% plot real trajectories
 for i = c_t
     samplet = (i - g_t) : 1e-4 : (i + g_t);
     traj = -0.25 * c_IC - 0.25 * factor + (2 * c_IC + factor) * samplet - 0.5 * (2 * c_IC + factor) * samplet.^2;
     plot(cos(traj), sin(traj), 'k');
 end
 
-axis equal
