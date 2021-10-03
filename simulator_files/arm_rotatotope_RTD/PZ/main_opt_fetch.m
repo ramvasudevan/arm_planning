@@ -22,11 +22,6 @@ O{1} = zonotope([0.5;0.5;0.5;],diag([0.05,0.075,0.1]));
 %% compose joint FRS
 [joint_pos, composeJointFRS_timing] = composeFRS_PZmatrix_fetch(timeids, PZ_reachset, T, axes);
 
-%% optimization formalization
-factor = 2*g_k*rand(6,1)-g_k;
-
-[c,ceq,gc,gceq] = linkFRSconstraints(factor, timeids, joint_pos, num_joints, O);
-
 %% run optimization problem
 x0 = rand(6,1);
 
@@ -41,27 +36,30 @@ sol = fmincon(@(x)jointFRScost(x, 50, joint_pos, goal), ...
               options);
 
 %% plot the result
-% figure; view(3); grid on; hold on; axis equal;
-% 
-% factor = 2*g_k*rand(6,1)-g_k;
-% 
-% FRS_colors = [ones(length(PZ_reachset.Rcont),1) * [1,0,0], linspace(0.5,0.1,length(PZ_reachset.Rcont))'];  
-% 
-% for timeid = timeids
-%     for j = 1:(num_joints-1)
-%         if j == 1
-%             joint_pos_zono1 = interval(zeros(3,1));
-%         else
-%             joint_pos_zono1 = interval(sliceFRS(getDim(joint_pos{timeid}{j}, 10:12), factor));
-%         end
-%         
-%         joint_pos_zono2 = interval(sliceFRS(getDim(joint_pos{timeid}{j+1}, 10:12), factor));
-%         link_vertices = [vertices(joint_pos_zono1), vertices(joint_pos_zono2)]';
-%         
-%         link_conv_hull = convhulln(link_vertices);
-%         trisurf(link_conv_hull,link_vertices(:,1),link_vertices(:,2),link_vertices(:,3),'FaceColor',[1,0,0],'FaceAlpha',0.1,'EdgeColor',[1,0,0],'EdgeAlpha',0.8);
-%     end
-% end
+figure; view(3); grid on; hold on; axis equal;
+
+for i = 1:length(O)
+    obs_vertices = vertices(O{i});
+    Digit.animation.PlotZonotope(O{i}, [1,0,0]);
+    shp = alphaShape(obs_vertices(1,:)',obs_vertices(2,:)',obs_vertices(3,:)',inf);
+    plot(shp,'FaceColor',[1,0,0],'FaceAlpha',0.1,'EdgeColor',[1,0,0],'EdgeAlpha',0.8);
+end
+
+for timeid = timeids
+    for j = 1:(num_joints-1)
+        if j == 1
+            joint_pos_zono1 = interval(zeros(3,1));
+        else
+            joint_pos_zono1 = interval(sliceFRS(getDim(joint_pos{timeid}{j}, 10:12), sol));
+        end
+        
+        joint_pos_zono2 = interval(sliceFRS(getDim(joint_pos{timeid}{j+1}, 10:12), sol));
+        link_vertices = [vertices(joint_pos_zono1), vertices(joint_pos_zono2)]';
+        
+        link_conv_hull = convhulln(link_vertices);
+        trisurf(link_conv_hull,link_vertices(:,1),link_vertices(:,2),link_vertices(:,3),'FaceColor',[0,0,1],'FaceAlpha',0.1,'EdgeColor',[0,0,1],'EdgeAlpha',0.8);
+    end
+end
 
 %% ARMTD
 % tic;

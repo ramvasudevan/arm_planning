@@ -18,46 +18,60 @@ depC = [Gdep(2,:).*Gindep(3,:) - Gdep(3,:).*Gindep(2,:);
         Gdep(3,:).*Gindep(1,:) - Gdep(1,:).*Gindep(3,:); 
         Gdep(1,:).*Gindep(2,:) - Gdep(2,:).*Gindep(1,:)];
     
-d_depC = (zeros(size(depC,1), size(depC,2), numSliceVar));
-for i = 1:numSliceVar
-    d_depC(:,:,i) = [dGdep(2,i).*Gindep(3,:) - dGdep(3,i).*Gindep(2,:); 
-                     dGdep(3,i).*Gindep(1,:) - dGdep(1,i).*Gindep(3,:); 
-                     dGdep(1,i).*Gindep(2,:) - dGdep(2,i).*Gindep(1,:)];
+if nargout > 2
+    d_depC = (zeros(size(depC,1), size(depC,2), numSliceVar));
+    for i = 1:numSliceVar
+        d_depC(:,:,i) = [dGdep(2,i).*Gindep(3,:) - dGdep(3,i).*Gindep(2,:); 
+                         dGdep(3,i).*Gindep(1,:) - dGdep(1,i).*Gindep(3,:); 
+                         dGdep(1,i).*Gindep(2,:) - dGdep(2,i).*Gindep(1,:)];
+    end
 end
 
 normdepC = vecnorm(depC);
-d_normed_depC = (zeros(size(depC,1), size(depC,2), numSliceVar));
 
-for i = 1:size(depC,2)
-    d_normeddepC_d_depC = [depC(2,i)^2 + depC(3,i)^2, -depC(1,i) * depC(2,i), -depC(1,i) * depC(3,i);
-                          -depC(2,i) * depC(1,i), depC(1,i)^2 + depC(3,i)^2, -depC(2,i) * depC(3,i);
-                          -depC(3,i) * depC(1,i), -depC(3,i) * depC(2,i), depC(1,i)^2 + depC(2,i)^2] / normdepC(i)^3;
-                      
-    d_normed_depC(:,i,:) = d_normeddepC_d_depC * squeeze(d_depC(:,i,:));
+if nargout > 2
+    d_normed_depC = (zeros(size(depC,1), size(depC,2), numSliceVar));
+
+    for i = 1:size(depC,2)
+        d_normeddepC_d_depC = [depC(2,i)^2 + depC(3,i)^2, -depC(1,i) * depC(2,i), -depC(1,i) * depC(3,i);
+                              -depC(2,i) * depC(1,i), depC(1,i)^2 + depC(3,i)^2, -depC(2,i) * depC(3,i);
+                              -depC(3,i) * depC(1,i), -depC(3,i) * depC(2,i), depC(1,i)^2 + depC(2,i)^2] / normdepC(i)^3;
+
+        d_normed_depC(:,i,:) = d_normeddepC_d_depC * squeeze(d_depC(:,i,:));
+    end
+
+    d_depC = permute(d_normed_depC, [2,1,3]);
 end
                    
 depC = (depC./normdepC)';
-d_depC = permute(d_normed_depC, [2,1,3]);
 
 C = [depC; indepC];
-dC = [d_depC; zeros(size(indepC,1), size(indepC,2), numSliceVar)];
+
+if nargout > 2
+    dC = [d_depC; zeros(size(indepC,1), size(indepC,2), numSliceVar)];
+end
 
 G = [Gdep, Gindep];
-dG = zeros(size(Gindep,1), size(Gindep,2) + 1, numSliceVar);
-dG(:,1,:) = dGdep;
+
+if nargout > 2
+    dG = zeros(size(Gindep,1), size(Gindep,2) + 1, numSliceVar);
+    dG(:,1,:) = dGdep;
+end
 
 deltaD = sum(abs((C*G)'))';
-dCG = einsum(C, dG, 'ij,jkl->ikl') + einsum(dC, G, 'ijk,jl->ilk');
-d_deltaD = squeeze(sum(dCG .* sign((C*G)),2));
+
+if nargout > 2
+    dCG = einsum(C, dG, 'ij,jkl->ikl') + einsum(dC, G, 'ijk,jl->ilk');
+    d_deltaD = squeeze(sum(dCG .* sign((C*G)),2));
+    d_d = einsum(dC, c, 'ijk,jl->ikl') + C * dc;
+end
 
 d = C*c;
-d_d = einsum(dC, c, 'ijk,jl->ikl') + C * dc;
 
 PA = [C; -C];
 Pb = [d + deltaD; -d + deltaD];
 
-dPA = [dC; -dC];
-dPb = [d_d + d_deltaD; -d_d + d_deltaD];
-
-
-%------------- END OF CODE --------------
+if nargout > 2
+    dPA = [dC; -dC];
+    dPb = [d_d + d_deltaD; -d_d + d_deltaD];
+end
