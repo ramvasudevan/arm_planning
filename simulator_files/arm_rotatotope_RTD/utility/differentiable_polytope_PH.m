@@ -40,20 +40,24 @@ depC = (depC./normdepC)';
 d_depC = permute(d_normed_depC, [2,1,3]);
 
 C = [depC; indepC];
+dC = [d_depC; zeros(size(indepC,1), size(indepC,2), numSliceVar)];
 
 G = [Gdep, Gindep];
+dG = zeros(size(Gindep,1), size(Gindep,2) + 1, numSliceVar);
+dG(:,1,:) = dGdep;
+
 deltaD = sum(abs((C*G)'))';
+dCG = einsum(C, dG, 'ij,jkl->ikl') + einsum(dC, G, 'ijk,jl->ilk');
+d_deltaD = squeeze(sum(dCG .* sign((C*G)),2));
 
 d = C*c;
-d_depd = einsum(d_depC, c, 'ijk,jl->ikl') + depC * dc;
-d_indepd = indepC * dc;
+d_d = einsum(dC, c, 'ijk,jl->ikl') + C * dc;
 
 PA = [C; -C];
-% Pb = [d+deltaD; -d+deltaD];
-Pb = [d; -d];
+Pb = [d + deltaD; -d + deltaD];
 
-dPA = [d_depC; zeros(size(indepC,1), size(indepC,2), numSliceVar); -d_depC; zeros(size(indepC,1), size(indepC,2), numSliceVar)];
-dPb = [d_depd; d_indepd; -d_depd; -d_indepd];
+dPA = [dC; -dC];
+dPb = [d_d + d_deltaD; -d_d + d_deltaD];
 
 
 %------------- END OF CODE --------------
