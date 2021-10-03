@@ -44,7 +44,6 @@ for timeid = timeids
             c = [c; Apoly * obstacle_center - Bpoly];
             gc = [gc, einsum(dApoly, obstacle_center, 'ijk,jl->ikl')' - dBpoly'];
         end
-        
     end
 end
 

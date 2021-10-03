@@ -6,12 +6,15 @@ PZ_reachset = load('C:\Users\RoahmLab\Documents\arm_planning\simulator_files\arm
 g_k = max(pi/24, abs(PZ_reachset.my_c_IC/3));
 
 % time information
-timeids = 80:80;
+timeids = 10:10:length(PZ_reachset.Rcont);
 dt = 0.01;
 
 % forward kinematics of the robot
 load('fetch_FK_info.mat');
 num_joints = size(axes,2);
+
+% goal
+goal = [1;1;1];
 
 % obstacles (represented in zonotopes)
 O{1} = zonotope([0.5;0.5;0.5;],diag([0.05,0.075,0.1]));
@@ -25,9 +28,17 @@ factor = 2*g_k*rand(6,1)-g_k;
 [c,ceq,gc,gceq] = linkFRSconstraints(factor, timeids, joint_pos, num_joints, O);
 
 %% run optimization problem
-options = optimoptions(@fmincon,'CheckGradients',true,'SpecifyObjectiveGradient',false,'SpecifyConstraintGradient',true);
+x0 = rand(6,1);
 
-sol = fmincon(@(x)norm(x),rand(6,1),[],[],[],[],-ones(6,1),ones(6,1),@(x)linkFRSconstraints(x, timeids, joint_pos, num_joints, O),options);
+options = optimoptions(@fmincon,'CheckGradients',true,'SpecifyObjectiveGradient',true,'SpecifyConstraintGradient',true);
+
+sol = fmincon(@(x)jointFRScost(x, 50, joint_pos, goal), ...
+              rand(6,1), ...
+              [],[],[],[], ...
+              -ones(6,1), ...
+              ones(6,1), ...
+              @(x)linkFRSconstraints(x, timeids, joint_pos, num_joints, O), ...
+              options);
 
 %% plot the result
 % figure; view(3); grid on; hold on; axis equal;
@@ -35,7 +46,7 @@ sol = fmincon(@(x)norm(x),rand(6,1),[],[],[],[],-ones(6,1),ones(6,1),@(x)linkFRS
 % factor = 2*g_k*rand(6,1)-g_k;
 % 
 % FRS_colors = [ones(length(PZ_reachset.Rcont),1) * [1,0,0], linspace(0.5,0.1,length(PZ_reachset.Rcont))'];  
-
+% 
 % for timeid = timeids
 %     for j = 1:(num_joints-1)
 %         if j == 1
