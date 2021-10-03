@@ -17,7 +17,8 @@ num_joints = size(axes,2);
 goal = [1;1;1];
 
 % obstacles (represented in zonotopes)
-O{1} = zonotope([0.5;0.5;0.5;],diag([0.05,0.075,0.1]));
+O{1} = zonotope([0.5;0.5;0.5],diag([0.05,0.075,0.1]));
+O{2} = zonotope([0;0;0],diag([0.05,0.075,0.1]));
 
 %% compose joint FRS
 [joint_pos, composeJointFRS_timing] = composeFRS_PZmatrix_fetch(timeids, PZ_reachset, T, axes);
