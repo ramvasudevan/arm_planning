@@ -1,17 +1,9 @@
-function [pZ, gradient] = sliceFRS(FRS, alpha, sliceDim, controlFacNum)
+function [pZ, gradient] = sliceFRS(FRS, alpha, sliceDim)
 % slice FRS at alpha. Assume that the slicable factors are always in the first several rows of expMat
 % FRS should be a CORA polyZonotope
 % alpha should be a vector range from -1 to 1
 % sliceDim should be a sorted vector representing the dimension needed to be 'sliced'. 
 %          The default value is 1:length(alpha) (slice over the first several dimensions)
-
-if nargin < 5
-    getGradient = false;
-end
-
-if nargin < 4
-    controlFacNum = 11; % default for rabbit
-end
 
 pZ = FRS;
 
@@ -30,14 +22,17 @@ end
 
 new_slice_dim = [];
 new_alpha = [];
+map_slice_dim = [];
 for i = 1:length(sliceDim)
     temp = find(FRS.id == sliceDim(i));
     if ~isempty(temp)
         new_slice_dim = [new_slice_dim, temp];
         new_alpha = [new_alpha; alpha(i)];
+        map_slice_dim = [map_slice_dim, i];
     end
 end
 sliceDim = new_slice_dim;
+alpha_length = length(alpha);
 alpha = new_alpha;
 unsliceDim = setdiff(1:size(pZ.expMat,1), sliceDim);
 
@@ -47,14 +42,13 @@ if isempty(sliceDim)
 end
 
 if nargout > 1
-    gradient = zeros(size(pZ.G,1),length(sliceDim));
+    gradient = zeros(size(pZ.G,1),alpha_length);
     for i = 1:length(sliceDim)
         diffDim = sliceDim(i);
         nnzCols = pZ.expMat(diffDim,:) ~= 0;
         diffExpMat = pZ.expMat(sliceDim,nnzCols);
         diffExpMat(i,:) = diffExpMat(i,:) - 1;
-        grad = sum(pZ.G(:,nnzCols) .* pZ.expMat(diffDim,nnzCols) .* prod(alpha .^ diffExpMat, 1), 2);
-        gradient(:,i) = grad;
+        gradient(:,map_slice_dim(i)) = sum(pZ.G(:,nnzCols) .* pZ.expMat(diffDim,nnzCols) .* prod(alpha .^ diffExpMat, 1), 2);
     end
 end
 
@@ -64,9 +58,9 @@ if ~isempty(pZ.G)
 end
 pZ.id(sliceDim) = [];
 
-unControlFacIdx = pZ.id > controlFacNum;
+unControlFacIdx = pZ.id > pZ.initialId(end);
 unControlFacNum = sum(unControlFacIdx);
-pZ.id(unControlFacIdx) = (1:unControlFacNum) + controlFacNum;
+pZ.id(unControlFacIdx) = (1:unControlFacNum) + pZ.initialId(end);
 
 pZ = deleteZeros(pZ);
 
