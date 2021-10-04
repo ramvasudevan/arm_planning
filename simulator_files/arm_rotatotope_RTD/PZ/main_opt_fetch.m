@@ -2,12 +2,12 @@ close all; clear; clc;
 
 %% initialization
 % read in polynomial zonotopes in offline reachability analysis
-PZ_reachset = load('C:\Users\RoahmLab\Documents\arm_planning\simulator_files\arm_rotatotope_RTD\FRS_trig_PZ\trig_FRS_-2.875.mat');
+PZ_reachset = load('C:\Users\RoahmLab\Documents\arm_planning\simulator_files\arm_rotatotope_RTD\FRS_trig_PZ\trig_FRS_1.139.mat');
 g_k = max(pi/24, abs(PZ_reachset.my_c_IC/3));
 
 % time information
 timeids = 10:10:length(PZ_reachset.Rcont);
-dt = 0.01;
+dt = 0.005;
 
 % forward kinematics of the robot
 load('fetch_FK_info.mat');
@@ -62,16 +62,16 @@ for timeid = timeids
     end
 end
 
-%% ARMTD
+% %% ARMTD
 % tic;
 % R = robot_arm_FRS_rotatotope_fetch(zeros(6,1), PZ_reachset.my_c_IC*ones(6,1));
 % toc;
 % 
 % %% ARMTD plotting
 % for timeid = timeids
-%     plot_slice(R.link_FRS{1}{timeid}, factor(1:2));
-%     plot_slice(R.link_FRS{2}{timeid}, factor(1:4));
-%     plot_slice(R.link_FRS{3}{timeid}, factor(1:6));
+%     plot_slice(R.link_FRS{1}{timeid}, g_k * sol(1:2));
+%     plot_slice(R.link_FRS{2}{timeid}, g_k * sol(1:4));
+%     plot_slice(R.link_FRS{3}{timeid}, g_k * sol(1:6));
 % end
 
 %% ground truth

@@ -15,7 +15,8 @@ joint_reachable_set = cell(num_joints,1);
 for i = 1:num_joints-1
     dim = find(axes(:,i) ~=0);
     
-    motors = reduceFactorsFull(JRS, 1);
+%     motors = reduceFactorsFull(JRS, 1);
+    motors = JRS;
     motors.Grest = diag(sum(abs(motors.Grest),2));
     motors.id = i;
     
