@@ -13,7 +13,7 @@ dim = 5; % dim 1 cosine, dim 2 sine, dim 3 K, dim 4 initial vel., dim 5 time
 
 t_plan = 0.5;
 t_total = 1;
-dt = 0.01;
+dt = 0.005;
 
 L = 0.33;
 
@@ -24,7 +24,7 @@ generate_trig_dynamics(t_plan, t_total) % generates the dynamics parameterized b
 % binSize = c_IC(2) - c_IC(1);
 % g_IC = binSize/2;
 
-nBins = 401;
+nBins = 801;
 c_IC = linspace(-pi, pi, nBins);
 binSize = c_IC(2) - c_IC(1);
 g_IC = binSize / 2;
@@ -35,7 +35,7 @@ if ~exist('FRS_trig_PZ', 'dir')
 end
 save('FRS_trig_PZ/0key.mat', 'c_IC');
 
-for i = 373:length(c_IC) % we're going to loop over all velocity intervals
+for i = 1:length(c_IC) % we're going to loop over all velocity intervals
     disp([num2str(i), '/', num2str(length(c_IC))])
     
     g_k = max(pi/24, abs(c_IC(i)/3));
@@ -99,8 +99,9 @@ for i = 373:length(c_IC) % we're going to loop over all velocity intervals
     % concatenate full FRS
     Rcont = [Rcont_toPeak.timeInterval.set; Rcont_toStop.timeInterval.set];
     
+    % assume initial velocity is an unslicable dimension for now
     for j = 1:length(Rcont)
-        Rcont{j} = reduceFactorsFull(Rcont{j});
+        Rcont{j} = reduceFactorsFull(Rcont{j}, 1);
     end
     
     % save this FRS
