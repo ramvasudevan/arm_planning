@@ -86,5 +86,5 @@ for i = 2:3969
     end
 end
 
-res.gen(end) = abs(inp1.gen(end)) * sum(abs(inp2.gen)) + abs(inp2.gen(end)) * sum(abs(inp1.gen)) + reduceGrest;
+res.gen(end) = abs(inp1.gen(end)) * sum(abs(inp2.gen(1:63))) + abs(inp2.gen(end)) * sum(abs(inp1.gen(1:63))) + abs(inp1.gen(end)) * abs(inp2.gen(end)) + reduceGrest;
 
