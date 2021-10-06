@@ -30,3 +30,5 @@ for i = 1:62
         fprintf('\n');
     end
 end
+
+fprintf('+[-%f, %f]\n', obj.gen(end), obj.gen(end));

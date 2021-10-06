@@ -17,7 +17,7 @@ dt = 0.005;
 
 L = 0.33;
 
-generate_trig_dynamics(t_plan, t_total) % generates the dynamics parameterized by k
+% generate_trig_dynamics(t_plan, t_total) % generates the dynamics parameterized by k
 
 % nBins = 401; % separate initial velocity space into 401 smaller intervals
 % c_IC = linspace(-pi, pi, nBins); % initial velocity in [-pi, pi]
@@ -33,9 +33,9 @@ g_IC = binSize / 2;
 if ~exist('FRS_trig_PZ', 'dir')
     mkdir('FRS_trig_PZ')
 end
-save('FRS_trig_PZ/0key.mat', 'c_IC');
+% save('FRS_trig_PZ/0key.mat', 'c_IC');
 
-for i = 554:length(c_IC) % we're going to loop over all velocity intervals
+for i = 554:680 % we're going to loop over all velocity intervals
     disp([num2str(i), '/', num2str(length(c_IC))])
     
     g_k = max(pi/24, abs(c_IC(i)/3));
