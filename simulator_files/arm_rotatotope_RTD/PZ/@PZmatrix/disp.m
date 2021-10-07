@@ -1,8 +1,12 @@
 function disp(obj)
 
+% uninitialized
+if obj.numberOfDecisionVariable == 0 
+    fprintf("0\n");
+    return;
+end
+
 maximumAllowedDegree = floor(32 / obj.numberOfDecisionVariable);
-            
-expMat = sparse(obj.numberOfDecisionVariable, 62);
 
 mask = bitshift(1,maximumAllowedDegree) - 1;
 
