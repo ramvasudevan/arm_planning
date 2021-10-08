@@ -2,7 +2,7 @@ close all; clear; clc;
 
 %% initialization
 % read in polynomial zonotopes in offline reachability analysis
-PZ_reachset = load('C:\Users\RoahmLab\Documents\arm_planning\simulator_files\arm_rotatotope_RTD\FRS_trig_PZ\trig_FRS_-2.875.mat');
+PZ_reachset = load('..\FRS_trig_PZ\trig_FRS_-2.875.mat');
 g_k = max(pi/24, abs(PZ_reachset.my_c_IC/3));
 
 % time information
