@@ -4,9 +4,9 @@ t_plan = 0.5;
 t_total = 1;
 dt = 0.005;
 
-PZ_reachset_imp = load('FRS_trig_PZ_improved/trig_FRS_-3.142.mat');
-PZ_reachset = load('FRS_trig_PZ/trig_FRS_-3.142.mat');
-OZ_reachset = load('FRS_trig/trig_FRS_-3.142.mat');
+PZ_reachset_imp = load('FRS_trig_PZ_improved/trig_FRS_-2.875.mat');
+PZ_reachset = load('FRS_trig_PZ/trig_FRS_-2.875.mat');
+OZ_reachset = load('FRS_trig/trig_FRS_-2.875.mat');
 
 c_IC = PZ_reachset.my_c_IC;
 g_IC = pi/400;

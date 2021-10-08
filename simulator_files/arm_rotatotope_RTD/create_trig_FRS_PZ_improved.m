@@ -112,6 +112,11 @@ for i = 1:nBins % we're going to loop over all velocity intervals
         inc = inc + 1;
     end
     
+    for j = 1:length(Rcont)
+        Rcont{j} = getDim(Rcont{j}, [1:2]);
+        Rcont{j}.Grest = diag(sum(abs(Rcont{j}.Grest),2));
+    end
+    
     % save this FRS
     my_c_IC = c_IC(i);
     filename = sprintf('FRS_trig_PZ_improved/trig_FRS_%0.3f.mat', my_c_IC);
