@@ -1,5 +1,5 @@
 %%% description
-% this code uses CORA 2018 to generate the "joint reachable sets" of
+% this code uses CORA 2021 to generate the "joint reachable sets" of
 % cosines and sines that are parameterized by a parameter k
 % in this case, we're solving for reachable sines and cosines over a range
 % of initial velocities, and saving many reach sets corresponding to each
@@ -18,11 +18,6 @@ dt = 0.005;
 L = 0.33;
 
 % generate_trig_dynamics(t_plan, t_total) % generates the dynamics parameterized by k
-
-% nBins = 401; % separate initial velocity space into 401 smaller intervals
-% c_IC = linspace(-pi, pi, nBins); % initial velocity in [-pi, pi]
-% binSize = c_IC(2) - c_IC(1);
-% g_IC = binSize/2;
 
 nBins = 801;
 c_IC = linspace(-pi, pi, nBins);
