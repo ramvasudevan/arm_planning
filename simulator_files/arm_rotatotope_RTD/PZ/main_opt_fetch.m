@@ -7,7 +7,7 @@ g_k = max(pi/24, abs(PZ_reachset.my_c_IC/3));
 
 % time information
 % timeids = 10:10:length(PZ_reachset.Rcont);
-timeids = 100;
+timeids = 200;
 dt = 0.005;
 
 % forward kinematics of the robot
@@ -22,7 +22,7 @@ O{1} = zonotope([0.5;0.5;0.5],diag([0.05,0.075,0.1]));
 O{2} = zonotope([0;0;0],diag([0.05,0.075,0.1]));
 
 %% compose joint FRS
-[joint_pos, composeJointFRS_timing] = composeFRS_PZmatrix_fetch(timeids, PZ_reachset, T, axes);
+[joint_pos, composeJointFRS_timing] = composeFRS_PZmatrix_fetch(timeids, PZ_reachset.Rcont, T, axes);
 
 %% run optimization problem
 x0 = rand(6,1);
@@ -38,7 +38,7 @@ sol = fmincon(@(x)jointFRScost(x, 100, joint_pos, goal), ...
               options);
 
 %% plot the result
-figure; view(3); grid on; hold on; axis equal;
+% figure; view(3); grid on; hold on; axis equal;
 
 for i = 1:length(O)
     obs_vertices = vertices(O{i});
@@ -59,7 +59,7 @@ for timeid = timeids
         link_vertices = [vertices(joint_pos_zono1), vertices(joint_pos_zono2)]';
         
         link_conv_hull = convhulln(link_vertices);
-        trisurf(link_conv_hull,link_vertices(:,1),link_vertices(:,2),link_vertices(:,3),'FaceColor',[0,0,1],'FaceAlpha',0.1,'EdgeColor',[0,0,1],'EdgeAlpha',0.8);
+        trisurf(link_conv_hull,link_vertices(:,1),link_vertices(:,2),link_vertices(:,3),'FaceColor',[0,0,0.6],'FaceAlpha',0.1,'EdgeColor',[0,0,1],'EdgeAlpha',0.8);
     end
 end
 

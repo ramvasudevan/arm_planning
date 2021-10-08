@@ -4,18 +4,18 @@ function [joint_pos, duration_t] = composeFRS_PZmatrix_fetch(timeids, PZ_reachse
 num_joints = size(axes,2);
 
 %% compose FRS through kinematics chain
-joint_reachable_set = cell(length(PZ_reachset.Rcont),1);
+joint_reachable_set = cell(length(PZ_reachset),1);
 
 start_t = tic;
 % for i = 1:length(PZ_reachset.Rcont)
 for i = timeids
     disp(i)
-    joint_reachable_set{i} = RobotForwardKinematics_PZmatrix_fetch(num_joints,PZ_reachset.Rcont{i},T,axes);
+    joint_reachable_set{i} = RobotForwardKinematics_PZmatrix_fetch(num_joints,PZ_reachset{i},T,axes);
 end
 duration_t = toc(start_t);
 
 %% simplify FRS
-joint_pos = cell(length(PZ_reachset.Rcont),1);
+joint_pos = cell(length(PZ_reachset),1);
 
 for i = timeids
     joint_pos{i} = cell(num_joints,1);
