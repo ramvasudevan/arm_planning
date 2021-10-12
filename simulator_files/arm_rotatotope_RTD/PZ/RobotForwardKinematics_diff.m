@@ -18,11 +18,11 @@ for i = 1:num_joints-1
     dim = find(axes(:,i) ~=0);
     
     if dim == 1
-        [R, dR] = rx(axes(dim,i) * c(i), axes(dim,i) * s(i), axes(dim,i) * dc(i,:), axes(dim,i) * ds(i,:));
+        [R, dR] = rx(c(i), axes(dim,i) * s(i), axes(dim,i) * dc(i,:), axes(dim,i) * ds(i,:));
     elseif dim == 2
-        [R, dR] = ry(axes(dim,i) * c(i), axes(dim,i) * s(i), axes(dim,i) * dc(i,:), axes(dim,i) * ds(i,:));
+        [R, dR] = ry(c(i), axes(dim,i) * s(i), axes(dim,i) * dc(i,:), axes(dim,i) * ds(i,:));
     else
-        [R, dR] = rz(axes(dim,i) * c(i), axes(dim,i) * s(i), axes(dim,i) * dc(i,:), axes(dim,i) * ds(i,:));
+        [R, dR] = rz(c(i), axes(dim,i) * s(i), axes(dim,i) * dc(i,:), axes(dim,i) * ds(i,:));
     end
     
     if i == 1
