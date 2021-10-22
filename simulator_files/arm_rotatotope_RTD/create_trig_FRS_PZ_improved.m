@@ -13,7 +13,7 @@ dim = 5; % dim 1 cosine, dim 2 sine, dim 3 K, dim 4 initial vel., dim 5 time
 
 t_plan = 0.5;
 t_total = 1;
-dt = 0.005;
+dt = 0.0078125;
 
 L = 0.33;
 
