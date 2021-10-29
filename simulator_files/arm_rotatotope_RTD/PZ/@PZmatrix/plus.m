@@ -41,7 +41,7 @@ reduceGrest = 0;
 ifUpdateSmallest = true;
 for i = 1:62
     if ~ifHaveMerged2(i) && inp2.gen(i + 1) ~= 0
-        % replace with smallest monomial in inp1
+        % replace with smallest monomial in inp1 (selection sort)
         if ifUpdateSmallest
             smallestGen = 1000000;
             smallestGenId = 0;

@@ -1,5 +1,5 @@
 classdef PZmatrix
-    % a alternative representation for a CORA polynomial zonotope
+    % an alternative representation for a CORA polynomial zonotope
     % write the code in a pesudo parallel way to prepare for cuda
     
     properties
@@ -7,6 +7,8 @@ classdef PZmatrix
         % the last number of gen is Grest (1-dim error)
         % the rest of gen is G (generators)
         gen (1,64) {mustBeNumeric,mustBeFinite} = zeros(1,64); 
+        
+        % an unsigned 32-bit integer representing degree of a monomial
         deg (1,64) {mustBeInteger,mustBeNonnegative} = uint32(zeros(1,64));
         numberOfDecisionVariable (1,1) {mustBeInteger,mustBeNonnegative} = 0;
     end
@@ -40,7 +42,7 @@ classdef PZmatrix
         
         function hashExpMat = hashDegree(obj, expMat, id)
             % We are not using discrete sparse numbers (an array) to represent degrees of a polynomial zonotope. 
-            % Instead, we hash the degrees as an unsigned integer number.
+            % Instead, we hash the degrees as an unsigned 32-bit integer number.
             % We need the following assumptions on the degree of the polynomial zonotope:
             % 1. Suppose the number of initialId (number of decision variable to track, number of slicable dimensions)
             % times the maximum allowed degree is smaller than 32, so that the hashed

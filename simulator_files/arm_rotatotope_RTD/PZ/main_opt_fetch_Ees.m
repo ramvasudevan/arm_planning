@@ -7,7 +7,7 @@ g_k = max(pi/24, abs(PZ_reachset.my_c_IC/3));
 
 % time information
 % timeids = 10:10:length(PZ_reachset.Rcont);
-timeids = 200;
+timeids = 128;
 dt = 0.005;
 
 % forward kinematics of the robot
@@ -36,7 +36,7 @@ sol = fmincon(@(x)norm(x), ...
               ones(6,1), ...
               @(x)linkFRSconstraints_Ees(x, PZ_reachset.Rcont, joint_pos_error, timeids, num_joints, T, axes, O), ...
               options);
-
+error('eee');
 %% plot the result
 figure; view(3); grid on; hold on; axis equal;
 

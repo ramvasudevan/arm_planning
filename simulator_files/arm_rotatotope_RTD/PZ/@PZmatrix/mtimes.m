@@ -49,7 +49,7 @@ for i = 1:63
     end
 end
 
-%% find 62 largest monomials from the rest of them
+%% find 62 largest monomials from the rest of them (reduce number of monomials so that won't exceed memory limit)
 res = PZmatrix;
 res.numberOfDecisionVariable = inp1.numberOfDecisionVariable;
 res.gen(1) = mulGen(1,1);
@@ -60,11 +60,12 @@ reduceGrest = 0;
 for i = 2:3969
     if ~ifHaveMerged(i) && mulGen(i) ~= 0
         if fillInNum <= 62
+            % initialize res with the first 62 monomials
             res.gen(fillInNum + 1) = mulGen(i);
             res.deg(fillInNum + 1) = mulDeg(i);
             fillInNum = fillInNum + 1;
         else
-            % replace with smallest monomial in res
+            % replace with smallest monomial in res (selection sort)
             if ifUpdateSmallest
                 smallestGen = 1000000;
                 smallestGenId = 0;

@@ -16,6 +16,7 @@ joint_reachable_set_error = cell(num_joints,1);
 for i = 1:num_joints-1
     dim = find(axes(:,i) ~=0);
     
+%     motors = JRS{i};
     motors = JRS;
     motors.Grest = diag(sum(abs(motors.Grest),2));
     motors.id = i;
@@ -29,6 +30,8 @@ for i = 1:num_joints-1
     cE = interval(cosangle);
     sinangle.Grest = [];
     sE = interval(sinangle);
+    
+    disp([cE.rad,sE.rad])
     
     if dim == 1
         R = rx(cE, ce, sE, se);
