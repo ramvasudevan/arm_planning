@@ -3,6 +3,7 @@ clear; clc;
 %% initialization
 if ~exist('newideas','dir')
     mkdir('newideas');
+    addpath('newideas');
 end
 
 syms p0 v0 t tmid k 'real'
