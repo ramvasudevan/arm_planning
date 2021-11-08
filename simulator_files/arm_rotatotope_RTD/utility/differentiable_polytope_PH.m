@@ -18,7 +18,7 @@ depC = [Gdep(2,:).*Gindep(3,:) - Gdep(3,:).*Gindep(2,:);
         Gdep(3,:).*Gindep(1,:) - Gdep(1,:).*Gindep(3,:); 
         Gdep(1,:).*Gindep(2,:) - Gdep(2,:).*Gindep(1,:)];
     
-if nargout > 2
+if nargout > 4
     d_depC = (zeros(size(depC,1), size(depC,2), numSliceVar));
     for i = 1:numSliceVar
         d_depC(:,:,i) = [dGdep(2,i).*Gindep(3,:) - dGdep(3,i).*Gindep(2,:); 
@@ -29,7 +29,7 @@ end
 
 normdepC = vecnorm(depC);
 
-if nargout > 2
+if nargout > 4
     d_normed_depC = (zeros(size(depC,1), size(depC,2), numSliceVar));
 
     for i = 1:size(depC,2)
@@ -47,20 +47,20 @@ depC = (depC./normdepC)';
 
 C = [depC; indepC];
 
-if nargout > 2
+if nargout > 4
     dC = [d_depC; zeros(size(indepC,1), size(indepC,2), numSliceVar)];
 end
 
 G = [Gdep, Gindep];
 
-if nargout > 2
+if nargout > 4
     dG = zeros(size(Gindep,1), size(Gindep,2) + 1, numSliceVar);
     dG(:,1,:) = dGdep;
 end
 
 deltaD = sum(abs((C*G)'))';
 
-if nargout > 2
+if nargout > 4
     dCG = einsum(C, dG, 'ij,jkl->ikl') + einsum(dC, G, 'ijk,jl->ilk');
     d_deltaD = squeeze(sum(dCG .* sign((C*G)),2));
     d_d = einsum(dC, c, 'ijk,jl->ikl') + C * dc;
@@ -71,7 +71,7 @@ d = C*c;
 PA = [C; -C];
 Pb = [d + deltaD; -d + deltaD];
 
-if nargout > 2
+if nargout > 4
     dPA = [dC; -dC];
     dPb = [d_d + d_deltaD; -d_d + d_deltaD];
 end
