@@ -4,10 +4,7 @@
 
 ## 1. Overview
 
-To use the files in this repository, you will need the following MATLAB repositories on your path:
-
-- [RTD](https://github.com/ramvasudevan/RTD)
-- [CORA](https://tumcps.github.io/CORA/)
+To use the files in this repository, you will need to download the [CORA 2018](https://tumcps.github.io/CORA/) toolbox and add it to your MATLAB path.
 
 It might also be worth going through the [RTD Tutorial](https://github.com/skousik/RTD_tutorial) to get a feel for how the objects herein interact
 
