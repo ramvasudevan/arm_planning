@@ -7,13 +7,17 @@ This repo contains the code for our recent paper: https://arxiv.org/abs/2002.015
 To run this code, you'll need MATLAB R2018b or newer.
 Also, you will need [CORA_2018](https://tumcps.github.io/CORA/).
 
+### GPU Version Notes
 If you want to run the GPU versions of the code, you'll need IPOPT... more detailed instructions for setting up the GPU versions of the code to follow.
-
-Also, if you want to run anything in the `armtd_benchmark` folder, you'll have to do that in Ubuntu with MoveIt! and ROS installed. Similarly, everything in the `fetch_command_files` folder is what we used to communicate with the Fetch hardware (via ROS in MATLAB, from an Ubuntu machine).
 
 All of the ARMTD MATLAB/MEX code has a non-GPU version, but it isn't usually real-time fast. You may have to recompile the CUDA MEX files for your own system, if you're using a GPU.
 
-## Navigating this Repo (or [start here](https://github.com/ramvasudevan/arm_planning/tree/master/simulator_files))
+### Comparison and Hardware Notes
+The `armtd_benchmark` folder contains code for running a comparison of our proposed ARMTD method against [CHOMP](https://ieeexplore.ieee.org/abstract/document/5152817). This requires Ubuntu with MoveIt! and ROS installed. Similarly, everything in the `fetch_command_files` folder is what we used to communicate with the Fetch hardware (via ROS in MATLAB, from an Ubuntu machine).
+
+Note, none of the comparison or hardware code is required for just running ARMTD in simulation! You do not need to worry about this stuff unless you really want to replicate everything from our paper and hardware experiments.
+
+## Navigating this Repo ([start here](https://github.com/ramvasudevan/arm_planning/tree/master/simulator_files))
 Here's a brief explanation of the different folders here:
 1. [armtd_benchmark](https://github.com/ramvasudevan/arm_planning/tree/master/armtd_benchmark): code for comparing armtd to CHOMP through MoveIt!
 2. [fetch_command_files](https://github.com/ramvasudevan/arm_planning/tree/master/fetch_command_files): code for interfacing with the Fetch through MATLAB and ROS
